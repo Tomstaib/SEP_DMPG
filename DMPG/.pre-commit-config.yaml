@@ -1,0 +1,23 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.2.0
+    hooks:
+      - id: check-yaml                  # Checks that YAML files are well-formed and valid.
+      # - id: check-docstring-first     # Checks that docstrings appear at the beginning of functions, classes, methods.
+      # - id: end-of-file-fixer         # Fixes trailing whitespace and newlines at the end of files.
+      # - id: trailing-whitespace       # Removes trailing whitespace from the end of lines.
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        name: flake8
+        entry: flake8
+        args:
+          - --filename=*.py
+          - --ignore=E501     # length of line
+        language: python
+        language_version: python3.12
+        paths:
+          - src
+
+      # stages: [push]
