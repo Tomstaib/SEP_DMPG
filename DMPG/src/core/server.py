@@ -40,7 +40,7 @@ class Server:
         self.processing = env.event()
         self.total_downtime = 0
         self.number_downtimes = 0
-        self.uptime = None
+        self.uptime = None # why not 0
         self.total_uptime = 0
         self.number_uptimes = 0
 
@@ -57,7 +57,7 @@ class Server:
         for server in cls.servers:
             server.reset()
 
-    def reset(self):
+    def reset(self): # why
         pass
 
     def is_available(self):
@@ -99,12 +99,12 @@ class Server:
                 processing_time = get_value_from_distribution_with_parameters(self.processing_time_dwp)
                 self.units_utilized += processing_time
 
-                if not self.time_between_machine_breakdowns or processing_time > self.time_until_next_machine_breakdown:
+                if not self.time_between_machine_breakdowns or processing_time > self.time_until_next_machine_breakdown: # logic error
                     yield self.env.timeout(processing_time)
                 else:
                     # processing until breakdown
-                    yield self.env.timeout(self.time_until_next_machine_breakdown)
-                    processing_time -= self.time_until_next_machine_breakdown       # process time remaining
+                    yield self.env.timeout(self.time_until_next_machine_breakdown) # logic error either this line or next line
+                    processing_time -= self.time_until_next_machine_breakdown       # process time remaining # TODO logic error or a catch is needed for negative values  
 
                     logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
                         "".join([self.name, " failure at "]), DateTime.get(self.env.now)))
@@ -120,6 +120,9 @@ class Server:
                     logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
                         "".join([self.name, " failure corrected at "]), DateTime.get(self.env.now)))
 
+                    if processing_time <0:
+                        break
+
                     # continue processing after breakdown
                     yield self.env.timeout(processing_time)
 
@@ -134,8 +137,8 @@ class Server:
             else:
                 # deactivate processing
                 self.processing = self.env.event()
-                self.uptime = self.env.now - self.uptime
-                self.total_uptime += self.uptime
+                self.uptime = self.env.now - self.uptime if self.uptime is not None else self.uptime # self.uptime = self.env.now - self.uptime #TODO heres the problem
+                self.total_uptime += self.uptime if self.uptime is not None else 0 # self.total_uptime += self.uptime
                 self.number_uptimes += 1
 
                 logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(

@@ -1,0 +1,39 @@
+// Simulation Model
+digraph {
+	newrank=true rankdir=LR size="24,14"
+	fontcolor=grey fontname="Open Sans" fontsize=12
+	node [color=lightgrey fontname="Open Sans" fontsize=11 style="filled, rounded"]
+	edge [arrowhead=vee arrowsize=0.8 color=grey fontname="Open Sans" fontsize=10]
+	PCB [label="PCB
+Created: 146" fillcolor="#BDD7EE" fontcolor=black shape=diamond]
+	PCB -> Placement [color=darkgreen style=dashed]
+	Placement [label="Placement
+Processed: 182" fillcolor="#5e4fa2" fontcolor=black shape=box]
+	Placement -> FinePitchFast [label="33.3%" color=darkblue style=bold]
+	Placement -> FinePitchMedium [label="33.3%" color=darkblue style=bold]
+	Placement -> FinePitchSlow [label="33.3%" color=darkblue style=bold]
+	FinePitchFast [label="FinePitchFast
+Processed: 54" fillcolor="#fffebe" fontcolor=black shape=box]
+	FinePitchFast -> Inspection [label="100.0%" color=darkblue style=bold]
+	FinePitchMedium [label="FinePitchMedium
+Processed: 43" fillcolor="#feeb9d" fontcolor=black shape=box]
+	FinePitchMedium -> Inspection [label="100.0%" color=darkblue style=bold]
+	FinePitchSlow [label="FinePitchSlow
+Processed: 36" fillcolor="#fede89" fontcolor=black shape=box]
+	FinePitchSlow -> Inspection [label="100.0%" color=darkblue style=bold]
+	Inspection [label="Inspection
+Processed: 133" fillcolor="#4175b4" fontcolor=black shape=box]
+	Inspection -> GoodParts [label="66.0%" color=darkblue style=bold]
+	Inspection -> BadParts [label="8.0%" color=darkblue style=bold]
+	Inspection -> Rework [label="26.0%" color=darkblue style=bold]
+	Rework [label="Rework
+Processed: 36" fillcolor="#fede89" fontcolor=black shape=box]
+	Rework -> Placement [label="100.0%" color=darkblue style=bold]
+	GoodParts [label="Sink
+GoodParts
+Processed: 86" fillcolor="#E6B8AF" fontcolor=black shape=hexagon]
+	BadParts [label="Sink
+BadParts
+Processed: 11" fillcolor="#E6B8AF" fontcolor=black shape=hexagon]
+	bgcolor=whitesmoke nodesep=0.6 overlap=scalexy ranksep=2.0 splines=true
+}

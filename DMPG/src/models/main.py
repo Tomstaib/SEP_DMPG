@@ -1,6 +1,6 @@
-from models.model_pcb import setup_model_pcb
-from models.model_pcb_with_breakdowns import setup_model_pcb_with_breakdowns
-from models.model_pcb_with_arrival_table import setup_model_pcb_with_arrival_table
+from model_pcb import setup_model_pcb #models entfernt
+from model_pcb_with_breakdowns import setup_model_pcb_with_breakdowns
+from model_pcb_with_arrival_table import setup_model_pcb_with_arrival_table
 from src.util.simulations import run_replications, run_simulation
 from src.util.visualization import histogram, boxplot, scatterplot, violinplot, visualize_system
 import logging
