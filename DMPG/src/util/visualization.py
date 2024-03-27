@@ -19,9 +19,9 @@ def visualize_system():
 
     # Advanced graph style attributes for an elegant look
     dot.attr(rankdir='LR', size='24,14', newrank='true')
-    dot.attr(fontname='Open Sans', fontsize='12', fontcolor='grey')
-    dot.attr('node', style='filled, rounded', color='lightgrey', fontname='Open Sans', fontsize='11')
-    dot.attr('edge', arrowhead='vee', arrowsize='0.8', color='grey', fontname='Open Sans', fontsize='10')
+    dot.attr(fontname='Sans', fontsize='12', fontcolor='grey')  # changed from Open Sans same for lines following
+    dot.attr('node', style='filled, rounded', color='lightgrey', fontname='Sans', fontsize='11')
+    dot.attr('edge', arrowhead='vee', arrowsize='0.8', color='grey', fontname='Sans', fontsize='10')
 
     # Custom function color palette
     def get_color(value, max_value):

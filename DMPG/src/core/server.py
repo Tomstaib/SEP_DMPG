@@ -98,12 +98,12 @@ class Server:
 
                 processing_time = get_value_from_distribution_with_parameters(self.processing_time_dwp)
                 self.units_utilized += processing_time
-                # TODO logic error or a catch is needed for negative values
-                if not self.time_between_machine_breakdowns or processing_time > self.time_until_next_machine_breakdown: # logic error
+                # TODO logic error or a catch is needed for negative values see assertion in l.105f.
+                if not self.time_between_machine_breakdowns or processing_time > self.time_until_next_machine_breakdown:  # logic error
                     yield self.env.timeout(processing_time)
                 else:
-                    # assert processing_time >= self.time_until_next_machine_breakdown,
-                    # "processing time smaller than time until next machine breakdown"
+                    assert processing_time >= self.time_until_next_machine_breakdown, (
+                        "Processing time smaller than time until next machine breakdown")
                     # processing until breakdown
                     yield self.env.timeout(self.time_until_next_machine_breakdown)
                     processing_time -= self.time_until_next_machine_breakdown       # process time remaining
