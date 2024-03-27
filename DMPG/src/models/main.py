@@ -1,10 +1,12 @@
-from model_pcb import setup_model_pcb #models entfernt
+from model_pcb import setup_model_pcb  # models entfernt
 from model_pcb_with_breakdowns import setup_model_pcb_with_breakdowns
 from model_pcb_with_arrival_table import setup_model_pcb_with_arrival_table
 from src.util.simulations import run_replications, run_simulation
 from src.util.visualization import histogram, boxplot, scatterplot, violinplot, visualize_system
 import logging
 import matplotlib.pyplot as plt
+from datetime import datetime
+now = datetime.now()
 
 
 def main():
@@ -21,6 +23,9 @@ def main():
     boxplot('Server', 'TotalTimeProcessing')
     scatterplot('Sink', 'AvgTimeInSystem', 'NumberEntered')
     violinplot('Server', 'ScheduledUtilization')
+    finish = datetime.now()
+    time_elapsed = finish - now
+    print('Time elapsed: ', time_elapsed)
 
 
 if __name__ == '__main__':

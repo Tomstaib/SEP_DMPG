@@ -98,13 +98,15 @@ class Server:
 
                 processing_time = get_value_from_distribution_with_parameters(self.processing_time_dwp)
                 self.units_utilized += processing_time
-
+                # TODO logic error or a catch is needed for negative values
                 if not self.time_between_machine_breakdowns or processing_time > self.time_until_next_machine_breakdown: # logic error
                     yield self.env.timeout(processing_time)
                 else:
+                    # assert processing_time >= self.time_until_next_machine_breakdown,
+                    # "processing time smaller than time until next machine breakdown"
                     # processing until breakdown
-                    yield self.env.timeout(self.time_until_next_machine_breakdown) # logic error either this line or next line
-                    processing_time -= self.time_until_next_machine_breakdown       # process time remaining # TODO logic error or a catch is needed for negative values  
+                    yield self.env.timeout(self.time_until_next_machine_breakdown)
+                    processing_time -= self.time_until_next_machine_breakdown       # process time remaining
 
                     logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
                         "".join([self.name, " failure at "]), DateTime.get(self.env.now)))
@@ -120,7 +122,7 @@ class Server:
                     logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
                         "".join([self.name, " failure corrected at "]), DateTime.get(self.env.now)))
 
-                    if processing_time <0:
+                    if processing_time < 0:  # catch for logic error
                         break
 
                     # continue processing after breakdown

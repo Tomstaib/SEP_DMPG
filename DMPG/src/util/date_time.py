@@ -23,8 +23,8 @@ class DateTime(Singleton):
 
     @classmethod
     def get(cls, time_now: Union[float, int] = 0, from_initial_date: bool = True) -> str:
-
-        match cls.simpy_time_mapped_to:
+        # changed to if for pypy usage(with not possible in Python 3.8
+        """match cls.simpy_time_mapped_to:
             case TimeComponent.second:
                 delta = timedelta(seconds=time_now)
             case TimeComponent.minute:
@@ -32,7 +32,15 @@ class DateTime(Singleton):
             case TimeComponent.hour:
                 delta = timedelta(hours=time_now)
             case _:
-                delta = timedelta(0)
+                delta = timedelta(0)"""
+        if cls.simpy_time_mapped_to == TimeComponent.second:
+            delta = timedelta(seconds=time_now)
+        elif cls.simpy_time_mapped_to == TimeComponent.minute:
+            delta = timedelta(minutes=time_now)
+        elif cls.simpy_time_mapped_to == TimeComponent.hour:
+            delta = timedelta(hours=time_now)
+        else:
+            delta = timedelta(0)
 
         if from_initial_date:
             return "".join([f"{round_value(time_now):<{ROUND_DECIMAL_PLACES}}, ", str(delta), ", ",
