@@ -248,11 +248,6 @@ def main() -> None:
         transfer_folder(ssh_client, local_folder_path, remote_folder_path)
         print(f"Folder successfully transferred to {remote_folder_path}.")
 
-        """# Update the version file on the remote system
-        transfer_folder(ssh_client, os.path.dirname(public_config.get('paths').get('local_version_file_path')),
-                        remote_version_file_path)
-        print(f"Version file successfully transferred to {remote_version_file_path}.")"""
-
         # Install required libraries
         requirements_file_path = public_config.get('paths').get('requirements_file_path')
         requirements_file_path = requirements_file_path.replace('$USER', private_config["user"])
