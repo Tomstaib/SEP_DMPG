@@ -97,20 +97,26 @@ class ComputeNode(Node):
     Node for computing/submitting a slurm job
     """
     _instance_count: int = 0
+    _running: bool = False
 
     def __init__(self, callback=None):
         self.__class__._instance_count += 1
         self._name: str = f'ComputeNode{self.__class__._instance_count}'
         self.callback = callback
 
+    def is_running(self):
+        return self._running
+
     def distribute_and_compute(self, model, minutes, num_replications):
         """
         examplary implementation for a computation. Normally here the slurm job would be submitted
         """
+        self._running = True
         run_simulation(model=model, minutes=minutes)
         run_replications(model=model, minutes=minutes, num_replications=num_replications, multiprocessing=True)
         if self.callback:
             self.callback("Completed simulation", self)
+            self._running = False
 
 
 def create_composite_tree(num_replications: int) -> ManagementNode:
