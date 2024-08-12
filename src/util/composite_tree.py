@@ -188,6 +188,64 @@ class CompositeTree(metaclass=Singleton):
 
         return False
 
+    @classmethod
+    def count_compute_nodes(cls, management_node: ManagementNode) -> int:
+        """Counts the number of ComputeNodes under the given ManagementNode."""
+        count = 0
+
+        def _count_compute_nodes_recursively(node: ManagementNode):
+            nonlocal count
+            for child in node:
+                if isinstance(child, ComputeNode):
+                    count += 1
+                elif isinstance(child, ManagementNode):
+                    _count_compute_nodes_recursively(child)
+
+        _count_compute_nodes_recursively(management_node)
+        return count
+
+    @classmethod
+    def count_not_running_compute_nodes(cls, management_node: ManagementNode) -> int:
+        """Counts the number of ComputeNodes that are not running under the given ManagementNode."""
+        count = 0
+
+        def _count_not_running_compute_nodes_recursively(node: ManagementNode):
+            nonlocal count
+            for child in node:
+                if isinstance(child, ComputeNode) and not child.is_running():
+                    count += 1
+                elif isinstance(child, ManagementNode):
+                    _count_not_running_compute_nodes_recursively(child)
+
+        _count_not_running_compute_nodes_recursively(management_node)
+        return count
+
+    @classmethod
+    def handle_node_callback(cls, node_name: str) -> None:
+        """
+        Callback handler that sets the 'running' flag of the given ComputeNode to False.
+        :param node_name: The name of the ComputeNode that finished its task.
+        """
+        try:
+            # Find the node by name
+            compute_node = cls._find_node_by_name(node_name)
+
+            # Ensure the node exists and is a ComputeNode
+            if compute_node is None:
+                print(f"No node with name '{node_name}' found.")
+                return
+
+            if not isinstance(compute_node, ComputeNode):
+                print(f"Node '{node_name}' is not a ComputeNode.")
+                return
+
+            # Set the running flag to False
+            compute_node.set_running(False)
+            print(f"Node '{node_name}' running flag set to False.")
+
+        except Exception as e:
+            print(f"Error handling callback for node '{node_name}': {str(e)}")
+
 
 def main():
     start: float = time()
