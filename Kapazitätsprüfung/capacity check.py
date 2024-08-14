@@ -4,6 +4,7 @@ import re
 import cpuinfo
 
 # Konstante für wiederverwendbare Literale
+ACCEPTED = "Accepted"
 NOT_ACCEPTED = "Not accepted"
 NOT_ACCEPTED_CAPITALIZED = "Not Accepted"
 
