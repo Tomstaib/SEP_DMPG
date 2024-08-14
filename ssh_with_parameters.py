@@ -22,29 +22,32 @@ def create_ssh_client(server: str, port: int, user: str, password: str) -> param
     return client
 
 
+def is_valid(path: str) -> bool:
+    base_name = os.path.basename(path)
+    return not base_name.startswith('.') and base_name != '__pycache__'
+
+
+def ensure_remote_directory(sftp, remote_path: str):
+    """Ensure the remote directory exists, creating it if necessary."""
+    try:
+        sftp.stat(remote_path)
+    except IOError:
+        print(f"Creating remote directory: {remote_path}")
+        sftp.mkdir(remote_path)
+        sftp.chmod(remote_path, stat.S_IRWXU)
+
+
+def transfer_file(sftp, local_file_path, remote_file_path):
+    """Transfer a file using SFTP."""
+    try:
+        sftp.put(local_file_path, remote_file_path)
+        print(f"Successfully transferred {local_file_path} to {remote_file_path}")
+    except Exception as e:
+        print(f"Error transferring file {local_file_path}: {e}")
+
+
 # Function to transfer a folder using SFTP
 def transfer_folder(ssh_client: SSHClient, local_folder_path: str, remote_folder_path: str) -> None:
-    def is_valid(path: str) -> bool:
-        base_name = os.path.basename(path)
-        return not base_name.startswith('.') and base_name != '__pycache__'
-
-    def ensure_remote_directory(sftp, remote_path: str):
-        """Ensure the remote directory exists, creating it if necessary."""
-        try:
-            sftp.stat(remote_path)
-        except IOError:
-            print(f"Creating remote directory: {remote_path}")
-            sftp.mkdir(remote_path)
-            sftp.chmod(remote_path, stat.S_IRWXU)
-
-    def transfer_file(sftp, local_file_path, remote_file_path):
-        """Transfer a file using SFTP."""
-        try:
-            sftp.put(local_file_path, remote_file_path)
-            print(f"Successfully transferred {local_file_path} to {remote_file_path}")
-        except Exception as e:
-            print(f"Error transferring file {local_file_path}: {e}")
-
     remote_folder_path = os.path.expandvars(remote_folder_path)
     print(f"Expanded remote path: {remote_folder_path}")
 
@@ -171,7 +174,6 @@ def get_private_config():
 
 # Main function
 def main() -> None:
-
     print("Reading arguments from JSON")
 
     public_config: dict = read_json("public_config.json")
