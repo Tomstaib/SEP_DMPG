@@ -101,8 +101,9 @@ def check_processor_type():
             else:
                 return NOT_ACCEPTED
         case "AMD":
-            amd_model_number = re.search(r"\d{7}", brand_raw)
-            if amd_model_number and int(amd_model_number.group()) >= AMD_LEAST_GEN:
+            # Suche nach der größten zusammenhängenden Zahl im Brand-String
+            amd_model_number = max(map(int, re.findall(r"\d+", brand_raw)))
+            if amd_model_number >= AMD_LEAST_GEN:
                 return ACCEPTED
             else:
                 return NOT_ACCEPTED

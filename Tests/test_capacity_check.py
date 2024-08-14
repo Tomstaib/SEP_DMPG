@@ -2,7 +2,7 @@ from collections import namedtuple
 import pytest
 import psutil
 from unittest.mock import patch
-from capacity_check import (
+from tests.capacity_check import (
     get_cpu_info,
     get_memory_info,
     get_model_number,
@@ -10,8 +10,7 @@ from capacity_check import (
     reserve_cores,
     reserve_memory,
     check_hardware_requirements,
-    NOT_ACCEPTED,
-    NOT_ACCEPTED_CAPITALIZED
+    NOT_ACCEPTED
 )
 
 
@@ -51,15 +50,13 @@ def test_get_model_number(brand_raw, expected_model_number):
     assert get_model_number(brand_raw) == expected_model_number
 
 
-# Tests für check_processor_type
-def test_check_processor_type_intel_core():
-    with patch('cpuinfo.get_cpu_info', return_value={"brand_raw": "Intel Core i7-10700K"}):
-        assert check_processor_type() == "Accepted"
+@patch('cpuinfo.get_cpu_info', return_value={"brand_raw": "Intel Core i7-10700K"})
+def test_check_processor_type_intel(mock_get_cpu_info):
+    assert check_processor_type() == "Accepted"
 
-
-def test_check_processor_type_amd():
-    with patch('cpuinfo.get_cpu_info', return_value={"brand_raw": "AMD Ryzen 7 5800X"}):
-        assert check_processor_type() == "Accepted"
+@patch('cpuinfo.get_cpu_info', return_value={"brand_raw": "AMD Ryzen 7 7800X"})
+def test_check_processor_type_amd(mock_get_cpu_info):
+    assert check_processor_type() == "Accepted"
 
 
 def test_check_processor_type_unsupported_vendor():
@@ -82,7 +79,16 @@ def test_reserve_cores():
 
 # Test für reserve_memory
 def test_reserve_memory():
-    with patch('psutil.virtual_memory', return_value=psutil._common.svmem(total=8 * 1024 ** 3)):
+    # Erstellen eines benannten Tuples mit der gleichen Struktur wie svmem
+    svmem = namedtuple('svmem', 'total available percent used free active inactive buffers cached shared slab')
+
+    # Erstellen eines Mock-Objekts für virtual_memory
+    mock_memory = svmem(
+        total=8 * 1024 ** 3, available=0, percent=0, used=0, free=0,
+        active=0, inactive=0, buffers=0, cached=0, shared=0, slab=0
+    )
+
+    with patch('psutil.virtual_memory', return_value=mock_memory):
         reserved_memory = reserve_memory(50)
         assert len(reserved_memory) == 4 * 1024 ** 3  # 50% von 8GB
 
