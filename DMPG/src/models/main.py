@@ -1,3 +1,5 @@
+import os
+
 from models.model_pcb import setup_model_pcb
 from models.model_pcb_with_breakdowns import setup_model_pcb_with_breakdowns
 from models.model_pcb_with_arrival_table import setup_model_pcb_with_arrival_table
@@ -8,6 +10,7 @@ import matplotlib.pyplot as plt
 
 
 def main():
+    print(os.getcwd())
     run_simulation(model=setup_model_pcb, minutes=900)
     visualize_system()
 
