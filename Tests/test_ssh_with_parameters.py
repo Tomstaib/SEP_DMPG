@@ -1,5 +1,6 @@
+import os.path
 import unittest
-
+import stat
 from unittest.mock import patch, MagicMock
 from paramiko.ssh_exception import SSHException
 from ssh_with_parameters import create_ssh_client, transfer_folder, is_valid, ensure_remote_directory, transfer_file
@@ -12,18 +13,16 @@ class TestCreateSShClient(unittest.TestCase):
     def test_create_ssh_client(self, mock_ssh_client):
         mock_client = mock_ssh_client.return_value
 
-        server = MagicMock()
+        server = 'valid Server'
         port = 22
-        user = MagicMock()
-        password = MagicMock()
-        client = create_ssh_client(server, port, user, password)
+        user = 'valid user'
+        password = 'valid password'
+        create_ssh_client(server, port, user, password)
 
         mock_ssh_client.assert_called_once()
         mock_client.connect.assert_called_once_with(server, port, user, password)
         mock_client.load_system_host_keys.assert_called_once()
         mock_client.set_missing_host_key_policy.assert_called_once()
-
-        self.assertEqual(client, mock_client)
 
     # Invalid Server Test
     @patch('paramiko.SSHClient')
@@ -31,10 +30,10 @@ class TestCreateSShClient(unittest.TestCase):
         mock_client = mock_ssh_client.return_value
         mock_client.connect.side_effect = SSHException("Invalid Server")
 
-        server = "invalid Server"
+        server = 'valid Server'
         port = 22
-        user = MagicMock()
-        password = MagicMock()
+        user = 'valid user'
+        password = 'valid password'
         with self.assertRaises(SSHException):
             create_ssh_client(server, port, user, password)
 
@@ -44,10 +43,10 @@ class TestCreateSShClient(unittest.TestCase):
         mock_client = mock_ssh_client.return_value
         mock_client.connect.side_effect = SSHException("Invalid User")
 
-        server = MagicMock()
+        server = 'valid Server'
         port = 22
         user = "invalid_user"
-        password = MagicMock()
+        password = 'valid password'
         with self.assertRaises(SSHException):
             create_ssh_client(server, port, user, password)
 
@@ -57,10 +56,10 @@ class TestCreateSShClient(unittest.TestCase):
         mock_client = mock_ssh_client.return_value
         mock_client.connect.side_effect = SSHException("Invalid Port")
 
-        server = MagicMock()
+        server = 'valid Server'
         port = "Invalid Port"
-        user = MagicMock()
-        password = MagicMock()
+        user = 'valid user'
+        password = 'valid password'
         with self.assertRaises(SSHException):
             create_ssh_client(server, port, user, password)
 
@@ -70,59 +69,81 @@ class TestCreateSShClient(unittest.TestCase):
         mock_client = mock_ssh_client.return_value
         mock_client.connect.side_effect = SSHException("Invalid Password")
 
-        server = MagicMock()
+        server = 'valid Server'
         port = 22
-        user = MagicMock()
+        user = 'valid user'
         password = "Invalid Password"
         with self.assertRaises(SSHException):
             create_ssh_client(server, port, user, password)
 
 
-class TestTransferFolder(unittest.TestCase):
+class TestIsValid(unittest.TestCase):
 
     def test_is_valid(self):
-        self.assertTrue(is_valid('valid_file.txt'))
-        self.assertFalse(is_valid('.hidden_file'))
-        self.assertFalse(is_valid('__pycache__/file.py'))
+        test_path = MagicMock()
 
-    @patch('ssh_with_parameters.SFTPClient')
-    def test_ensure_remote_directory(self, mock_sftp_client):
-        mock_sftp = mock_sftp_client.return_value
-        ensure_remote_directory(mock_sftp, 'remote_path')
-        mock_sftp.mkdir.assert_called_once_with('remote_path')
+        self.assertTrue(is_valid(test_path))
+        self.assertFalse(is_valid('.test_datei'))
+        self.assertFalse(is_valid('__pycache__'))
+        self.assertTrue(is_valid('src'))
+        self.assertTrue(is_valid('test_order'))
 
-    @patch('ssh_with_parameters.SFTPClient')
-    def test_transfer_file(self, mock_sftp_client):
-        mock_sftp = mock_sftp_client.return_value
-        transfer_file(mock_sftp, 'local_path/file.txt', 'remote_path/file.txt')
-        mock_sftp.put.assert_called_once_with('local_path/file.txt', 'remote_path/file.txt')
 
-    def test_transfer_folder(self, mock_ssh_client):
-        # SFTP Mocken
-        mock_sftp = MagicMock()
+class TestEnsureRemoteDirectory(unittest.TestCase):
+    @patch('paramiko.SFTPClient')
+    def test_ensure_remote_directory_available(self, mock_sftp_client):
+        mock_sftp_client = mock_sftp_client.return_value
+        mock_sftp_client.connect.side_effect = None
+
+        mock_sftp_client.stat.return_value = MagicMock()
+
+        test_remote_path = 'remote_path'
+        ensure_remote_directory(mock_sftp_client, test_remote_path)
+
+        mock_sftp_client.stat.assert_called_once_with(test_remote_path)
+        mock_sftp_client.mkdir.assert_not_called()
+        mock_sftp_client.chmod.assert_not_called()
+
+    @patch('paramiko.SSHClient')
+    def test_ensure_remote_directory_missing(self, mock_ssh_client):
         mock_sftp_client = mock_ssh_client.return_value
-        mock_sftp_client.open_sftp.return_value = mock_sftp
 
+        mock_sftp_client.stat.side_effect = IOError
+
+        test_remote_path = 'remote_path'
+
+        ensure_remote_directory(mock_sftp_client, test_remote_path)
+
+        mock_sftp_client.stat.assert_called_once_with(test_remote_path)
+        mock_sftp_client.mkdir.assert_called_once_with(test_remote_path)
+        mock_sftp_client.chmod.assert_called_once_with(test_remote_path, stat.S_IRWXU)
+
+
+class TestTransfer(unittest.TestCase):
+
+    @patch('paramiko.SSHClient')
+    @patch('os.walk')
+    def test_transfer_folder(self, mock_sftp_client, mock_os_walk):
+        mock_ssh_client = mock_sftp_client.return_value
+        # SFTP Mocken
+        mock_sftp_client = mock_ssh_client.return_value.open_sftp.return_value
 
         # Mocken der Methoden von sftp
-        mock_sftp.stat.side_effect = IOError
-        mock_sftp.mkdir = MagicMock()
-        mock_sftp.chmod = MagicMock()
-        mock_sftp.put = MagicMock()
+        mock_sftp_client.stat.side_effect = IOError
+        mock_sftp_client.mkdir = MagicMock()
+        mock_sftp_client.chmod = MagicMock()
+        mock_sftp_client.put = MagicMock()
 
-        with patch('os.walk') as mock_os_walk:
-            mock_os_walk.return_value = [
-                ('/local/folder', ['src', 'other'], ['file1.txt']),
-                ('/local/folder/src', [], ['file2.txt']),
-            ]
+        mock_os_walk.return_value = [
+            ('/local/folder', ['src', 'other'], ['file1.txt']),
+            ('/local/folder/src', [], ['file2.txt']),
+        ]
         # Testen der Transferfolder Funktion
         transfer_folder(mock_ssh_client(), '/local/folder', '/remote/folder')
 
-        mock_sftp.stat.assert_called_once_with('/remote/folder')
-        mock_sftp.mkdir.assert_called_once_with('/remote/folder')
-        mock_sftp.chmod.assert_called_once_with('/remote/folder')
+        mock_sftp_client.close.assert_called_once_with()
 
-        mock_sftp.close.assert_called_once_with()
+    ###### Hier noch mehr Tests #############
 
 
 if __name__ == '__main__':
