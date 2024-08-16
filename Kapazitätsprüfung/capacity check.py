@@ -3,6 +3,11 @@ import psutil
 import re
 import cpuinfo
 
+# Konstante für wiederverwendbare Literale
+ACCEPTED = "Accepted"
+NOT_ACCEPTED = "Not accepted"
+NOT_ACCEPTED_CAPITALIZED = "Not Accepted"
+
 ##### CPU-Informationen abrufen #####
 
 def get_cpu_info():
@@ -82,29 +87,30 @@ def check_processor_type():
         vendor = "Apple"
 
     if not vendor:
-        return "Not accepted"
+        return NOT_ACCEPTED
 
     match vendor:
         case "Intel" if "Xeon" in brand_raw:
             if model_number >= INTEL_XEON_LEAST_GEN:
-                return "Accepted"
+                return ACCEPTED
             else:
-                return "Not accepted"
+                return NOT_ACCEPTED
         case "Intel" if "Core" in brand_raw:
             if model_number >= INTEL_CORE_LEAST_GEN:
-                return "Accepted"
+                return ACCEPTED
             else:
-                return "Not accepted"
+                return NOT_ACCEPTED
         case "AMD":
-            amd_model_number = re.search(r"\d{7}", brand_raw)
-            if amd_model_number and int(amd_model_number.group()) >= AMD_LEAST_GEN:
-                return "Accepted"
+            # Suche nach der größten zusammenhängenden Zahl im Brand-String
+            amd_model_number = max(map(int, re.findall(r"\d+", brand_raw)))
+            if amd_model_number >= AMD_LEAST_GEN:
+                return ACCEPTED
             else:
-                return "Not accepted"
+                return NOT_ACCEPTED
         case "Apple":
-            return "Accepted"
+            return ACCEPTED
         case _:
-            return "Not accepted"
+            return NOT_ACCEPTED
 
 
 ##### CPU-Kerne reservieren #####
@@ -164,17 +170,17 @@ def check_hardware_requirements():
     max_cpu_freq = float(psutil.cpu_freq().max / 1000)
 
     # Überprüfen, ob die CPU die Mindestanforderungen erfüllt
-    cpu_core_result = "Accepted" if (num_physical_cores >= MIN_PHYSICAL_CORES) else "Not Accepted"
+    cpu_core_result = "Accepted" if (num_physical_cores >= MIN_PHYSICAL_CORES) else NOT_ACCEPTED_CAPITALIZED
 
     # Überprüfen, ob die MIN_MAX_CPU_FREQ erfüllt wird
-    cpu_freq_result = "Accepted" if (max_cpu_freq >= MIN_MAX_CPU_FREQ) else "Not Accepted"
+    cpu_freq_result = "Accepted" if (max_cpu_freq >= MIN_MAX_CPU_FREQ) else NOT_ACCEPTED_CAPITALIZED
 
     # Speicherinformationen
     memory_info = get_memory_info()
     total_memory_gb = float(memory_info["Gesamtspeicher"].split()[0])
 
     # Überprüfen, ob der Speicher die Mindestanforderung erfüllt
-    memory_result = "Accepted" if total_memory_gb >= MIN_MEMORY_GB else "Not Accepted"
+    memory_result = "Accepted" if total_memory_gb >= MIN_MEMORY_GB else NOT_ACCEPTED_CAPITALIZED
 
     # Ergebnis der Hardware-Anforderungen
     hardware_accepted = (cpu_freq_result == "Accepted" and cpu_core_result == "Accepted" and memory_result == "Accepted" and check_processor_type() == "Accepted")
@@ -191,18 +197,18 @@ def check_hardware_requirements():
     # Reservieren von CPU-Kernen und Arbeitsspeicher nur, wenn alle Anforderungen erfüllt werden
     if hardware_accepted:
         reserve_cores(90)
-        reserved_memory = reserve_memory(30)  # 30% des Arbeitsspeichers reservieren
+        _ = reserve_memory(30)  # 30% des Arbeitsspeichers reservieren
         try:
             print(f"Aktuelle PID: {os.getpid()}")
             # Endlosschleife, um das Skript aktiv zu halten
             while True:
+                # TODO: Funktion muss vollständig implementiert werden.
                 pass
         except KeyboardInterrupt:
             print("\nScript wurde beendet.")
     else:
         print("Mindestanforderungen nicht erfüllt. CPU-Kerne und Arbeitsspeicher werden nicht reserviert.")
         print(f"Aktuelle PID: {os.getpid()}")
-
 
 ##### Aufruf der Funktion, um Hardware-Anforderungen zu überprüfen #####
 
