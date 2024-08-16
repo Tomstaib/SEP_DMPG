@@ -58,7 +58,7 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm/v7,windows/amd64,macos/arm64
           tags: ${{ secrets.DOCKER_USERNAME }}/SEP-DMPG:latest
           secrets: |
-            "github_token=${{ secrets.GITHUB_TOKEN }}" 
+            "github_token=${{ secrets.DOCKER_TOKEN }}" 
 
       - name: Logout from Docker Hub
         run: docker logout
