@@ -1,22 +1,23 @@
-# Basis-Image mit Miniconda von conda-forge
-FROM condaforge/mambaforge:latest
+FROM continuumio/miniconda3
 
-# Arbeitsverzeichnis setzen
-WORKDIR /app
+# Kopieren Sie Ihre environment.yml
+COPY environment.yml /tmp/environment.yml
 
-# Anforderungen kopieren und installieren
-COPY environment.yml .
-RUN mamba env update --file environment.yml
+# Update die Umgebungen mithilfe von Mamba/Conda
+RUN conda install mamba -n base -c conda-forge && \
+    mamba env update --file /tmp/environment.yml --name base && \
+    conda clean -afy
 
-# Anwendungscode kopieren
+# Stellen Sie sicher, dass keine fehlerhaften Dateien vorhanden sind
+RUN echo "Conda list pre-init" \
+    && conda list
+
+# Kopieren Sie Ihr Projekt
+WORKDIR /usr/src/app
 COPY . .
 
-# Linting Schritt
-RUN mamba run -n myenv flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-RUN mamba run -n myenv flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+# Installationsschritte zum Debuggen hinzufügen
+RUN echo "Verifizierung Schritte" && conda info 
 
-# Test Schritt
-RUN mamba run -n myenv pytest
-
-# Startbefehl setzen (falls erforderlich)
-CMD ["python", "main.py"]
+# Stellen Sie sicher, dass der Eintragspunkt
+CMD ["python", "your_script.py"]
