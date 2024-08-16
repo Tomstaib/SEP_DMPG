@@ -77,8 +77,7 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: tomstaib/sep_dmpg:${{ github.ref_name }}
-          secrets:
-            github_token: ${{ secrets.DOCKER_TOKEN }}
+          secrets: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Logout from Docker Hub
         if: steps.check_dockerfile.outputs.found == 'true'
