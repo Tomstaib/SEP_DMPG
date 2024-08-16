@@ -1,67 +1,62 @@
-  name: Python Package using Conda and Publish Docker Image
+name: Python Package using Conda and Publish Docker Image
 
-  on: [push]
+on: [push]
 
-  jobs:
-    build-linux:
-      runs-on: ubuntu-latest
-      strategy:
-        max-parallel: 5
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 5
 
-      steps:
-        - uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v4
 
-        - name: Set up Python 3.10
-          uses: actions/setup-python@v3
-          with:
-            python-version: '3.10'
+      - name: Set up Python 3.12.4
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.12.4'
 
-        - name: Add conda to system path
-          run: |
-            echo $CONDA/bin >> $GITHUB_PATH
+      - name: Add conda to system path
+        run: echo $CONDA/bin >> $GITHUB_PATH
 
-        - name: Install dependencies
-          run: |
-            conda env update --file .github/workflows/environment.yml --name base
+      - name: Install dependencies
+        run: conda env update --file environment.yml --name myenv
 
-        - name: Lint with flake8
-          run: |
-            conda install flake8
-            flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-            flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - name: Lint with flake8
+        run: |
+          conda run -n myenv flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          conda run -n myenv flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-        - name: Test with pytest
-          run: |
-            conda install pytest
-            pytest
+      - name: Test with pytest
+        run: conda run -n myenv pytest
 
-    build-and-push-docker:
-      runs-on: ubuntu-latest
+  build-and-push-docker:
+    runs-on: ubuntu-latest
 
-      steps:
-        - name: Checkout repository
-          uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-        - name: Set up QEMU
-          uses: docker/setup-qemu-action@v2
-          with:
-            platforms: linux/amd64,linux/arm64
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: linux/amd64,linux/arm64
 
-        - name: Set up Docker Buildx
-          uses: docker/setup-buildx-action@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
 
-        - name: Verify Dockerfile exists
-          run: ls -la .
+      - name: Verify Dockerfile exists
+        run: ls -la .
 
-        - name: Build and push
-          uses: docker/build-push-action@v2
-          with:
-            context: .
-            push: true
-            platforms: linux/amd64,linux/arm64  # Einschränkung der Plattformen
-            tags: tomstaib/sep_dmpg:latest
-            secrets: |
-              github_token=${{ secrets.DOCKER_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: yourdockerusername/sep_dmpg:latest
+          secrets: | 
+            github_token=${{ secrets.DOCKER_TOKEN }}
 
-        - name: Logout from Docker Hub
-          run: docker logout
+      - name: Logout from Docker Hub
+        run: docker logout
