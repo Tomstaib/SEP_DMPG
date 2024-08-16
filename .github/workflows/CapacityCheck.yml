@@ -76,16 +76,10 @@ jobs:
           if [ -f Dockerfile ]; then echo "found=true" >> $GITHUB_ENV; else echo "found=false" >> $GITHUB_ENV; fi
 
       - name: Build and push Docker image
-        if: steps.check_dockerfile.outputs.found == 'true'
-        uses: docker/build-push-action@v4
+        uses: mr-smithers-excellent/docker-build-push@v4
         with:
-          context: .
-          file: Dockerfile
-          push: true
+          image: tomstaib/sep_dmpg
+          registry: docker.io
           platforms: linux/amd64,linux/arm64
           tags: tomstaib/sep_dmpg:${{ github.ref_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Logout from Docker Hub
-        if: steps.check_dockerfile.outputs.found == 'true'
-        run: docker logout
+          secrets: ${{ secrets.GITHUB_TOKEN }}
