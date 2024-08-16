@@ -1,64 +1,68 @@
-name: Python Package using Conda and Publish Docker Image
+  name: Python Package using Conda and Publish Docker Image
+  
+  on: [push]
+  
+  jobs:
+    build-linux:
+      runs-on: ubuntu-latest
+      strategy:
+        max-parallel: 5
+      
+      steps:
+        - uses: actions/checkout@v4
 
-on: [push]
+        - name: Set up Python 3.10
+          uses: actions/setup-python@v3
+          with:
+            python-version: '3.10'
 
-jobs:
-  build-linux:
-    runs-on: ubuntu-latest
-    strategy:
-      max-parallel: 5
+        - name: Add conda to system path
+          run: |
+            echo $CONDA/bin >> $GITHUB_PATH
 
-    steps:
-      - uses: actions/checkout@v4
+        - name: Install dependencies
+          run: |
+            conda env update --file environment.yml --name base
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v3
-        with:
-          python-version: '3.10'
+        - name: Lint with flake8
+          run: |
+            conda install flake8
+            flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+            flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-      - name: Add conda to system path
-        run: |
-          echo $CONDA/bin >> $GITHUB_PATH
+        - name: Test with pytest
+          run: |
+            conda install pytest
+            pytest
+    
+    build-and-push-docker:
+      runs-on: ubuntu-latest
+      
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v2
 
-      - name: Install dependencies
-        run: |
-          conda env update --file environment.yml --name base
+        - name: Set up QEMU
+          uses: docker/setup-qemu-action@v2
+          with:
+            platforms: all
 
-      - name: Lint with flake8
-        run: |
-          conda install flake8
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        - name: Set up Docker Buildx
+          uses: docker/setup-buildx-action@v1
 
-      - name: Test with pytest
-        run: |
-          conda install pytest
-          pytest
+        - name: Login to Docker Hub
+          uses: docker/login-action@v2
+          with:
+            username: ${{ secrets.DOCKER_USERNAME }}
+            password: ${{ secrets.DOCKER_TOKEN }}
 
-  build-and-push-docker:
-    runs-on: ubuntu-latest
+        - name: Build and push
+          uses: docker/build-push-action@v2
+          with:
+            context: .
+            push: true
+            platforms: linux/amd64,linux/arm64,linux/arm/v7,windows/amd64,macos/arm64
+            tags: ${{ secrets.DOCKER_USERNAME }}/SEP-DMPG:latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-        with:
-          platforms: all
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-
-      - name: Build and push
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          push: true
-          platforms: linux/amd64,linux/arm64,linux/arm/v7,windows/amd64,macos/arm64
-          tags: ${{ secrets.DOCKER_USERNAME }}/SEP-DMPG:latest
-          secrets: |
-            "github_token=${{ secrets.DOCKER_TOKEN }}"  
-
-      - name: Logout from Docker Hub
-        run: docker logout
+        - name: Logout from Docker Hub
+          run: docker logout
