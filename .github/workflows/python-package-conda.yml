@@ -3,7 +3,7 @@ name: Python Package using Conda and Publish Docker Image
 on:
   push:
     branches:
-      - 'CapacityCheck'
+      -'CapacityCheck'
 
 jobs:
   build-linux:
