@@ -13,6 +13,7 @@ dependencies:
   - pytest=6.2.4
   - flake8=3.9.2
   - psutil=5.8.0
+  - simpy
   - pip
   - pip:
       - py-cpuinfo==9.0.0
