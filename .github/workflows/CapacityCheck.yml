@@ -84,4 +84,4 @@ jobs:
           registry: docker.io
           platforms: linux/amd64,linux/arm64
           tags: tomstaib/sep_dmpg:${{ github.ref_name }}
-          secrets: ${{ secrets.GITHUB_TOKEN }}
+          secrets: ${{ secrets.DOCKER_TOKEN }}
