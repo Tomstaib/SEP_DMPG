@@ -1,0 +1,18 @@
+name: pythonenv
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - numpy
+  - pandas
+  - scipy
+  - scikit-learn
+  - matplotlib
+  - seaborn
+  - pytest
+  - flake8
+  - psutil
+  - pip
+  - pip:
+      - py-cpuinfo
