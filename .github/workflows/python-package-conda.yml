@@ -3,7 +3,7 @@ name: Python Package using Conda and Publish Docker Image
 on:
   push:
     branches:
-      - Kapazitätsprüfung
+      - 'Kapazitätsprüfung'
 
 jobs:
   build-linux:
@@ -28,11 +28,11 @@ jobs:
       - name: Verify environment.yml exists
         id: check_env
         run: |
-          if [ -f ${{ env.BRANCH_NAME }}/environment.yml ]; then echo "found=true" >> $GITHUB_ENV; else echo "found=false" >> $GITHUB_ENV; fi
+          if [ -f environment.yml ]; then echo "found=true" >> $GITHUB_ENV; else echo "found=false" >> $GITHUB_ENV; fi
 
       - name: Install dependencies
         if: env.found == 'true'
-        run: conda env update --file ${{ env.BRANCH_NAME }}/environment.yml --name base
+        run: conda env update --file environment.yml --name base
 
       - name: Lint with flake8
         if: env.found == 'true'
@@ -68,20 +68,20 @@ jobs:
       - name: Verify Dockerfile exists
         id: check_dockerfile
         run: |
-          if [ -f ${{ env.BRANCH_NAME }}/Dockerfile ]; then echo "found=true" >> $GITHUB_ENV; else echo "found=false" >> $GITHUB_ENV; fi
+          if [ -f Dockerfile ]; then echo "found=true" >> $GITHUB_ENV; else echo "found=false" >> $GITHUB_ENV; fi
 
       - name: Build and push Docker image
-        if: env.found == 'true'
+        if: steps.check_dockerfile.outputs.found == 'true'
         uses: docker/build-push-action@v2
         with:
-          context: ./${{ env.BRANCH_NAME }}
-          file: ./${{ env.BRANCH_NAME }}/Dockerfile
+          context: .
+          file: Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: tomstaib/sep_dmpg:${{ env.BRANCH_NAME }}
+          tags: tomstaib/sep_dmpg:${{ github.ref_name }}
           secrets:
             github_token: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Logout from Docker Hub
-        if: env.found == 'true'
+        if: steps.check_dockerfile.outputs.found == 'true'
         run: docker logout
