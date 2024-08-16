@@ -1,9 +1,10 @@
-name: CapacityCheck
+name: Python Package using Conda and Publish Docker Image
 
 on:
   push:
     branches:
       - 'CapacityCheck'
+  workflow_dispatch:
 
 env:
   BRANCH_NAME: ${{ github.ref_name }}
