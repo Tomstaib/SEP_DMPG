@@ -22,6 +22,8 @@ class Model(Base):
 
 
 class Szenario(Base):
+    __tablename__ = 'scenario'
+
     scenario_id = Column('scenario_id', Integer, primary_key=True)
     scenario_name = Column('scenario_name', String)
     replication = Column('replication', Integer)
@@ -42,6 +44,8 @@ class Szenario(Base):
 
 
 class Source(Base):
+    __tablename__ = 'source'
+
     source_id = Column('source_id', Integer, primary_key=True)
     name = Column('name', String)
     creation_time_dwp = Column('creation_time_dwp', Time)
@@ -62,6 +66,8 @@ class Source(Base):
 
 
 class Sink(Base):
+    __tablename__ = 'sink'
+
     sink_id = Column('sink_id', Integer, primary_key=True)
     name = Column('name', String)
     entities_processed = Column('entities_processed', Integer)
@@ -83,6 +89,8 @@ class Sink(Base):
         return f"({self.sink_id}, {self.name}, {self.entities_processed})"
 
 class Server(Base):
+    __tablename__ = 'server'
+
     server_id = Column('server_id', Integer, primary_key=True)
     name = Column('name', String)
     processing_time_dwp = Column('processing_time_dwp', Time)
@@ -130,6 +138,8 @@ class Server(Base):
         return f"({self.server_id}, {self.name}, {self.uptime})"
 
 class Path(Base):
+    __tablename__ = 'path'
+
     path_id = Column('path_id', Integer, primary_key=True)
     name = Column('name', String)
     length = Column('length', Integer)
@@ -145,6 +155,8 @@ class Path(Base):
         return f"({self.path_id, self.name, self.length})"
 
 class QueueOrder(Base):
+    __tablename__ = 'queue_order'
+
     queue_order_id = Column('queue_order_id', Integer, primary_key=True)
     procedure = Column('procedure', String)
 
@@ -156,6 +168,8 @@ class QueueOrder(Base):
         return f"({self.queue_order_id, self.procedure})"
 
 class Entity(Base):
+    __tablename__ = 'entity'
+
     entity_id = Column('entity_id', Integer, primary_key=True)
     name = Column('name', String)
     creation_time = Column('creation_time', Time)
