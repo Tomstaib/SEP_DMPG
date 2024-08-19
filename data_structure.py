@@ -45,7 +45,6 @@ class Szenario(Base):
 
 class Source(Base):
     __tablename__ = 'source'
-
     source_id = Column('source_id', Integer, primary_key=True)
     name = Column('name', String)
     creation_time_dwp = Column('creation_time_dwp', Time)
@@ -53,7 +52,7 @@ class Source(Base):
     number_exited = Column('number_exited', Integer)
     scenario_id = Column('scenario_id', Integer, ForeignKey('scenario.scenario_id'))
 
-   def __init__(self, source_id, name, creation_time_dwp, entities_created, number_exited, scenario_id):
+    def __init__(self, source_id, name, creation_time_dwp, entities_created, number_exited, scenario_id):
        self.source_id = source_id
        self.name = name
        self.creation_time_dwp = creation_time_dwp
