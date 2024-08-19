@@ -129,21 +129,22 @@ class TestTransfer(unittest.TestCase):
         mock_sftp_client = mock_ssh_client.return_value.open_sftp.return_value
 
         # Mocken der Methoden von sftp
-        mock_sftp_client.stat.side_effect = IOError
+        mock_sftp_client.stat.side_effect = None
         mock_sftp_client.mkdir = MagicMock()
         mock_sftp_client.chmod = MagicMock()
         mock_sftp_client.put = MagicMock()
 
         mock_os_walk.return_value = [
-            ('/local/folder', ['src', 'other'], ['file1.txt']),
+            ('/local/folder', ['src', 'other', 'local'], ['file1.txt', 'text1.docx', 'test4.html']),
             ('/local/folder/src', [], ['file2.txt']),
         ]
         # Testen der Transferfolder Funktion
         transfer_folder(mock_ssh_client(), '/local/folder', '/remote/folder')
 
+
         mock_sftp_client.close.assert_called_once_with()
 
-    ###### Hier noch mehr Tests #############
+
 
 
 if __name__ == '__main__':
