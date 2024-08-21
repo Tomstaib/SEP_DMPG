@@ -1,83 +1,100 @@
-CREATE TABLE Modell (
-                        modell_id INTEGER PRIMARY KEY,
-                        name VARCHAR(255)
+CREATE TABLE Model (
+                       ModelID INTEGER PRIMARY KEY,
+                       ModelName VARCHAR(255)
 );
 
-CREATE TABLE Szenario (
-                          scenario_id INTEGER PRIMARY KEY,
-                          scenario_name VARCHAR(255),
-                          replication INTEGER,
-                          status VARCHAR(255),
-                          Seed INTEGER,
-                          modell_id INTEGER,
-                          FOREIGN KEY (modell_id) REFERENCES Modell(modell_id)
+CREATE TABLE User (
+                      UserID INTEGER PRIMARY KEY,
+                      UserName VARCHAR(255),
+                      NumberStartedSimulations INTEGER,
+                      ModelID INTEGER,
+                      FOREIGN KEY (ModelID) REFERENCES Model(ModelID)
+);
+
+CREATE TABLE Scenario (
+                          ScenarioID INTEGER PRIMARY KEY,
+                          ScenarioName VARCHAR(255),
+                          NumberInSystem INTEGER,
+                          AvgTimeInSystem FLOAT,
+                          MaxTimeInSystem FLOAT,
+                          MinTimeInSystem FLOAT,
+                          NumberCreated INTEGER,
+                          NumberDestroyed INTEGER,
+                          Seed INTEGER
+);
+
+CREATE TABLE Model_Scenario (
+                                ModelID INTEGER,
+                                ScenarioID INTEGER,
+                                PRIMARY KEY (ModelID, ScenarioID),
+                                FOREIGN KEY (ModelID) REFERENCES Model(ModelID),
+                                FOREIGN KEY (ScenarioID) REFERENCES Scenario(ScenarioID)
 );
 
 CREATE TABLE Source (
-                         source_id INTEGER PRIMARY KEY,
-                         name VARCHAR(255),
-                         creation_time_dwp TIME(7),
-                         entities_created INTEGER,
-                         number_exited INTEGER,
-                         scenario_id INTEGER,
-                         FOREIGN KEY (scenario_id) REFERENCES Szenario(scenario_id),
-);
-
-CREATE TABLE Sink (
-                      sink_id INTEGER PRIMARY KEY,
-                      name VARCHAR(255),
-                      entities_processed INTEGER,
-                      total_time_in_system TIME(7),
-                      min_time_in_system TIME(7),
-                      number_entered INTEGER,
-                      scenario_id INTEGER,
-                      Szenariomodell_id INTEGER,
-                      FOREIGN KEY (scenario_id) REFERENCES Szenario(scenario_id),
-                      FOREIGN KEY (Szenariomodell_id) REFERENCES Modell(modell_id)
+                        SourceID INTEGER,
+                        ScenarioID INTEGER,
+                        SourceName VARCHAR(255),
+                        NumberCreated INTEGER,
+                        NumberExited INTEGER,
+                        CreationTimeDistributionWithParameters FLOAT,
+                        PRIMARY KEY (SourceID, ScenarioID),
+                        FOREIGN KEY (ScenarioID) REFERENCES Scenario(ScenarioID)
 );
 
 CREATE TABLE Server (
-                        server_id INTEGER PRIMARY KEY,
-                        name VARCHAR(255),
-                        processing_time_dwp TIME(7),
-                        time_between_maschine_breakdowns TIME(7),
-                        maschine_breakdown_duration TIME(7),
-                        entities_processed INTEGER,
-                        total_processing_time TIME(7),
-                        number_entered INTEGER,
-                        number_exited INTEGER,
-                        units_allocated INTEGER,
-                        units_utilized INTEGER,
-                        start_processing_time TIMESTAMP(7),
-                        total_downtime TIME(7),
-                        number_downtime INTEGER,
-                        uptime Time,
-                        total_uptime TIME(7),
-                        number_uptimes INTEGER,
-                        queue_order_id INTEGER,
-                        scenario_id INTEGER,
-                        FOREIGN KEY (queue_order_id) REFERENCES QueueOrders(queue_order_id),
-                        FOREIGN KEY (scenario_id) REFERENCES Szenario(scenario_id),
+                        ServerID INTEGER,
+                        ScenarioID INTEGER,
+                        ServerName VARCHAR(255),
+                        ScheduledUtilization FLOAT,
+                        UnitsUtilized INTEGER,
+                        AvgTimeProcessing FLOAT,
+                        TotalTimeProcessing FLOAT,
+                        NumberEntered INTEGER,
+                        NumberExited INTEGER,
+                        NumberDowntimes INTEGER,
+                        TotalDowntime FLOAT,
+                        QueueOrder VARCHAR(4),
+                        ProcessingTimeDistributionWithParameters FLOAT,
+                        TimeBetweenMaschineBreakdowns FLOAT,
+                        MaschineBreakdownDuration FLOAT,
+                        EntitiesProcessed INTEGER,
+                        TotalUptime FLOAT,
+                        NumberUptimes INTEGER,
+                        PRIMARY KEY (ServerID, ScenarioID),
+                        FOREIGN KEY (ScenarioID) REFERENCES Scenario(ScenarioID)
 );
 
-CREATE TABLE Path (
-                      path_id INTEGER PRIMARY KEY,
-                      name VARCHAR(255),
-                      length INTEGER,
-                      scenario_id INTEGER,
-                      FOREIGN KEY (scenario_id) REFERENCES Szenario(scenario_id),
+CREATE TABLE Sink (
+                      SinkID INTEGER,
+                      ScenarioID INTEGER,
+                      SinkName VARCHAR(255),
+                      EntitiesProcessed INTEGER,
+                      TotalTimeInSystem FLOAT,
+                      NumberEntered INTEGER,
+                      MaxTimeInSystem FLOAT,
+                      MinTimeInSystem FLOAT,
+                      PRIMARY KEY (SinkID, ScenarioID),
+                      FOREIGN KEY (ScenarioID) REFERENCES Scenario(ScenarioID)
 );
 
-CREATE TABLE QueueOrder (
-                             queue_order_id INTEGER PRIMARY KEY,
-                             procedure VARCHAR(255)
+CREATE TABLE Connection (
+                            ConnectionID INTEGER,
+                            ScenarioID INTEGER,
+                            ConnectionName VARCHAR(255),
+                            EntitiesProcessed INTEGER,
+                            NumberEntered INTEGER,
+                            ProcessingDuration FLOAT,
+                            Availability FLOAT,
+                            PRIMARY KEY (ConnectionID, ScenarioID),
+                            FOREIGN KEY (ScenarioID) REFERENCES Scenario(ScenarioID)
 );
 
 CREATE TABLE Entity (
-                        entity_id INTEGER PRIMARY KEY,
-                        name VARCHAR(255),
-                        creation_time TIME(7),
-                        destruction_time TIME(7),
-                        source_id INTEGER,
-                        FOREIGN KEY (source_id) REFERENCES Sources(source_id),
+                        EntityID INTEGER,
+                        ScenarioID INTEGER,
+                        EntityName VARCHAR(255),
+                        CreationTime FLOAT,
+                        PRIMARY KEY (EntityID, ScenarioID),
+                        FOREIGN KEY (ScenarioID) REFERENCES Scenario(ScenarioID)
 );
