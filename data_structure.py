@@ -67,7 +67,6 @@ class Source(Base):
     NumberCreated = Column(Integer)
     NumberExited = Column(Integer)
     CreationTimeDistributionWithParameters = Column(Float(20))
-    ScenarioModelID = Column(Integer)
 
     scenario = relationship('Scenario', back_populates='sources')
 
