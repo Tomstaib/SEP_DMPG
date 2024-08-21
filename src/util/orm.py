@@ -257,7 +257,7 @@ class Entity(Base):
     def __repr__(self):
         return f"({self.entity_id}, {self.scenario_id}, {self.entity_name})"
 
-
+# Kann genutzt werden um die Tabellen anzulegen
 def create_tables():
     db_user = 'sep'
     db_host = 'imt-sep-001.lin.hs-osnabrueck.de'
