@@ -3,9 +3,10 @@ import stat
 import sys
 from getpass import getpass
 from sqlalchemy import create_engine
+import psycopg2
 
 DB_USER = 'sep'
-DB_HOST = 'imt-sep-001.lin.hs-osnabrueck.de'
+DB_HOST = '131.173.65.76'
 DB_PORT = '55432'
 DB_NAME = 'distributed_computing'
 
@@ -54,13 +55,12 @@ def connect_to_db():
 
     # Test the connection
     try:
-        connection= engine.connect()
+        connection = engine.connect()
         print("Connection successful")
         return connection
     except Exception as e:
         print(f"Error: {e}")
         return None
-
 
 
 def main():
@@ -77,6 +77,8 @@ def main():
     if connection:
         print("Connection successful")
         connection.close()
+    else:
+        print("Connection unsuccessful")
 
 
 if __name__ == '__main__':
