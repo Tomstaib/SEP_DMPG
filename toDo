@@ -12,7 +12,6 @@ Methoden:
 create_ssh_connection - SSH Verbindung herstellen
 setup_ssh_tunnel _ Portforwarding für SSH
 connect_to_postgresql - Verbindung zur Datenbank
-execute_query - Query für Datenbankabfragen
 close_resources - Verwalten der Ressourcen wie Tunnel und Connection
 config_datei - für den Zugriff
 Fehlerbehandlung - falls Connection fehlschlägt

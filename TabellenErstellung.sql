@@ -3,7 +3,7 @@ CREATE TABLE Model (
                        ModelName VARCHAR(255)
 );
 
-CREATE TABLE User (
+CREATE TABLE HSUser  (
                       UserID INTEGER PRIMARY KEY,
                       UserName VARCHAR(255),
                       NumberStartedSimulations INTEGER,
