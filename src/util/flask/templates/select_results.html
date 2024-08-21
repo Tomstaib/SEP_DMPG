@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Select Simulation Results</h2>
+
+<form method="POST" action="{{ url_for('download_selected') }}">
+    <ul>
+        {% for file in files_on_server %}
+        <li>
+            <input type="checkbox" name="selected_files" value="{{ file }}"
+                   {% if file in downloaded_files %}checked{% endif %}>
+            {{ file }}
+            {% if file in downloaded_files %}
+                <em>(Already downloaded)</em>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    <input type="submit" value="Download Selected">
+</form>
+
+<a href="{{ url_for('home') }}">Back to Home</a>
+{% endblock %}

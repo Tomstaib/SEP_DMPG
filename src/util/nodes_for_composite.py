@@ -107,8 +107,7 @@ class ComputeNode(Node):
         """
         examplary implementation for a computation. Normally here the slurm job would be submitted
         """
-        run_simulation(model=model, minutes=minutes)
-        run_replications(model=model, minutes=minutes, num_replications=num_replications, multiprocessing=True)
+        "REST-API CALL "
         if self.callback:
             self.callback("Completed simulation", self)
 

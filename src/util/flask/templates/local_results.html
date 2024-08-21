@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Your Simulation Results</h2>
+
+<ul>
+    {% for file in files %}
+    <li>
+        <a href="{{ url_for('download_local_file', filename=file) }}">{{ file }}</a>
+    </li>
+    {% endfor %}
+</ul>
+
+<a href="{{ url_for('home') }}">Back to Home</a>
+{% endblock %}

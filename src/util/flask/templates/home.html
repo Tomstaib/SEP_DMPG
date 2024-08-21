@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Welcome, {{ name }}!</h2>
+<p>This is the home page. Use the navigation menu to access your files.</p>
+<p><a href="{{ url_for('select_results') }}">Select Simulation Results to Download</a></p>
+{% endblock %}
