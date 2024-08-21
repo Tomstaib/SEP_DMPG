@@ -11,6 +11,7 @@ DB_HOST = 'imt-sep-001.lin.hs-osnabrueck.de'
 DB_PORT = '55432'
 DB_NAME = 'distributed_computing'
 
+
 def connect_to_db():
     # Create the database URL
     db_url = f"postgresql+psycopg2://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
@@ -26,10 +27,16 @@ def connect_to_db():
         print(f"Error: {e}")
         return None
 
+
 Session = sessionmaker(bind=connect_to_db())
 session = Session()
 
-model = orm.Model(123,'Test')
-session.add(model)
-session.commit()
 
+###### So kann gespeichert werden #####
+# model = orm.Model(123,'Test')
+# session.add(model)
+# session.commit()
+
+##### So können Daten abgerufen werden ####
+# session = session.query(orm.Model).all()
+# print(results)
