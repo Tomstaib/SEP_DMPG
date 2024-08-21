@@ -6,14 +6,13 @@ from sqlalchemy import create_engine
 import psycopg2
 
 DB_USER = 'sep'
-DB_HOST = '131.173.65.76'
+DB_HOST = 'imt-sep-001.lin.hs-osnabrueck.de'
 DB_PORT = '55432'
 DB_NAME = 'distributed_computing'
 
 
 def input_password() -> str or None:
     try:
-        # Check if input can be received
         if sys.stdin.isatty():
             print("stdin is interactive, prompting for password")
             remote_password: str = getpass(prompt=f'Password for the database: ')
@@ -28,23 +27,30 @@ def input_password() -> str or None:
 
 
 def create_pgpass_file(template: str):
-    # Determine the path for .pgpass based on the operating system
-    if os.name == 'nt':  # Windows
-        pgpass_path = os.path.join(os.getenv('APPDATA'), 'postgresql', 'pgpass.conf')
-    else:  # Unix/Linux/Mac
-        pgpass_path = os.path.join(os.path.expanduser('~'), '.pgpass')
+    # Set the path for the .pgpass file to the Downloads directory
+    downloads_dir = os.path.join(os.path.expanduser('~'), 'Downloads')
+    pgpass_path = os.path.join(downloads_dir, 'pgpass.conf')
+
+    print(f"Saving .pgpass file to: {pgpass_path}")
 
     # Ensure the directory exists
     os.makedirs(os.path.dirname(pgpass_path), exist_ok=True)
 
-    with open(pgpass_path, 'w') as pgpass_file:
-        pgpass_file.write(template)
+    # Write the .pgpass file
+    try:
+        with open(pgpass_path, 'w') as pgpass_file:
+            pgpass_file.write(template)
+        print(f".pgpass file created successfully at: {pgpass_path}")
+    except Exception as e:
+        print(f"Error writing .pgpass file: {e}")
 
-    # Set the file permissions to be readable and writable only by the user
+    # Set the file permissions to be readable and writable only by the user (for Unix-like systems)
     if os.name != 'nt':
-        os.chmod(pgpass_path, stat.S_IRUSR | stat.S_IWUSR)
-
-    print(f".pgpass file created at: {pgpass_path}")
+        try:
+            os.chmod(pgpass_path, stat.S_IRUSR | stat.S_IWUSR)
+            print(f"Permissions set on .pgpass file: {pgpass_path}")
+        except Exception as e:
+            print(f"Error setting permissions: {e}")
 
 
 def connect_to_db():
