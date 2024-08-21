@@ -45,7 +45,7 @@ class Model(Base):
     model_name = Column(String(255))
 
     scenarios = relationship('ModelScenario', back_populates='model')
-    hsuser = relationship('hsuser', back_populates='model')
+    hsuser = relationship('HSUser', back_populates='model')
 
     def __init__(self, model_id, model_name):
         self.model_id = model_id
