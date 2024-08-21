@@ -3,11 +3,6 @@ from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from sqlalchemy import create_engine
 import psycopg2
 
-DB_USER = 'sep'
-DB_HOST = 'imt-sep-001.lin.hs-osnabrueck.de'
-DB_PORT = '55432'
-DB_NAME = 'distributed_computing'
-
 Base = declarative_base()
 
 # User Table
@@ -261,3 +256,14 @@ class Entity(Base):
 
     def __repr__(self):
         return f"({self.entity_id}, {self.scenario_id}, {self.entity_name})"
+
+
+def create_tables():
+    db_user = 'sep'
+    db_host = 'imt-sep-001.lin.hs-osnabrueck.de'
+    db_port = '55432'
+    db_name = 'distributed_computing'
+
+    db_url = f"postgresql+psycopg2://{db_user}@{db_host}:{db_port}/{db_name}"
+    engine = create_engine(db_url)
+    Base.metadata.create_all(engine)
