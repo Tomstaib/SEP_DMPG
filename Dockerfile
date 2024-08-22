@@ -36,7 +36,10 @@ ENV PATH /opt/conda/envs/myenv/bin:$PATH
 COPY environment.yml .
 
 # Aktualisiere die Umgebung mit environment.yml
-RUN mamba env update --file environment.yml --name myenv && conda clean -afy && echo "Umgebung aktualisiert mit environment.yml"
+RUN echo "Beginne mit der Umgebung-Aktualisierung..." && \
+    mamba env update --file environment.yml --name myenv && \
+    conda clean -afy && \
+    echo "Umgebung aktualisiert mit environment.yml"
 
 # Kopiere die requirements.txt Datei ins Arbeitsverzeichnis
 COPY requirements.txt .
