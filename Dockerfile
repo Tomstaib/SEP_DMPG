@@ -20,11 +20,14 @@ RUN mamba install --name base pip && conda clean -afy && echo "pip installiert"
 # Kopieren Sie Ihre Anwendung
 COPY . .
 
-# Ausgabe der `requirements.txt` zum Debuggen
-RUN echo "Inhalt von requirements.txt:" && cat requirements.txt
+# Bereinige die requirements.txt, um unsichtbare Zeichen zu entfernen
+RUN tr -cd '\11\12\15\40-\176' < requirements.txt > clean_requirements.txt
 
-# Installiere pip-Abhängigkeiten aus requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt || { \
+# Ausgabe der bereinigten `requirements.txt` zum Debuggen
+RUN echo "Inhalt von cleanrequirements.txt:" && cat cleanrequirements.txt
+
+# Installiere pip-Abhängigkeiten aus der bereinigten requirements.txt
+RUN pip install --no-cache-dir -r clean_requirements.txt || { \
     echo "Fehler bei der Installation von pip-Abhängigkeiten"; \
     exit 1; \
 }
