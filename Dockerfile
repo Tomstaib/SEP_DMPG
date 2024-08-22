@@ -1,7 +1,7 @@
-# Verwenden Sie ein Basis-Image von Miniconda
+# Basis-Image mit Miniconda von conda-forge
 FROM continuumio/miniconda3:4.12.0
 
-# Setze das Arbeitsverzeichnis
+# Arbeitsverzeichnis setzen
 WORKDIR /usr/src/app
 
 # Installiere die notwendigen System-Bibliotheken
@@ -16,25 +16,26 @@ RUN mamba create -n myenv python=3.11 && conda clean -afy && echo "Python 3.11 U
 # Setze die Umgebungsvariable, damit die Umgebung "myenv" verwendet wird
 ENV PATH /opt/conda/envs/myenv/bin:$PATH
 
-# Kopiere die environment.yml und requirements.txt Datei ins Arbeitsverzeichnis
+# Anforderungen kopieren und installieren
 COPY environment.yml .
 COPY requirements.txt .
 
-# Aktualisiere die Umgebung mit environment.yml
-RUN mamba env update --file environment.yml --name myenv && conda clean -afy && echo "Umgebung aktualisiert mit environment.yml"
+# Entferne unsichtbare Zeichen aus requirements.txt und speichere in einer neuen Datei
+RUN sed 's/[^[:print:]\t]//g' requirements.txt > clean_requirements.txt && \
+    echo "Inhalt von cleanrequirements.txt: " && cat cleanrequirements.txt
 
-# Installiere pip-Abhängigkeiten aus der requirements.txt in der conda Umgebung
-RUN pip install --no-cache-dir -r requirements.txt || { \
+# Installiere pip-Abhängigkeiten aus der bereinigten requirements.txt in der conda Umgebung
+RUN pip install --no-cache-dir -r clean_requirements.txt || { \
     echo "Fehler bei der Installation von pip-Abhängigkeiten"; \
     exit 1; \
 }
-
-# Kopiere die Anwendung
+    
+# Anwendungscode kopieren
 COPY . .
 
-# Verifikation durchlaufen lassen
+# Verifikation 
 RUN echo "Conda list post-init" && conda list
 RUN echo "Verifizierung Schritte" && conda info
 
-# Setze den Eintragspunkt
+# Startbefehl setzen (falls erforderlich)
 CMD ["python", "CapacityCheck/CapacityCheck.py"]
