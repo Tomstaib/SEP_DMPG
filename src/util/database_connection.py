@@ -31,7 +31,6 @@ def connect_to_db():
 Session = sessionmaker(bind=connect_to_db())
 session = Session()
 
-
 ###### So kann gespeichert werden #####
 # model = orm.Model(123,'Test')
 # session.add(model)
@@ -40,3 +39,5 @@ session = Session()
 ##### So können Daten abgerufen werden ####
 # session = session.query(orm.Model).all()
 # print(results)
+
+session.close()
