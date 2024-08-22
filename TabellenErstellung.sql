@@ -1,14 +1,14 @@
 CREATE TABLE Model (
                        ModelID INTEGER PRIMARY KEY,
-                       ModelName VARCHAR(255)
+                       ModelName VARCHAR(255),
+                       UserID INTEGER,
+                       FOREIGN KEY (UserID) REFERENCES HSUser(UserID)
 );
 
 CREATE TABLE HSUser  (
                       UserID INTEGER PRIMARY KEY,
                       UserName VARCHAR(255),
-                      NumberStartedSimulations INTEGER,
-                      ModelID INTEGER,
-                      FOREIGN KEY (ModelID) REFERENCES Model(ModelID)
+                      NumberStartedSimulations INTEGER
 );
 
 CREATE TABLE Scenario (
