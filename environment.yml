@@ -15,5 +15,5 @@ dependencies:
   - psutil=5.8.0
   - pip
   - pip:
-    - py-cpuinfo==9.0.0
-    - simpy==4.0.1
+      - py-cpuinfo==9.0.0
+      - simpy==4.0.1
