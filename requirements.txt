@@ -1,5 +1,6 @@
 fl​ake8==3.9.2
-matpl​otlib==3.4.3
+matpl​otlib==3.5.0
+configparser
 nu​mpy==1.21.2
 pa​ndas==1.3.3
 py-c​puinfo==9.0.0
