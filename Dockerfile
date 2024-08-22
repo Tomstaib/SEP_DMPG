@@ -17,7 +17,8 @@ RUN apt-get update && apt-get install -y \
     cmake \
     libblas-dev \
     liblapack-dev \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -s /usr/lib/x86_64-linux-gnu/libarchive.so.13 /usr/lib/x86_64-linux-gnu/libarchive.so.19
 
 # Benutze den klassischen conda-Solver
 RUN conda config --set solver classic
