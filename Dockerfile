@@ -5,7 +5,7 @@ FROM continuumio/miniconda3:4.12.0
 WORKDIR /usr/src/app
 
 # Installiere die notwendigen System-Bibliotheken und Build-Tools
-RUN apt-get update && apt-get install -y gcc g++ gfortran libarchive13 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y gcc g++ gfortran libatlas-base-dev libarchive13 && rm -rf /var/lib/apt/lists/*
 
 # Installiere Mamba
 RUN conda install mamba -n base -c conda-forge && conda clean -afy && echo "Mamba installiert"
@@ -16,19 +16,17 @@ RUN mamba create -n myenv python=3.11 && conda clean -afy && echo "Python 3.11 U
 # Setze die Umgebungsvariable, damit die Umgebung "myenv" verwendet wird
 ENV PATH /opt/conda/envs/myenv/bin:$PATH
 
-# Kopiere die environment.yml und requirements.txt Datei ins Arbeitsverzeichnis
+# Kopiere die environment.yml Datei ins Arbeitsverzeichnis
 COPY environment.yml .
-COPY requirements.txt .
-
-# Entferne unsichtbare Zeichen aus requirements.txt und speichere in einer neuen Datei
-RUN tr -cd '\11\12\15\40-\176' < requirements.txt > clean_requirements.txt && \
-    echo "Inhalt von clean_requirements.txt:" && cat clean_requirements.txt
 
 # Aktualisiere die Umgebung mit environment.yml
 RUN mamba env update --file environment.yml --name myenv && conda clean -afy && echo "Umgebung aktualisiert mit environment.yml"
 
-# Installiere pip-Abhängigkeiten aus der bereinigten requirements.txt in der conda Umgebung
-RUN pip install --no-cache-dir -r clean_requirements.txt || { \
+# Installiere zusätzliche pip-Abhängigkeiten
+COPY requirements.txt .
+RUN tr -cd '\11\12\15\40-\176' < requirements.txt > clean_requirements.txt && \
+    echo "Inhalt von clean_requirements.txt:" && cat clean_requirements.txt && \
+    pip install --no-cache-dir -r clean_requirements.txt || { \
     echo "Fehler bei der Installation von pip-Abhängigkeiten"; \
     exit 1; \
 }
