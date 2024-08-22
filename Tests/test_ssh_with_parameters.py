@@ -1,12 +1,19 @@
 import unittest
+from unittest.mock import MagicMock, patch
 
-from unittest.mock import patch, MagicMock
 from paramiko.ssh_exception import SSHException
-from ssh_with_parameters import create_ssh_client, transfer_folder, is_valid, ensure_remote_directory, transfer_file
+
+from ssh_with_parameters import (
+    create_ssh_client,
+    ensure_remote_directory,
+    is_valid,
+    transfer_file,
+    transfer_folder
+)
 
 
-#Testing if every method is called and equals the mock client
-#Also testing what happens when a invalid user, server, port or password is given
+# Testing if every method is called and equals the mock client
+# Also testing what happens when a invalid user, server, port or password is given
 class TestCreateSShClient(unittest.TestCase):
     @patch('paramiko.SSHClient')
     def test_create_ssh_client(self, mock_ssh_client):
@@ -97,12 +104,12 @@ class TestTransferFolder(unittest.TestCase):
         transfer_file(mock_sftp, 'local_path/file.txt', 'remote_path/file.txt')
         mock_sftp.put.assert_called_once_with('local_path/file.txt', 'remote_path/file.txt')
 
+    @patch('paramiko.SSHClient')
     def test_transfer_folder(self, mock_ssh_client):
         # SFTP Mocken
         mock_sftp = MagicMock()
         mock_sftp_client = mock_ssh_client.return_value
         mock_sftp_client.open_sftp.return_value = mock_sftp
-
 
         # Mocken der Methoden von sftp
         mock_sftp.stat.side_effect = IOError
