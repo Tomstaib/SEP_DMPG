@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  BRANCH_NAME: ${{ github.ref_name }}
+  BRANCHNAME: ${{ github.refname }}
 
 jobs:
   build-linux:
@@ -21,36 +21,49 @@ jobs:
       - name: Set up Python 3.11
         uses: actions/setup-python@v3
         with:
-          python-version: '3.12.4'
+          python-version: '3.11'
 
-      - name: Add conda to system path
-        run: echo "$CONDA/bin" >> $GITHUB_PATH
+      - name: Install Miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: myenv
+          auto-update-conda: true
+          auto-activate-base: false
 
       - name: Verify environment.yml exists
         id: check_env
         run: |
-          if [ -f environment.yml ]; then echo "found=true" >> $GITHUB_ENV; else echo "found=false" >> $GITHUB_ENV; fi
+          if [ -f environment.yml ]; then echo "found=true" >> $GITHUBENV; else echo "found=false" >> $GITHUBENV; fi
+
       - name: Install dependencies
         if: env.found == 'true'
-        run: conda env update --file environment.yml --name base
+        run: |
+          conda env update --file environment.yml --name myenv
+          conda clean -afy
+        shell: bash -l {0}
 
       - name: Lint with flake8
         if: env.found == 'true'
         run: |
-          conda install -c conda-forge flake8
-          conda run -n base flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          conda run -n base flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+          conda install -c conda-forge flake8 -y
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        shell: bash -l {0}
+
       - name: Install pytest
         if: env.found == 'true'
-        run: conda install -c conda-forge pytest
+        run: conda install -c conda-forge pytest -y
+        shell: bash -l {0}
 
       - name: Verify test files exist
-        id: check_test_files
+        id: checktestfiles
         run: |
-          if ls tests/test*.py 1> /dev/null 2>&1; then echo "found=true" >> $GITHUB_ENV; else echo "found=false" >> $GITHUB_ENV; fi
+          if ls tests/test*.py 1> /dev/null 2>&1; then echo "found=true" >> $GITHUBENV; else echo "found=false" >> $GITHUBENV; fi
+
       - name: Run tests with pytest
         if: env.found == 'true' && env.found == 'true'
-        run: conda run -n base pytest --maxfail=3 --disable-warnings -q
+        run: conda run -n myenv pytest --maxfail=3 --disable-warnings -q
+        shell: bash -l {0}
 
   build-and-push-docker:
     runs-on: ubuntu-latest
@@ -70,9 +83,10 @@ jobs:
       - name: Verify Dockerfile exists
         id: check_dockerfile
         run: |
-          if [ -f Dockerfile ]; then echo "found=true" >> $GITHUB_ENV; else echo "found=false" >> $GITHUB_ENV; fi
+          if [ -f Dockerfile ]; then echo "found=true" >> $GITHUBENV; else echo "found=false" >> $GITHUBENV; fi
+
       - name: Login to DockerHub
-        run: echo "${{ secrets.DOCKER_TOKEN }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+        run: echo "${{ secrets.DOCKERTOKEN }}" | docker login -u ${{ secrets.DOCKERUSERNAME }} --password-stdin
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v2
@@ -80,4 +94,5 @@ jobs:
           context: .
           file: Dockerfile
           push: true
-          tags: tomstaib/sep_dmpg:${{ github.ref_name }}
+          tags: tomstaib/sepdmpg:${{ github.refname }}
+
