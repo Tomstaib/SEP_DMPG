@@ -20,4 +20,4 @@ COPY . .
 RUN echo "Verifizierung Schritte" && conda info 
 
 # Stellen Sie sicher, dass der Eintragspunkt
-CMD ["python", "your_script.py"]
+CMD ["python", "CapacityCheck.py"]
