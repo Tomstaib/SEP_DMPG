@@ -20,19 +20,18 @@ RUN mamba install --name base pip && conda clean -afy && echo "pip installiert"
 # Kopieren Sie Ihre Anwendung
 COPY . .
 
+# Ausgabe der `requirements.txt` zum Debuggen
+RUN echo "Inhalt von requirements.txt:" && cat requirements.txt
+
 # Installiere pip-Abhängigkeiten aus requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt; \
-    status=$?; \
-    if [ $status -ne 0 ]; then \
-        echo "Fehler bei der Installation von pip-Abhängigkeiten"; \
-        exit $status; \
-    else \
-        echo "pip-Abhängigkeiten installiert"; \
-    fi
+RUN pip install --no-cache-dir -r requirements.txt || { \
+    echo "Fehler bei der Installation von pip-Abhängigkeiten"; \
+    exit 1; \
+}
 
 # Verifikation durchlaufen lassen
 RUN echo "Conda list post-init" && conda list
-RUN echo "Verifizierung Schritte" && conda info 
+RUN echo "Verifizierung Schritte" && conda info
 
 # Setze den Eintragspunkt
 CMD ["python", "CapacityCheck/CapacityCheck.py"]
