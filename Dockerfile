@@ -21,8 +21,7 @@ COPY environment.yml .
 COPY requirements.txt .
 
 # Entferne unsichtbare Zeichen aus requirements.txt und speichere in einer neuen Datei
-RUN mkdir /tmp/clean && cp requirements.txt /tmp/clean/requirements.txt && \
-    grep -v [[[[CODEBLOCK_0]]]]#039;\xE2\x80\x8B' /tmp/clean/requirements.txt > clean_requirements.txt && \
+RUN tr -cd '\11\12\15\40-\176' < requirements.txt > clean_requirements.txt && \
     echo "Inhalt von clean_requirements.txt:" && cat clean_requirements.txt
 
 # Installiere pip-Abhängigkeiten aus der bereinigten requirements.txt in der conda Umgebung
