@@ -1,23 +1,28 @@
+# Verwenden Sie ein Basis-Image von Miniconda
 FROM continuumio/miniconda3
 
-# Kopieren Sie Ihre environment.yml
-COPY environment.yml /tmp/environment.yml
+# Setze das Arbeitsverzeichnis
+WORKDIR /usr/src/app
 
-# Update die Umgebungen mithilfe von Mamba/Conda
+# Kopiere die environment.yml Datei ins Arbeitsverzeichnis
+COPY environment.yml .
+COPY requirements.txt .
+
+# Installiere Mamba und aktualisiere die Umgebung
 RUN conda install mamba -n base -c conda-forge && \
-    mamba env update --file /tmp/environment.yml --name base && \
+    mamba env update --file environment.yml --name base && \
+    mamba install --name base pip && \
+    pip install --no-cache-dir -r requirements.txt && \
     conda clean -afy
 
-# Stellen Sie sicher, dass keine fehlerhaften Dateien vorhanden sind
-RUN echo "Conda list pre-init" \
-    && conda list
-
-# Kopieren Sie Ihr Projekt
-WORKDIR /usr/src/app
+# Kopiere den Rest des Codes
 COPY . .
 
-# Installationsschritte zum Debuggen hinzufügen
+# Verifikation durchlaufen lassen
+RUN echo "Conda list post-init" \
+    && conda list
+
 RUN echo "Verifizierung Schritte" && conda info 
 
-# Stellen Sie sicher, dass der Eintragspunkt
+# Setze den Eintragspunkt
 CMD ["python", "CapacityCheck/CapacityCheck.py"]
