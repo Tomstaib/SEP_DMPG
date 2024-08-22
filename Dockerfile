@@ -11,11 +11,24 @@ COPY requirements.txt .
 # Installiere Mamba
 RUN conda install mamba -n base -c conda-forge && conda clean -afy && echo "Mamba installiert"
 
-# Installiere pip-Abhängigkeiten aus requirements.txt
-RUN mamba install --name base pip && pip install --no-cache-dir -r requirements.txt && conda clean -afy && echo "requirements.txt ausgeführt"
+# Aktualisiere die Umgebung mit environment.yml
+RUN mamba env update --file environment.yml --name base && conda clean -afy && echo "Umgebung aktualisiert mit environment.yml"
 
-# Kopiere den Rest des Codes
+# Installiere pip in der conda Umgebung
+RUN mamba install --name base pip && conda clean -afy && echo "pip installiert"
+
+# Kopieren Sie Ihre Anwendung
 COPY . .
+
+# Installiere pip-Abhängigkeiten aus requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt; \
+    status=$?; \
+    if [ $status -ne 0 ]; then \
+        echo "Fehler bei der Installation von pip-Abhängigkeiten"; \
+        exit $status; \
+    else \
+        echo "pip-Abhängigkeiten installiert"; \
+    fi
 
 # Verifikation durchlaufen lassen
 RUN echo "Conda list post-init" && conda list
