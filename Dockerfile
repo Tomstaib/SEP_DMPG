@@ -1,5 +1,5 @@
-# Verwenden Sie ein Basis-Image von Miniconda
-FROM continuumio/miniconda3
+# Verwenden Sie ein Basis-Image von Miniconda mit Python 3.11
+FROM continuumio/miniconda3:4.12.0
 
 # Setze das Arbeitsverzeichnis
 WORKDIR /usr/src/app
@@ -11,24 +11,25 @@ COPY requirements.txt .
 # Installiere Mamba
 RUN conda install mamba -n base -c conda-forge && conda clean -afy && echo "Mamba installiert"
 
+# Erstelle und aktiviere eine Python 3.11 Umgebung
+RUN mamba create -n myenv python=3.11 && conda clean -afy && \
+    echo "Python 3.11 Umgebung erstellt"
+
+# Setze die Umgebungsvariable, damit die Umgebung "myenv" verwendet wird
+ENV PATH /opt/conda/envs/myenv/bin:$PATH
+
 # Aktualisiere die Umgebung mit environment.yml
-RUN mamba env update --file environment.yml --name base && conda clean -afy && echo "Umgebung aktualisiert mit environment.yml"
+RUN mamba env update --file environment.yml --name myenv && conda clean -afy && \
+    echo "Umgebung aktualisiert mit environment.yml"
 
-# Installiere pip in der conda Umgebung
-RUN mamba install --name base pip && conda clean -afy && echo "pip installiert"
-
-# Kopieren Sie Ihre Anwendung
-COPY . .
-
-# Bereinige die requirements.txt, um unsichtbare Zeichen zu entfernen
-RUN tr -cd '\11\12\15\40-\176' < requirements.txt > clean_requirements.txt && \
-    echo "Inhalt von clean_requirements.txt:" && cat clean_requirements.txt
-
-# Installiere pip-Abhängigkeiten aus der bereinigten requirements.txt
-RUN pip install --no-cache-dir -r clean_requirements.txt || { \
+# Installiere pip-Abhängigkeiten aus requirements.txt in der conda Umgebung
+RUN pip install --no-cache-dir -r requirements.txt || { \
     echo "Fehler bei der Installation von pip-Abhängigkeiten"; \
     exit 1; \
 }
+
+# Kopiere Ihre Anwendung
+COPY . .
 
 # Verifikation durchlaufen lassen
 RUN echo "Conda list post-init" && conda list
