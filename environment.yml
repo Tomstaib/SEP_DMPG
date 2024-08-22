@@ -13,6 +13,7 @@ dependencies:
   - pytest>=7.0.0
   - flake8=3.9.2
   - psutil=5.8.0
+  - cython
   - pip
   - pip:
       - py-cpuinfo==9.0.0
