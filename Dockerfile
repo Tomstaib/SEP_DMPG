@@ -1,5 +1,5 @@
 # Verwenden Sie ein Basis-Image von Miniconda
-FROM continuumio/miniconda3:4.12.0
+FROM continuumio/miniconda3
 
 # Setze das Arbeitsverzeichnis
 WORKDIR /usr/src/app
@@ -15,9 +15,12 @@ RUN apt-get update && apt-get install -y \
     libarchive-dev \
     build-essential \
     cmake \
-    && rm -rf /var/lib/apt/lists/*
+    libblas-dev \
+    liblapack-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -s /usr/lib/x86_64-linux-gnu/libarchive.so.13 /usr/lib/x86_64-linux-gnu/libarchive.so.19
 
-# Benutze klassischen conda-Solver
+# Benutze den klassischen conda-Solver
 RUN conda config --set solver classic
 
 # Installiere Mamba
@@ -33,14 +36,19 @@ ENV PATH /opt/conda/envs/myenv/bin:$PATH
 COPY environment.yml .
 
 # Aktualisiere die Umgebung mit environment.yml
-RUN mamba env update --file environment.yml --name myenv && conda clean -afy && echo "Umgebung aktualisiert mit environment.yml"
+RUN echo "Beginne mit der Umgebung-Aktualisierung..." && \
+    mamba env update --file environment.yml --name myenv && \
+    conda clean -afy && \
+    echo "Umgebung aktualisiert mit environment.yml"
 
-# Kopiere die requirements.txt Datei und entferne unsichtbare Zeichen
+# Kopiere die requirements.txt Datei ins Arbeitsverzeichnis
 COPY requirements.txt .
+
+# Entferne unsichtbare Zeichen und zeige den bereinigten Inhalt an
 RUN tr -cd '\11\12\15\40-\176' < requirements.txt > clean_requirements.txt && \
     echo "Inhalt von clean_requirements.txt:" && cat clean_requirements.txt
 
-# Installiere zusätzliche pip-Abhängigkeiten
+# Installiere zusätzliche pip-Abhängigkeiten und zeige genaue Fehler an
 RUN echo "Beginne mit der Installation der pip-Abhängigkeiten..." && \
     pip install --no-cache-dir -r clean_requirements.txt || { \
     echo "Fehler bei der Installation von pip-Abhängigkeiten"; \
@@ -51,8 +59,8 @@ RUN echo "Beginne mit der Installation der pip-Abhängigkeiten..." && \
 COPY . .
 
 # Verifikation durchlaufen lassen
-RUN echo "Conda list post-init" && conda list
-RUN echo "Verifizierung Schritte" && conda info
+RUN echo "Conda list post-init:" && conda list
+RUN echo "Verifizierung Schritte:" && conda info
 
 # Setze den Eintragspunkt
 CMD ["python", "CapacityCheck/CapacityCheck.py"]
