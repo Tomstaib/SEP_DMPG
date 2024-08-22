@@ -6,11 +6,11 @@ dependencies:
   - python=3.11
   - numpy>=1.22,<1.24
   - pandas>=1.4.0
-  - scipy=1.7.3
+  - scipy>=1.8.0
   - scikit-learn>=1.0.0
   - matplotlib>=3.5.0
   - seaborn=0.11.2
-  - pytest=6.2.4
+  - pytest>=7.0.0
   - flake8=3.9.2
   - psutil=5.8.0
   - pip
