@@ -3,6 +3,8 @@
 /src/models/simulation_model_pro.pdf
 DMPG.iml
 
+# intellij configs
+.idea/
 
 .idea/**/misc.xml
 .idea/**/other.xml
