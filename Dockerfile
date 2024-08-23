@@ -36,4 +36,4 @@ COPY . .
 RUN conda list && conda info
 
 # Setze den Eintragspunkt
-CMD ["python", "Kapazitätsprüfung/CapacityCheck.py"]
+CMD ["python", "Kapazitaetspruefung/CapacityCheck.py"]
