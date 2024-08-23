@@ -2,7 +2,8 @@ from collections import namedtuple
 import pytest
 import psutil
 from unittest.mock import patch
-from tests.capacity_check import (
+
+from capacity_check import (
     get_cpu_info,
     get_memory_info,
     get_model_number,
@@ -10,7 +11,9 @@ from tests.capacity_check import (
     reserve_cores,
     reserve_memory,
     check_hardware_requirements,
-    NOT_ACCEPTED
+    ACCEPTED,
+    NOT_ACCEPTED,
+    NOT_ACCEPTED_NO_MODEL_NUMBER
 )
 
 
@@ -25,10 +28,10 @@ def test_get_cpu_info():
 
 # Test für get_memory_info
 def test_get_memory_info():
-    # Namedtuple mit deckungsgleichem Aufbau wie das svmem-Objekt
-    svmem = namedtuple('svmem', 'total available percent used free active inactive buffers cached shared slab')
+    svmem = namedtuple(
+        'svmem', 'total available percent used free active inactive buffers cached shared slab'
+    )
 
-    # Mock vom svmem-Objekt mit den gewünschten totalen Speicherwerten
     mock_memory = svmem(
         total=16 * 1024 ** 3, available=0, percent=0, used=0, free=0,
         active=0, inactive=0, buffers=0, cached=0, shared=0, slab=0
@@ -52,21 +55,69 @@ def test_get_model_number(brand_raw, expected_model_number):
 
 @patch('cpuinfo.get_cpu_info', return_value={"brand_raw": "Intel Core i7-10700K"})
 def test_check_processor_type_intel(mock_get_cpu_info):
-    assert check_processor_type() == "Accepted"
+    assert check_processor_type() == ACCEPTED
+
+
+@patch('cpuinfo.get_cpu_info', return_value={"brand_raw": "Intel Xeon E5-2077"})
+def test_check_processor_type_xeon(mock_get_cpu_info):
+    assert check_processor_type() == ACCEPTED
+
 
 @patch('cpuinfo.get_cpu_info', return_value={"brand_raw": "AMD Ryzen 7 7800X"})
 def test_check_processor_type_amd(mock_get_cpu_info):
-    assert check_processor_type() == "Accepted"
+    assert check_processor_type() == ACCEPTED
 
 
-def test_check_processor_type_unsupported_vendor():
-    with patch('cpuinfo.get_cpu_info', return_value={"brand_raw": "Unknown Processor 3000"}):
-        assert check_processor_type() == NOT_ACCEPTED
+@patch('cpuinfo.get_cpu_info', return_value={"brand_raw": "Apple M1"})
+def test_check_processor_type_apple_m1(mock_get_cpu_info):
+    result = check_processor_type()
+    assert result == ACCEPTED
 
 
-def test_check_processor_type_no_model_number():
-    with patch('cpuinfo.get_cpu_info', return_value={"brand_raw": "Unknown Processor"}):
-        assert check_processor_type() == "Not accepted (no model number found)"
+@patch('cpuinfo.get_cpu_info', return_value={"brand_raw": "Apple M1 Pro"})
+def test_check_processor_type_apple_m1_pro(mock_get_cpu_info):
+    result = check_processor_type()
+    assert result == ACCEPTED
+
+
+# Test für Fallback-Fälle
+@patch('cpuinfo.get_cpu_info', return_value={"brand_raw": "Unknown Processor 3000"})
+def test_check_processor_type_unsupported_vendor(mock_get_cpu_info):
+    assert check_processor_type() == NOT_ACCEPTED
+
+
+@patch('cpuinfo.get_cpu_info', return_value={"brand_raw": "Unknown Processor"})
+def test_check_processor_type_no_model_number(mock_get_cpu_info):
+    assert check_processor_type() == "Not accepted (no model number found)"
+
+
+# Neuer Test für einen leeren brand_raw-String
+@patch('cpuinfo.get_cpu_info', return_value={"brand_raw": ""})
+def test_check_processor_type_empty_brand_raw(mock_get_cpu_info):
+    result = check_processor_type()
+    assert result == NOT_ACCEPTED_NO_MODEL_NUMBER
+
+
+# Test der None-Bedingungen
+@patch('cpuinfo.get_cpu_info', return_value={"brand_raw": "Intel Xeon E-1500"})
+def test_check_processor_type_intel_xenon_none(mock_get_cpu_info):
+    assert check_processor_type() == NOT_ACCEPTED
+
+
+@patch('cpuinfo.get_cpu_info', return_value={"brand_raw": "Intel Xeon E5-1955"})
+def test_check_processor_type_xeon_below_minimum(mock_get_cpu_info):
+    assert check_processor_type() == NOT_ACCEPTED
+
+
+@patch('cpuinfo.get_cpu_info', return_value={"brand_raw": "AMD Ryzen 3 1200"})
+def test_check_processor_type_amd_below_minimum(mock_get_cpu_info):
+    assert check_processor_type() == NOT_ACCEPTED
+
+
+@patch('cpuinfo.get_cpu_info', return_value={"brand_raw": "Apple M9"})
+def test_check_processor_type_apple_invalid(mock_get_cpu_info):
+    result = check_processor_type()
+    assert result == NOT_ACCEPTED
 
 
 # Test für reserve_cores
@@ -79,10 +130,10 @@ def test_reserve_cores():
 
 # Test für reserve_memory
 def test_reserve_memory():
-    # Erstellen eines benannten Tuples mit der gleichen Struktur wie svmem
-    svmem = namedtuple('svmem', 'total available percent used free active inactive buffers cached shared slab')
+    svmem = namedtuple(
+        'svmem', 'total available percent used free active inactive buffers cached shared slab'
+    )
 
-    # Erstellen eines Mock-Objekts für virtual_memory
     mock_memory = svmem(
         total=8 * 1024 ** 3, available=0, percent=0, used=0, free=0,
         active=0, inactive=0, buffers=0, cached=0, shared=0, slab=0
@@ -95,10 +146,10 @@ def test_reserve_memory():
 
 # Integrationstest für check_hardware_requirements
 def test_check_hardware_requirements():
-    # Namedtuple mit deckungsgleichem Aufbau wie das svmem-Objekt
-    svmem = namedtuple('svmem', 'total available percent used free active inactive buffers cached shared slab')
+    svmem = namedtuple(
+        'svmem', 'total available percent used free active inactive buffers cached shared slab'
+    )
 
-    # Mock vom svmem-Objekt mit den gewünschten totalen Speicherwerten
     mock_memory = svmem(
         total=16 * 1024 ** 3, available=0, percent=0, used=0, free=0,
         active=0, inactive=0, buffers=0, cached=0, shared=0, slab=0
@@ -112,6 +163,5 @@ def test_check_hardware_requirements():
          patch('capacity_check.reserve_memory', return_value=bytearray(1024)) as mock_reserve_memory:
         check_hardware_requirements()
 
-        # Überprüfen, dass die Reservierungsfunktionen aufgerufen wurden
         mock_reserve_cores.assert_called_with(90)
         mock_reserve_memory.assert_called_with(30)
