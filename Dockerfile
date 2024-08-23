@@ -1,4 +1,4 @@
-# Optimiertes Basis-Image von Miniconda verwenden
+# Optimiertes Basis-Image von Miniconda verwenden.
 FROM continuumio/miniconda3
 
 # Setze das Arbeitsverzeichnis
