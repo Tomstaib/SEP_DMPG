@@ -14,8 +14,20 @@ RUN conda env create -f environment.yml
 RUN echo "source activate distributed_computing_env" > ~/.bashrc
 ENV PATH /opt/conda/envs/distributed_computing_env/bin:$PATH
 
+# System-Abhängigkeiten installieren
+RUN apt-get update && apt-get install -y build-essential libpq-dev ssh postgresql postgresql-contrib
+
+# PostgreSQL konfigurieren
+USER postgres
+RUN /etc/init.d/postgresql start &&\
+    psql --command "CREATE USER sep WITH SUPERUSER PASSWORD 'sep';" &&\
+    createdb -O sep distributed_computing
+
+# Zurück zum root-Benutzer
+USER root
+
 # App-Code kopieren
 COPY Datenspeicherung/ /app/Datenspeicherung/
 
-# Container-Standardkommando
-CMD ["python", "/app/Datenspeicherung/database_connection.py"]
+# Fügen Sie einen Leerlaufbefehl hinzu, um den Container aktiv zu halten
+CMD [ "tail", "-f", "/dev/null" ]
