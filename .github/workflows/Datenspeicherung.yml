@@ -3,7 +3,7 @@ name: Datenspeicherung
 on:
   push:
     branches:
-      - 'Kapazitaetspruefung'
+      - 'Datenspeicherung'
   workflow_dispatch:
 
 env:
