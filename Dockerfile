@@ -17,10 +17,5 @@ ENV PATH /opt/conda/envs/distributed_computing_env/bin:$PATH
 # App-Code kopieren
 COPY Datenspeicherung/ /app/Datenspeicherung/
 
-# Ausführungsrechte für das Shell-Skript setzen
-RUN chmod +x /app/Datenspeicherung/run_all.sh
-
-# Container-Startkommando ändern, um das Shell-Skript auszuführen
-
 # Container-Standardkommando
 CMD ["python", "/app/Datenspeicherung/database_connection.py"]
