@@ -2,7 +2,8 @@ name: myenv
 dependencies:
   - python=3.9
   - sqlalchemy
-  - psycopg2-binary
   - paramiko
+  - pip
   - pip:
+    - psycopg2-binary
     - orm
