@@ -1,18 +1,26 @@
 # Basis-Image setzen
-FROM python:3.9-slim
+FROM continuumio/miniconda3
 
 # Arbeitsverzeichnis setzen
 WORKDIR /app
 
-# System-Abhängigkeiten installieren
-RUN apt-get update && apt-get install -y build-essential libpq-dev ssh
+# Kopieren Sie die environment.yml Datei
+COPY environment.yml .
 
-# Anforderungen installieren
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Erstellen Sie die Conda-Umgebung
+RUN conda env create -f environment.yml
+
+# Aktivieren Sie die Conda-Umgebung und legen Sie diese als Standard fest
+RUN echo "source activate distributed_computing_env" > ~/.bashrc
+ENV PATH /opt/conda/envs/distributed_computing_env/bin:$PATH
 
 # App-Code kopieren
 COPY Datenspeicherung/ /app/Datenspeicherung/
+
+# Ausführungsrechte für das Shell-Skript setzen
+RUN chmod +x /app/Datenspeicherung/run_all.sh
+
+# Container-Startkommando ändern, um das Shell-Skript auszuführen
 
 # Container-Standardkommando
 CMD ["python", "/app/Datenspeicherung/database_connection.py"]
