@@ -1,8 +1,11 @@
 [run]
 branch = True
-source = capacity_check
+source =
+    capacity_check
+    ssh_with_parameters
 omit =
     Tests/test_capacity_check.py
+    Tests/test_ssh_with_parameters.py
 
 [report]
 show_missing = True

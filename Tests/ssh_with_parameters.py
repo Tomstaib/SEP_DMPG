@@ -24,11 +24,10 @@ def create_ssh_client(server: str, port: int, user: str, password: str) -> param
 
 def is_valid(path: str) -> bool:
     base_name = os.path.basename(path)
-    return not base_name.startswith('.') and base_name != '__pycache__'
+    return not (base_name.startswith('.') or '__pycache__' in path)
 
 
 def ensure_remote_directory(sftp, remote_path: str):
-    """Ensure the remote directory exists, creating it if necessary."""
     try:
         sftp.stat(remote_path)
     except IOError:
@@ -38,7 +37,6 @@ def ensure_remote_directory(sftp, remote_path: str):
 
 
 def transfer_file(sftp, local_file_path, remote_file_path):
-    """Transfer a file using SFTP."""
     try:
         sftp.put(local_file_path, remote_file_path)
         print(f"Successfully transferred {local_file_path} to {remote_file_path}")
@@ -110,10 +108,7 @@ def execute_command(ssh_client: paramiko.SSHClient, command: str) -> Tuple[str, 
 
 
 # Function to check Python version
-def check_python_version(
-        ssh_client: paramiko.SSHClient, required_version: str, env_activation_command: str
-) -> bool:
-    # Activate the Python environment
+def check_python_version(ssh_client: paramiko.SSHClient, required_version: str, env_activation_command: str) -> bool:
     activation_command = f'source {env_activation_command} && python3 --version'
     stdout, stderr = execute_command(ssh_client, activation_command)
     if stderr:
@@ -124,13 +119,7 @@ def check_python_version(
 
 
 # Function to install required libraries
-def install_libraries(
-        ssh_client: paramiko.SSHClient, requirements_file: str, env_activation_command: str
-) -> None:
-    """# Activate the Python environment
-    with open(requirements_file, 'r') as file:
-        libraries = file.read().splitlines()
-    for library in libraries:"""
+def install_libraries(ssh_client: paramiko.SSHClient, requirements_file: str, env_activation_command: str) -> None:
     print(requirements_file)
     execute_command(ssh_client, f'source {env_activation_command} && pip3 install -r {requirements_file}')
     print("Required libraries installed.")
@@ -169,13 +158,10 @@ def get_private_config():
         private_config: dict = read_json("private_config.json")
         return private_config
     except FileNotFoundError:
-        print("Private config file not found. Have you created it? It needs to contain your username")
-
+        print("Private config file not found. Have you created it?")
 
 # Main function
 def main() -> None:
-    print("Reading arguments from JSON")
-
     public_config: dict = read_json("public_config.json")
 
     local_version = read_version_from_file(public_config.get('paths').get('local_version_file_path'))
@@ -188,9 +174,7 @@ def main() -> None:
     try:
         # Check if input can be received
         if sys.stdin.isatty():
-            print("stdin is interactive, prompting for password")
             password: str = getpass(prompt=f'SSH Password for {private_config["user"]}: ')
-            print("Password input received")
         else:
             print("stdin is not interactive, cannot prompt for password")
             return
@@ -202,46 +186,33 @@ def main() -> None:
         ssh_client = create_ssh_client(public_config.get('server').get('name'),
                                        int(public_config.get('server').get('port')),
                                        private_config.get('user'), password)
-        print("SSH connection established.")
 
         # Check Python version
         if not check_python_version(ssh_client,
                                     public_config.get('paths').get('required_python_version'),
                                     public_config.get('paths').get('env_activation_command')):
-            print(f"Python {public_config.get('paths').get('required_python_version')} "
-                  f"is not installed on the remote system.")
+            print(f"Python {public_config.get('paths').get('required_python_version')} is not installed.")
             return
 
         # Check if the remote folder exists
-        remote_folder_path = public_config.get('paths').get('remote_folder_path')
-        print(f"Remote folder path: {remote_folder_path}")
-        remote_folder_path = remote_folder_path.replace('$USER', private_config["user"])
-        print(f"Remote folder path: {remote_folder_path}")
+        remote_folder_path = public_config.get('paths').get('remote_folder_path').replace('$USER', private_config["user"])
         _, error = execute_command(ssh_client, f'ls {remote_folder_path}')
         folder_exists = not bool(error)
 
-        remote_version_file_path = public_config.get('paths').get('remote_version_file_path')
-        remote_version_file_path = remote_version_file_path.replace('$USER', private_config["user"])
-
         if folder_exists:
+            remote_version_file_path = public_config.get('paths').get('remote_version_file_path').replace('$USER', private_config["user"])
             remote_version, error = execute_command(ssh_client, f'cat {remote_version_file_path}')
             if error:
                 print("Error reading remote version file:", error)
                 remote_version = None
 
-            if remote_version:
-                remote_version = json.loads(remote_version).get('version')
-
-            if remote_version == local_version:
-                print("The software is already up to date. No transfer needed.")
-                requirements_file_path = public_config.get('paths').get('requirements_file_path')
-                requirements_file_path = requirements_file_path.replace('$USER', private_config["user"])
+            if remote_version and json.loads(remote_version).get('version') == local_version:
+                print("Software is up to date.")
                 install_libraries(ssh_client,
-                                  requirements_file_path,
+                                  public_config.get('paths').get('requirements_file_path').replace('$USER', private_config["user"]),
                                   public_config.get('paths').get('env_activation_command'))
                 return
 
-        print("The software needs to be updated.")
         local_folder_path = select_folder()
         if not local_folder_path:
             print("No folder selected.")
@@ -256,10 +227,8 @@ def main() -> None:
         print(f"Version file successfully transferred to {remote_version_file_path}.")"""
 
         # Install required libraries
-        requirements_file_path = public_config.get('paths').get('requirements_file_path')
-        requirements_file_path = requirements_file_path.replace('$USER', private_config["user"])
         install_libraries(ssh_client,
-                          requirements_file_path,
+                          public_config.get('paths').get('requirements_file_path').replace('$USER', private_config["user"]),
                           public_config.get('paths').get('env_activation_command'))
 
     except Exception as e:
