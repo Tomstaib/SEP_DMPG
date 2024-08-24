@@ -15,21 +15,21 @@ RUN echo "source activate distributed_computing_env" > ~/.bashrc
 ENV PATH /opt/conda/envs/distributed_computing_env/bin:$PATH
 
 # System-Abhängigkeiten installieren
-RUN apt-get update && apt-get install -y build-essential libpq-dev ssh postgresql postgresql-contrib
+RUN apt-get update && apt-get install -y build-essential libpq-dev ssh postgresql postgresql-contrib nano
 
-# PostgreSQL konfigurieren
+# PostgreSQL einstellen
 USER postgres
-RUN /etc/init.d/postgresql start &&\
-    psql --command "CREATE USER sep WITH SUPERUSER PASSWORD 'sep';" &&\
-    createdb -O sep distributed_computing &&\
-    echo "host all all 0.0.0.0/0 md5" >> /etc/postgresql/13/main/pg_hba.conf &&\
-    echo "listen_addresses='*'" >> /etc/postgresql/13/main/postgresql.conf
 
-# Zurück zum root-Benutzer wechseln
+RUN service postgresql start &&\
+    psql --command "CREATE USER sep WITH SUPERUSER PASSWORD 'sep';" &&\
+    createdb -O sep distributed_computing
+
+# PostgreSQL-Konfiguration anpassen und starten sicherstellen
 USER root
+RUN echo "host all all 0.0.0.0/0 md5" >> /etc/postgresql/$(ls /etc/postgresql)/*/pg_hba.conf &&\
+    echo "listen_addresses='*'" >> /etc/postgresql/$(ls /etc/postgresql)/*/postgresql.conf
 
 # App-Code kopieren
 COPY Datenspeicherung/ /app/Datenspeicherung/
 
-# PostgreSQL beim Start des Containers aktivieren
-CMD /etc/init.d/postgresql start && tail -f /dev/null
+CMD service postgresql start && tail -f /dev/null
