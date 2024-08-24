@@ -8,14 +8,15 @@ WORKDIR /app
 COPY environment.yml .
 
 # Erstellen Sie die Conda-Umgebung
-RUN conda env create -f environment.yml
+RUN conda config --set pip_interop_enabled True && \
+    conda env create -f environment.yml
 
 # Aktivieren Sie die Conda-Umgebung und legen Sie diese als Standard fest
-RUN echo "source activate distributed_computing_env" > ~/.bashrc
-ENV PATH /opt/conda/envs/distributed_computing_env/bin:$PATH
+RUN echo "source activate distributedcomputingenv" > ~/.bashrc
+ENV PATH /opt/conda/envs/distributedcomputingenv/bin:$PATH
 
 # System-Abhängigkeiten installieren
-RUN apt-get update && apt-get install -y build-essential libpq-dev ssh postgresql postgresql-contrib nano
+RUN apt-get update && apt-get install -y build-essential libpq-dev ssh postgresql postgresql-contrib
 
 # PostgreSQL-Konfiguration anpassen (als root)
 USER root
