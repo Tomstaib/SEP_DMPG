@@ -21,13 +21,15 @@ RUN apt-get update && apt-get install -y build-essential libpq-dev ssh postgresq
 USER postgres
 RUN /etc/init.d/postgresql start &&\
     psql --command "CREATE USER sep WITH SUPERUSER PASSWORD 'sep';" &&\
-    createdb -O sep distributed_computing
+    createdb -O sep distributed_computing &&\
+    echo "host all all 0.0.0.0/0 md5" >> /etc/postgresql/13/main/pg_hba.conf &&\
+    echo "listen_addresses='*'" >> /etc/postgresql/13/main/postgresql.conf
 
-# Zurück zum root-Benutzer
+# Zurück zum root-Benutzer wechseln
 USER root
 
 # App-Code kopieren
 COPY Datenspeicherung/ /app/Datenspeicherung/
 
-# Fügen Sie einen Leerlaufbefehl hinzu, um den Container aktiv zu halten
-CMD [ "tail", "-f", "/dev/null" ]
+# PostgreSQL beim Start des Containers aktivieren
+CMD /etc/init.d/postgresql start && tail -f /dev/null
