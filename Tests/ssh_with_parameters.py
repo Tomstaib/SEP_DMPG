@@ -27,6 +27,7 @@ def is_valid(path: str) -> bool:
     return not (base_name.startswith('.') or '__pycache__' in path)
 
 
+
 def ensure_remote_directory(sftp, remote_path: str):
     """Ensure the remote directory exists, creating it if necessary."""
     try:
