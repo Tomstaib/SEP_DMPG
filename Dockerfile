@@ -4,7 +4,10 @@ FROM continuumio/miniconda3
 # Arbeitsverzeichnis setzen
 WORKDIR /app
 
-# Kopieren Sie die environment.yml Datei
+# Kopieren Sie den gesamten Inhalt des aktuellen Verzeichnisses auf dem Host in das Arbeitsverzeichnis im Container
+COPY . .
+
+# Kopieren Sie die environment.yml Datei (dieser Schritt ist redundant, da sie bereits durch den obigen COPY-Befehl kopiert wird, aber der Vollständigkeit halber bleibt er hier)
 COPY environment.yml .
 
 # Erstellen Sie die Conda-Umgebung
