@@ -66,11 +66,15 @@ def setup_ssh_connection(username):
     finally:
         ssh_client.close()
 
-    rsa_key = paramiko.RSAKey(filename=KEY_PATH, password=PASSPHRASE)
+    # Ensure RSAKey is loaded correctly
+    rsa_key = paramiko.RSAKey(filename=KEY_PATH, password=PASSPHRASE if PASSPHRASE else None)
+    ssh_client = paramiko.SSHClient()  # Reinitialize the client
+    ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
     try:
         ssh_client.connect(REMOTE_HOST, username=username, pkey=rsa_key)
         print("Connection with RSA key successful")
     except Exception as e:
         print(f"Error with ssh_client: {e}")
-
-    ssh_client.close()
+    finally:
+        ssh_client.close()
