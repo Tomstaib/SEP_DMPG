@@ -1,7 +1,0 @@
-pre-commit
-simpy
-numpy
-pandas
-matplotlib
-seaborn
-graphviz
