@@ -7,9 +7,10 @@ import cpuinfo
 ACCEPTED = "Accepted"
 NOT_ACCEPTED = "Not accepted"
 NOT_ACCEPTED_CAPITALIZED = "Not Accepted"
+NOT_ACCEPTED_NO_MODEL_NUMBER = "Not accepted (no model number found)"
 
 ##### CPU-Informationen abrufen #####
-
+ 
 def get_cpu_info():
     """
     Abrufen der CPU-Informationen.
@@ -63,32 +64,39 @@ def get_model_number(brand_raw):
 def check_processor_type():
     """
     Überprüfen des Prozessortyps, um festzustellen, ob er akzeptiert wird.
-
-    Rückgabe:
-        str: "Accepted" oder "Not accepted" je nach Prozessortyp und Modellnummer.
     """
-    cpu_info = cpuinfo.get_cpu_info()
+    # Mindestanforderungen für Prozessor-Generationen
     INTEL_CORE_LEAST_GEN = 10000
     INTEL_XEON_LEAST_GEN = 2000
     AMD_LEAST_GEN = 5
 
-    brand_raw = cpu_info["brand_raw"]
+    cpu_info = cpuinfo.get_cpu_info()
+    brand_raw = cpu_info.get("brand_raw", "")
+
+    # Überprüfen, ob brand_raw leer ist und sofort "Not accepted (no model number found)" zurückgeben
+    if not brand_raw:
+        return NOT_ACCEPTED_NO_MODEL_NUMBER
+
+    # Spezielle Behandlung für Apple-Prozessoren
+    if "Apple" in brand_raw:
+        if brand_raw in {"Apple M1", "Apple M1 Pro", "Apple M1 Max", "Apple M2"}:
+            return ACCEPTED
+        else:
+            return NOT_ACCEPTED
+
+    # Modellnummer extrahieren für Intel und AMD
     model_number = get_model_number(brand_raw)
-
     if model_number is None:
-        return "Not accepted (no model number found)"
+        return NOT_ACCEPTED_NO_MODEL_NUMBER
 
+    # Vendor-Erkennung
     vendor = None
     if "Intel" in brand_raw:
         vendor = "Intel"
     elif "AMD" in brand_raw:
         vendor = "AMD"
-    elif "Apple" in brand_raw:
-        vendor = "Apple"
 
-    if not vendor:
-        return NOT_ACCEPTED
-
+    # Match-Logik für spezifische Prozessoren
     match vendor:
         case "Intel" if "Xeon" in brand_raw:
             if model_number >= INTEL_XEON_LEAST_GEN:
@@ -100,17 +108,18 @@ def check_processor_type():
                 return ACCEPTED
             else:
                 return NOT_ACCEPTED
-        case "AMD":
+        case "AMD" if "Ryzen" in brand_raw:
             # Suche nach der größten zusammenhängenden Zahl im Brand-String
             amd_model_number = max(map(int, re.findall(r"\d+", brand_raw)))
-            if amd_model_number >= AMD_LEAST_GEN:
-                return ACCEPTED
-            else:
+            if "Ryzen 3" in brand_raw or amd_model_number < AMD_LEAST_GEN:
                 return NOT_ACCEPTED
-        case "Apple":
-            return ACCEPTED
+            else:
+                return ACCEPTED
         case _:
+            # Fallback für unbekannte Prozessoren
             return NOT_ACCEPTED
+
+
 
 
 ##### CPU-Kerne reservieren #####
