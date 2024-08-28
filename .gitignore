@@ -1,0 +1,6 @@
+./*
+!./src/util/*.py
+./src/__pycache__
+__pycache__
+dist
+.idea
