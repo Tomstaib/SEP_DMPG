@@ -16,10 +16,9 @@ RUN conda env create -f environment.yml
 # Aktivieren der Conda-Umgebung und Setzen als Standard
 RUN echo "source activate my_env" >> ~/.bashrc && \
     echo "conda activate my_env" >> ~/.bashrc
-ENV PATH /opt/conda/envs/my_env/bin:$PATH
+ENV PATH=/opt/conda/envs/my_env/bin:$PATH
 
 # Füge das Arbeitsverzeichnis zum PYTHONPATH hinzu
 ENV PYTHONPATH=/app
-
-# Halte den Container aktiv und teste das Laden der Module mit einer kontinuierlichen Ausgabe
-CMD ["bash", "-c", "while true; do echo 'Container is up and running'; python -c 'import SSHVerbindung.ssh_with_parameters; print(\"Module SSHVerbindung.ssh_with_parameters loaded successfully\")'; sleep 60; done"]
+# Hier wird einfach eine Bash-Shell gestartet, um den Container aktiv zu halten
+CMD tail -f /dev/null
