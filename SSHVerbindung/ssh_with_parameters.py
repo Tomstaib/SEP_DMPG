@@ -1,19 +1,14 @@
 import json
 import os
-import argparse
 import sys
-from pathlib import Path
 from typing import Tuple, Optional
 import paramiko
 from tkinter import Tk
 from tkinter.filedialog import askdirectory
 from getpass import getpass
-from paramiko import SSHClient
-
 import stat
 
 
-# Function to establish SSH connection
 def create_ssh_client(server: str, port: int, user: str, password: str) -> paramiko.SSHClient:
     client = paramiko.SSHClient()
     client.load_system_host_keys()
@@ -27,58 +22,58 @@ def is_valid(path: str) -> bool:
     return not base_name.startswith('.') and base_name != '__pycache__'
 
 
-def ensure_remote_directory(sftp, remote_path: str):
-    """Ensure the remote directory exists, creating it if necessary."""
+def ensure_remote_directory(sftp: paramiko.SFTPClient, remote_path: str):
+    remote_path = remote_path.replace('\\', '/')  # Normalisierung
     try:
         sftp.stat(remote_path)
     except IOError:
         print(f"Creating remote directory: {remote_path}")
         sftp.mkdir(remote_path)
-        sftp.chmod(remote_path, stat.S_IRWXU)
+        print(f"Setting permissions for directory: {remote_path}")
+        sftp.chmod(remote_path, stat.S_IRWXU)  # Setze Berechtigungen
+    except Exception as e:
+        print(f"Error ensuring remote directory {remote_path}: {e}")
+        raise
+
+
 
 
 def transfer_file(sftp, local_file_path, remote_file_path):
-    """Transfer a file using SFTP."""
+    local_file_path = local_file_path.replace('\\', '/')
+    remote_file_path = remote_file_path.replace('\\', '/')  # Normalisierung
     try:
         sftp.put(local_file_path, remote_file_path)
         print(f"Successfully transferred {local_file_path} to {remote_file_path}")
     except Exception as e:
         print(f"Error transferring file {local_file_path}: {e}")
-        raise  ####Ergänzt####
+        raise
 
 
-# Function to transfer a folder using SFTP
-def transfer_folder(ssh_client: SSHClient, local_folder_path: str, remote_folder_path: str) -> None:
-    remote_folder_path = os.path.expandvars(remote_folder_path)
+def transfer_folder(ssh_client: paramiko.SSHClient, local_folder_path: str, remote_folder_path: str):
+    sftp = ssh_client.open_sftp()
+    remote_folder_path = os.path.expanduser(remote_folder_path).replace('\\', '/')
     print(f"Expanded remote path: {remote_folder_path}")
 
-    sftp = ssh_client.open_sftp()
-
-    # Ensure the base remote directory exists
+    # Debug-Ausgabe hinzufügen
+    print(f"Calling ensure_remote_directory for: {remote_folder_path}")
     ensure_remote_directory(sftp, remote_folder_path)
 
     for root, dirs, files in os.walk(local_folder_path):
-        relative_path = os.path.relpath(root, local_folder_path)
-
-        # Skip directories that are not 'src' or are invalid, except base directory
-        if root != local_folder_path and 'src' not in relative_path.split(os.sep):
-            dirs[:] = []
-            files[:] = []
-            continue
-
-        # Filter out invalid directories
+        relative_path = os.path.relpath(root, local_folder_path).replace('\\', '/')
         dirs[:] = [d for d in dirs if is_valid(os.path.join(root, d))]
 
-        remote_path = os.path.join(remote_folder_path, relative_path).replace('\\', '/')
+        remote_path = os.path.normpath(os.path.join(remote_folder_path, relative_path)).replace('\\', '/')
         print(f"Ensuring remote directory: {remote_path}")
 
+        # Debug-Ausgabe hinzufügen
+        print(f"Calling ensure_remote_directory for: {remote_path}")
         ensure_remote_directory(sftp, remote_path)
 
         for file in files:
             if not is_valid(file):
                 continue
             local_file_path = os.path.join(root, file)
-            remote_file_path = os.path.join(remote_path, file).replace('\\', '/')
+            remote_file_path = os.path.normpath(os.path.join(remote_path, file)).replace('\\', '/')
             print(f"Transferring {local_file_path} to {remote_file_path}")
 
             transfer_file(sftp, local_file_path, remote_file_path)
@@ -86,36 +81,40 @@ def transfer_folder(ssh_client: SSHClient, local_folder_path: str, remote_folder
     sftp.close()
 
 
-# Function to select a folder using a Directory Picker
+
+
 def select_folder() -> str:
     root = Tk()
-    root.withdraw()  # Hide the main window
-    folder_path = askdirectory()  # Open the folder selection dialog
+    root.withdraw()
+    folder_path = askdirectory()
     return folder_path
 
 
-# Function to read the version number from a JSON file
 def read_version_from_file(file_path: str) -> Optional[str]:
     try:
         with open(file_path, 'r') as file:
             data = json.load(file)
             return data['version']
-    except (FileNotFoundError, KeyError, json.JSONDecodeError):
+    except FileNotFoundError:
+        print(f"File not found: {file_path}")
+        return None
+    except KeyError:
+        print(f"Version key not found in the file: {file_path}")
+        return None
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error in file {file_path}: {e}")
         return None
 
 
-# Function to execute a command on the remote system
 def execute_command(ssh_client: paramiko.SSHClient, command: str) -> Tuple[str, str]:
     stdin, stdout, stderr = ssh_client.exec_command(command)
     return stdout.read().decode().strip(), stderr.read().decode().strip()
 
 
-# Function to check Python version
 def check_python_version(
         ssh_client: paramiko.SSHClient, required_version: str, env_activation_command: str
 ) -> bool:
-    # Activate the Python environment and check the Python version
-    activation_command = f'source {env_activation_command} && python3 --version'
+    activation_command = f'{env_activation_command} && python3 --version'
     stdout, stderr = execute_command(ssh_client, activation_command)
 
     if stderr:
@@ -126,44 +125,32 @@ def check_python_version(
     return installed_version.startswith(required_version)
 
 
-# Function to install required libraries
 def install_libraries(
         ssh_client: paramiko.SSHClient, requirements_file: str, env_activation_command: str
 ) -> None:
-    """# Activate the Python environment
-    with open(requirements_file, 'r') as file:
-        libraries = file.read().splitlines()
-    for library in libraries:"""
     print(requirements_file)
-    execute_command(ssh_client, f'source {env_activation_command} && pip3 install -r {requirements_file}')
+
+    execute_command(ssh_client, f'{env_activation_command} && pip3 install -r {requirements_file}')
     print("Required libraries installed.")
 
 
-# Function to read configuration from a JSON file
+
 def read_json(filename: str) -> dict:
-    # Start with the directory where the script is located
-    current_dir = os.path.dirname(__file__)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
 
     while True:
-        # Construct the full path to the JSON file in the current directory
         full_path = os.path.join(current_dir, filename)
 
-        # Check if the file exists
         if os.path.isfile(full_path):
-            # File found, read and return its content
             with open(full_path, 'r') as file:
                 data = json.load(file)
             return data
 
-        # Move up to the parent directory
         parent_dir = os.path.dirname(current_dir)
 
-        # Check if the root directory has been reached or the folder name is 'DMPG'
         if parent_dir == current_dir or os.path.basename(current_dir) == 'DMPG':
-            # No more directories to check or reached the 'DMPG' folder
             raise FileNotFoundError(f"File not found: {filename}")
 
-        # Set current directory to parent directory
         current_dir = parent_dir
 
 
@@ -176,11 +163,18 @@ def get_private_config():
         return None
 
 
-# Main function
 def main() -> None:
     print("Reading arguments from JSON")
 
-    public_config: dict = read_json("public_config.json")
+    try:
+        public_config: dict = read_json("public_config.json")
+        print("Public config loaded")
+    except FileNotFoundError:
+        print("public_config.json file not found.")
+        return
+    except json.JSONDecodeError as e:
+        print(f"Error decoding public_config.json: {e}")
+        return
 
     local_version = read_version_from_file(public_config.get('paths').get('local_version_file_path'))
     if local_version is None:
@@ -188,27 +182,25 @@ def main() -> None:
         return
 
     private_config: dict = get_private_config()
-
-    try:
-        # Check if input can be received
-        if sys.stdin.isatty():
-            print("stdin is interactive, prompting for password")
-            password: str = getpass(prompt=f'SSH Password for {private_config["user"]}: ')
-            print("Password input received")
-        else:
-            print("stdin is not interactive, cannot prompt for password")
-            return
-    except Exception as e:
-        print(f"Error with getpass: {e}")
+    if private_config is None:
+        print("Private config is None.")
         return
 
+    ssh_client = None  # Initialisierung von ssh_client
+
     try:
+        print("stdin is interactive, prompting for password")
+        # Ersetzen von getpass durch input
+        password: str = input(f'SSH Password for {private_config["user"]}: ')
+        print("Password input received")
+
+        print("Attempting to create SSH client...")
         ssh_client = create_ssh_client(public_config.get('server').get('name'),
                                        int(public_config.get('server').get('port')),
                                        private_config.get('user'), password)
         print("SSH connection established.")
 
-        # Check Python version
+        print("Checking Python version on remote system...")
         if not check_python_version(ssh_client,
                                     public_config.get('paths').get('required_python_version'),
                                     public_config.get('paths').get('env_activation_command')):
@@ -216,11 +208,8 @@ def main() -> None:
                   f"is not installed on the remote system.")
             return
 
-        # Check if the remote folder exists
         remote_folder_path = public_config.get('paths').get('remote_folder_path')
-        print(f"Remote folder path: {remote_folder_path}")
         remote_folder_path = remote_folder_path.replace('$USER', private_config["user"])
-        print(f"Remote folder path: {remote_folder_path}")
         _, error = execute_command(ssh_client, f'ls {remote_folder_path}')
         folder_exists = not bool(error)
 
@@ -233,10 +222,7 @@ def main() -> None:
                 print("Error reading remote version file:", error)
                 remote_version = None
 
-            if remote_version:
-                remote_version = json.loads(remote_version).get('version')
-
-            if remote_version == local_version:
+            if remote_version and remote_version == local_version:
                 print("The software is already up to date. No transfer needed.")
                 requirements_file_path = public_config.get('paths').get('requirements_file_path')
                 requirements_file_path = requirements_file_path.replace('$USER', private_config["user"])
@@ -254,12 +240,10 @@ def main() -> None:
         transfer_folder(ssh_client, local_folder_path, remote_folder_path)
         print(f"Folder successfully transferred to {remote_folder_path}.")
 
-        # Update the version file on the remote system
         transfer_folder(ssh_client, os.path.dirname(public_config.get('paths').get('local_version_file_path')),
                         remote_version_file_path)
         print(f"Version file successfully transferred to {remote_version_file_path}.")
 
-        # Install required libraries
         requirements_file_path = public_config.get('paths').get('requirements_file_path')
         requirements_file_path = requirements_file_path.replace('$USER', private_config["user"])
         install_libraries(ssh_client,
@@ -269,9 +253,13 @@ def main() -> None:
     except Exception as e:
         print(f"Error: {str(e)}")
     finally:
-        ssh_client.close()
-        print("SSH connection closed.")
+        if ssh_client:  # Überprüfung, ob ssh_client nicht None ist
+            ssh_client.close()
+            print("SSH connection closed.")
+
+
 
 
 if __name__ == "__main__":
     main()
+
