@@ -2,35 +2,21 @@
 FROM continuumio/miniconda3
 
 # Setze das Arbeitsverzeichnis
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Installiere notwendige System-Bibliotheken und Build-Tools
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    gfortran \
-    libarchive-dev \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/* \
-    && ln -s /usr/lib/x86_64-linux-gnu/libarchive.so.13 /usr/lib/x86_64-linux-gnu/libarchive.so.19
-
-# Installiere Mamba und aktiviere es als Default-Paketmanager
-RUN conda install mamba -n base -c conda-forge && conda clean -afy
-
-# Erstelle eine Python 3.8 Umgebung mit Mamba
-RUN mamba create -n myenv python=3.8 && conda clean -afy
-
-# Setze die Umgebungsvariable, damit die Umgebung "myenv" verwendet wird
-ENV PATH /opt/conda/envs/myenv/bin:$PATH
-
-# Kopiere die environment.yml Datei ins Arbeitsverzeichnis
-COPY environment.yml .
-
-# Nutze Mamba für die Aktualisierung der Umgebung mit environment.yml
-RUN mamba env update --file environment.yml --name myenv && conda clean -afy
-
-# Kopiere die Anwendung
+# Kopiere den gesamten Inhalt des aktuellen Verzeichnisses auf dem Host in das Arbeitsverzeichnis im Container
 COPY . .
 
-# Verifikation durchlaufen lassen (optional, kann entfernt werden, um Beschleunigung zu erhöhen)
-RUN conda list && conda info
+# Erstellen der Conda-Umgebung aus der environment.yml Datei
+RUN conda env create -f environment.yml
+
+# Aktivieren der Conda-Umgebung und diese als Standard festlegen
+RUN echo "source activate myenv" > ~/.bashrc && \
+    echo "conda activate myenv" >> ~/.bashrc
+ENV PATH /opt/conda/envs/myenv/bin:$PATH
+
+# Installiere notwendige System-Abhängigkeiten und Build-Tools
+RUN apt-get update && apt-get install -y build-essential && apt-get clean
+
+# Starte das Skript und halte den Container offen
+CMD ["bash", "-c", "python composite_tree.py && tail -f /dev/null"]
