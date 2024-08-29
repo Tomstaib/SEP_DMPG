@@ -20,4 +20,4 @@ RUN apt-get update && apt-get install -y build-essential && apt-get clean
 
 # Standardbefehl setzen, der ausgeführt wird, wenn der Container gestartet wird
 # Hier wird einfach eine Bash-Shell gestartet, um den Container aktiv zu halten
-CMD ["bash"]
+CMD tail -f /dev/null
