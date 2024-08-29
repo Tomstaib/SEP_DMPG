@@ -144,10 +144,13 @@ class Entity(Base):
 # Kann genutzt werden um die Tabellen anzulegen
 def create_tables():
     db_user = 'sep'
-    db_host = 'imt-sep-001.lin.hs-osnabrueck.de'
-    db_port = '55432'
+    db_host = 'localhost'
+    db_port = '5432'
     db_name = 'distributed_computing'
+    db_password = 'sep'
 
-    db_url = f"postgresql+psycopg2://{db_user}@{db_host}:{db_port}/{db_name}"
+    db_url = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
     engine = create_engine(db_url)
     Base.metadata.create_all(engine)
+
+create_tables()
