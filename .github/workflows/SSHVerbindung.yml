@@ -16,7 +16,8 @@ jobs:
       max-parallel: 5
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Python 3.8
         uses: actions/setup-python@v3
@@ -26,7 +27,7 @@ jobs:
       - name: Install Miniconda
         uses: conda-incubator/setup-miniconda@v2
         with:
-          activate-environment: myenv
+          activate-environment: my_env
           auto-update-conda: true
           auto-activate-base: false
 
@@ -38,7 +39,7 @@ jobs:
       - name: Install dependencies
         if: env.ENV_FOUND == 'true'
         run: |
-          conda env update --file environment.yml --name myenv
+          conda env update --file environment.yml --name my_env
           conda clean -afy
         shell: bash -l {0}
 
@@ -60,9 +61,17 @@ jobs:
         run: |
           if ls tests/test*.py 1> /dev/null 2>&1; then echo "TEST_FILES_FOUND=true" >> $GITHUB_ENV; else echo "TEST_FILES_FOUND=false" >> $GITHUB_ENV; fi
 
+      - name: Add module path to PYTHONPATH
+        if: env.ENV_FOUND == 'true'
+        run: echo "PYTHONPATH=$GITHUB_WORKSPACE:$PYTHONPATH" >> $GITHUB_ENV
+
+      - name: Display PYTHONPATH for debugging
+        if: env.ENV_FOUND == 'true'
+        run: echo "PYTHONPATH is set to: $PYTHONPATH"
+
       - name: Run tests with pytest
         if: env.ENV_FOUND == 'true' && env.TEST_FILES_FOUND == 'true'
-        run: conda run -n myenv pytest --maxfail=3 --disable-warnings -q
+        run: conda run -n my_env pytest --maxfail=3 --disable-warnings -q
         shell: bash -l {0}
 
   build-and-push-docker:
@@ -95,4 +104,4 @@ jobs:
           context: .
           file: Dockerfile
           push: true
-          tags: tomstaib/sep_dmpg:${{ github.ref_name }}
+          tags: YOUR_DOCKER_HUB_USERNAME/YOUR_REPOSITORY:${{ github.ref_name }}
