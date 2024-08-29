@@ -21,7 +21,8 @@ ENV PATH=/opt/conda/envs/my_env/bin:$PATH
 # Füge das Arbeitsverzeichnis und das Modulverzeichnis zum PYTHONPATH hinzu
 ENV PYTHONPATH=/app:/app/SSHVerbindung
 
-# Ausgabe des aktuellen PYTHONPATH zur Überprüfung
-RUN echo "PYTHONPATH is set to: $PYTHONPATH"
+# Debugging: Ausgabe der Verzeichnisstruktur zur Überprüfung
+RUN echo "Listing /app directory:" && ls -l /app && \
+    echo "Listing /app/SSHVerbindung directory:" && ls -l /app/SSHVerbindung
 
 CMD tail -f /dev/null
