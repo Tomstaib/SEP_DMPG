@@ -1,6 +1,6 @@
 ./*
-!./src/util/composite_tree.py
-./src/__pycache__
+!Verteilung/composite_tree.py
+Verteilung/__pycache__
 __pycache__
 dist
 .idea
