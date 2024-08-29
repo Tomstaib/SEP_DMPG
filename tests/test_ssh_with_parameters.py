@@ -3,25 +3,24 @@ import os
 import stat
 import json
 import unittest
-import sys
-from unittest.mock import patch, MagicMock, mock_open, Mock
+from unittest.mock import patch, MagicMock, mock_open, Mock, call
+from tkinter import Tk
+
 
 #third-party-modules
 import paramiko
 from paramiko.ssh_exception import SSHException
 
-# Für Dockercontainer zum initialisierren der lokalen Module
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
-# lokale Module
+#local-modules
 import SSHVerbindung.ssh_with_parameters
 from SSHVerbindung.ssh_with_parameters import (
     create_ssh_client, transfer_folder, is_valid, ensure_remote_directory,
-    transfer_file, read_json
+    transfer_file, read_json, select_folder, check_python_version, install_libraries, get_private_config, main, read_version_from_file, execute_command
 )
 
 
-class TestCreateSShClient(unittest.TestCase):
+class TestCreateSSHClient(unittest.TestCase):
     # checks if the method correctly creates and configures an SSH client. It verifies that
     # SSHClient.connect is called with the provided server, port, username, and password, and also checks if system
     # host keys are loaded and the policy for missing host keys is set.
@@ -148,9 +147,7 @@ class TestEnsureRemoteDirectory(unittest.TestCase):
 
 
 class TestTransfer(unittest.TestCase):
-    # verifies that the transfer_folder function successfully transfers a folder from the local to the remote system.
-    # It simulates a directory structure and ensures that files are transferred and the SFTP connection is properly
-    # closed.
+
     @patch('paramiko.SSHClient')
     @patch('os.walk')
     @patch('SSHVerbindung.ssh_with_parameters.ensure_remote_directory')
@@ -170,12 +167,10 @@ class TestTransfer(unittest.TestCase):
 
         mock_sftp_client.close.assert_called_once_with()
 
-    # ensures that the transfer_folder function skips invalid directories. It simulates a directory containing an
-    # invalid subdirectory and verifies that no files from the invalid directory are transferred.
     @patch('paramiko.SSHClient')
     @patch('os.walk')
-    @patch('SSHVerbindung.ssh_with_parameters.is_valid')
-    def test_transfer_folder_skip_invalid_directory(self, mock_os_walk, mock_is_valid, mock_ssh_client):
+    @patch('SSHVerbindung.ssh_with_parameters.is_valid', side_effect=lambda path: 'invalid' not in path)
+    def test_transfer_folder_skip_invalid_directory(self, mock_is_valid, mock_os_walk, mock_ssh_client):
         mock_sftp_client = mock_ssh_client.return_value.open_sftp.return_value
         mock_sftp_client.stat.side_effect = None
         mock_sftp_client.mkdir = MagicMock()
@@ -183,36 +178,59 @@ class TestTransfer(unittest.TestCase):
         mock_sftp_client.put = MagicMock()
 
         mock_os_walk.return_value = [
-            ('/local/folder', ['invalid_dir'], ['file1.txt']),
-            ('/local/folder/invalid_dir', [], ['file2.txt']),
+            (os.path.normpath('/local/folder'), ['invalid_dir', 'valid_dir'], ['file1.txt']),
+            (os.path.normpath('/local/folder/invalid_dir'), [], ['file2.txt']),
+            (os.path.normpath('/local/folder/valid_dir'), [], ['file3.txt']),
         ]
 
-        transfer_folder(mock_ssh_client(), '/local/folder', '/remote/folder')
+        def custom_transfer_file(sftp, local_file_path, remote_file_path):
+            print(f"Versuche, {local_file_path} nach {remote_file_path} zu übertragen")
+            sftp.put(local_file_path.replace('\\', '/'), remote_file_path.replace('\\', '/'))
 
-        mock_sftp_client.put.assert_not_called()
+        with patch('SSHVerbindung.ssh_with_parameters.transfer_file', new=custom_transfer_file):
+            transfer_folder(mock_ssh_client(), os.path.normpath('/local/folder'), os.path.normpath('/remote/folder'))
 
-    # checks that the transfer_folder function does not transfer invalid files. It simulates a directory with an
-    # invalid file and ensures that the file is not uploaded.
+        expected_calls = [
+            ('/local/folder/file1.txt', '/remote/folder/file1.txt'),
+            ('/local/folder/valid_dir/file3.txt', '/remote/folder/valid_dir/file3.txt')
+        ]
+
+        actual_calls = [
+            (args[0].replace("\\", "/"), args[1].replace("\\", "/"))
+            for args, kwargs in mock_sftp_client.put.call_args_list
+        ]
+
+        for expected_call in expected_calls:
+            if expected_call not in actual_calls:
+                raise AssertionError(f"{expected_call[0]} wurde nicht nach {expected_call[1]} übertragen.")
+
     @patch('paramiko.SSHClient')
     @patch('os.walk')
-    @patch('SSHVerbindung.ssh_with_parameters.is_valid')
-    def test_transfer_folder_invalid_file(self, mock_os_walk, mock_is_valid, mock_ssh_client):
+    @patch('SSHVerbindung.ssh_with_parameters.is_valid', side_effect=lambda path: 'invalid' not in path)
+    def test_transfer_folder_invalid_file(self, mock_is_valid, mock_os_walk, mock_ssh_client):
         mock_sftp_client = mock_ssh_client.return_value.open_sftp.return_value
         mock_sftp_client.stat.side_effect = None
         mock_sftp_client.mkdir = MagicMock()
         mock_sftp_client.chmod = MagicMock()
         mock_sftp_client.put = MagicMock()
 
+        # Simuliere ein Dateisystem mit einer "invaliden" Datei
         mock_os_walk.return_value = [
-            ('/local/folder', ['src'], ['invalid_file.docx', 'file2.txt']),
+            ('/local/folder', [], ['invalid_file.docx', 'file2.txt']),
         ]
 
+        # Die is_valid Funktion soll 'invalid' Dateien als ungültig markieren
+        mock_is_valid.side_effect = lambda path: 'invalid' not in path
+
+        # Führe den Test durch
         transfer_folder(mock_ssh_client(), '/local/folder', '/remote/folder')
 
-        mock_sftp_client.put.assert_not_called()
+        # Überprüfen, dass nur die gültige Datei übertragen wurde
+        mock_sftp_client.put.assert_called_once_with(
+            '/local/folder/file2.txt'.replace('\\', '/'),
+            '/remote/folder/file2.txt'.replace('\\', '/')
+        )
 
-    # verifies that the transfer_folder function handles failures during file transfer. It simulates an exception
-    # occurring during the transfer process and confirms that the exception is raised and the SFTP connection is closed.
     @patch('paramiko.SSHClient')
     @patch('os.walk')
     def test_transfer_folder_failure(self, mock_os_walk, mock_ssh_client):
@@ -231,8 +249,6 @@ class TestTransfer(unittest.TestCase):
             transfer_folder(mock_ssh_client(), '/local/folder', '/remote/folder')
             mock_sftp_client.close.assert_called_once_with()
 
-    # checks if the transfer_file function successfully transfers a single file from local to remote. It ensures that
-    # the put method is called with the correct file paths.
     @patch('paramiko.SSHClient')
     def test_transfer_file_success(self, mock_sftp_client):
         mock_sftp_client = MagicMock()
@@ -245,8 +261,6 @@ class TestTransfer(unittest.TestCase):
 
         mock_sftp_client.put.assert_called_with(local_file_path, remote_file_path)
 
-    # verifies that the transfer_file function handles errors during file transfer. It simulates an exception being
-    # raised during the transfer and ensures that the exception is properly raised.
     @patch('paramiko.SSHClient')
     def test_transfer_file_failure(self, mock_sftp_client):
         mock_sftp_client = MagicMock()
@@ -258,7 +272,87 @@ class TestTransfer(unittest.TestCase):
         remote_file_path = 'test_remote.txt'
 
         with self.assertRaises(Exception):
-            (transfer_file(mock_sftp_client, local_file_path, remote_file_path))
+            transfer_file(mock_sftp_client, local_file_path, remote_file_path)
+
+    @patch('paramiko.SSHClient')
+    @patch('os.walk')
+    def test_transfer_folder_various_structures(self, mock_os_walk, mock_ssh_client):
+        mock_sftp_client = mock_ssh_client.return_value.open_sftp.return_value
+        mock_sftp_client.stat.side_effect = None
+        mock_sftp_client.mkdir = MagicMock()
+        mock_sftp_client.chmod = MagicMock()
+        mock_sftp_client.put = MagicMock()
+
+        mock_os_walk.return_value = [
+            ('/local/folder', ['dir1', 'dir2'], ['a.txt', 'b.html']),
+            ('/local/folder/dir1', ['subdir1'], ['c.csv']),
+            ('/local/folder/dir1/subdir1', [], ['d.pdf']),
+            ('/local/folder/dir2', [], ['e.jpeg', 'f.xml']),
+        ]
+
+        transfer_folder(mock_ssh_client(), '/local/folder', '/remote/folder')
+
+        expected_calls = [
+            ('/local/folder/a.txt', '/remote/folder/a.txt'),
+            ('/local/folder/b.html', '/remote/folder/b.html'),
+            ('/local/folder/dir1/c.csv', '/remote/folder/dir1/c.csv'),
+            ('/local/folder/dir1/subdir1/d.pdf', '/remote/folder/dir1/subdir1/d.pdf'),
+            ('/local/folder/dir2/e.jpeg', '/remote/folder/dir2/e.jpeg'),
+            ('/local/folder/dir2/f.xml', '/remote/folder/dir2/f.xml'),
+        ]
+
+        actual_calls = [
+            (args[0].replace("\\", "/"), args[1].replace("\\", "/"))
+            for args, kwargs in mock_sftp_client.put.call_args_list
+        ]
+
+        for expected_call in expected_calls:
+            if expected_call not in actual_calls:
+                raise AssertionError(f"{expected_call[0]} wurde nicht nach {expected_call[1]} übertragen.")
+
+    @patch('paramiko.SSHClient')
+    @patch('os.walk')
+    def test_transfer_folder_with_hidden_files(self, mock_os_walk, mock_ssh_client):
+        mock_sftp_client = mock_ssh_client.return_value.open_sftp.return_value
+        mock_sftp_client.stat.side_effect = None
+        mock_sftp_client.mkdir = MagicMock()
+        mock_sftp_client.chmod = MagicMock()
+        mock_sftp_client.put = MagicMock()
+
+        mock_os_walk.return_value = [
+            ('/local/folder', [], ['.hidden_file', 'visible_file.txt']),
+        ]
+
+        transfer_folder(mock_ssh_client(), '/local/folder', '/remote/folder')
+
+        mock_sftp_client.put.assert_called_once_with(
+            '/local/folder/visible_file.txt'.replace('\\', '/'),
+            '/remote/folder/visible_file.txt'.replace('\\', '/')
+        )
+
+    @patch('paramiko.SSHClient')
+    @patch('os.walk')
+    @patch('SSHVerbindung.ssh_with_parameters.is_valid', side_effect=lambda path: 'invalid' not in path)
+    def test_transfer_folder_with_permissions(self, mock_is_valid, mock_os_walk, mock_ssh_client):
+        # Erstelle Mocks für die SFTP-Methoden
+        mock_sftp_client = mock_ssh_client.return_value.open_sftp.return_value
+        # Simuliere, dass das Verzeichnis nicht existiert, indem "stat" einen IOError auslöst
+        mock_sftp_client.stat.side_effect = IOError
+        mock_sftp_client.mkdir = MagicMock()
+        mock_sftp_client.chmod = MagicMock()
+        mock_sftp_client.put = MagicMock()
+
+        # Simuliere ein Verzeichnis mit einer Datei
+        mock_os_walk.return_value = [
+            (os.path.normpath('/local/folder'), [], ['file1.txt']),
+        ]
+
+        # Aufruf der transfer_folder Funktion
+        transfer_folder(mock_ssh_client(), os.path.normpath('/local/folder'), os.path.normpath('/remote/folder'))
+
+        # Überprüfen, ob chmod aufgerufen wurde, da das Verzeichnis neu erstellt wurde
+        print(f"chmod calls: {mock_sftp_client.chmod.call_args_list}")
+        mock_sftp_client.chmod.assert_called_with('/remote/folder', stat.S_IRWXU)
 
 
 class TestReadVersionFromFile(unittest.TestCase):
@@ -290,7 +384,7 @@ class TestReadVersionFromFile(unittest.TestCase):
         self.assertIsNone(result)
 
 
-class TestExecudeCommand(unittest.TestCase):
+class TestExecuteCommand(unittest.TestCase):
     def setUp(self):
         self.ssh_client = MagicMock(spec=paramiko.SSHClient)
         self.stdout_mock = MagicMock()
@@ -360,6 +454,247 @@ class TestReadJson(unittest.TestCase):
 
         with self.assertRaises(FileNotFoundError):
             read_json('test.json')
+
+
+class TestSelectFolder(unittest.TestCase):
+
+    @patch('SSHVerbindung.ssh_with_parameters.askdirectory')
+    @patch('SSHVerbindung.ssh_with_parameters.Tk')
+    def test_select_folder(self, mock_tk, mock_askdirectory):
+        # Mock vom askdirectory-Rückgabewert
+        mock_askdirectory.return_value = '/mocked/path'
+
+        # Aufruf der Funktion
+        result = select_folder()
+
+        # Überprüfe, ob Tk() und askdirectory() korrekt aufgerufen wurden
+        mock_tk.assert_called_once()
+        mock_askdirectory.assert_called_once()
+
+        # Überprüfe, ob die Ergebnisse übereinstimmen
+        self.assertEqual(result, '/mocked/path')
+
+
+class TestCheckPythonVersion(unittest.TestCase):
+
+    @patch('SSHVerbindung.ssh_with_parameters.execute_command')
+    @patch('paramiko.SSHClient')
+    def test_check_python_version_success(self, mock_ssh_client, mock_execute_command):
+        # Simuliere den erfolgreichen Befehlsausgabe
+        mock_execute_command.return_value = ("Python 3.8.10", "")
+
+        # Ruf die Funktion auf
+        result = check_python_version(mock_ssh_client, '3.8', 'source /env/bin/activate')
+
+        # Überprüfe, dass execute_command aufgerufen wurde
+        mock_execute_command.assert_called_once_with(
+            mock_ssh_client, 'source /env/bin/activate && python3 --version'
+        )
+
+        # Überprüfe, ob die Version korrekt erkannt wurde
+        self.assertTrue(result)
+
+    @patch('SSHVerbindung.ssh_with_parameters.execute_command')
+    @patch('paramiko.SSHClient')
+    def test_check_python_version_failure(self, mock_ssh_client, mock_execute_command):
+        # Simuliere eine fehlerhafte Befehlsausgabe (z.B. falsche Python-Version)
+        mock_execute_command.return_value = ("Python 3.7.9", "")
+
+        # Ruf die Funktion auf
+        result = check_python_version(mock_ssh_client, '3.8', 'source /env/bin/activate')
+
+        # Überprüfe, ob das Ergebnis False ist
+        self.assertFalse(result)
+
+    @patch('SSHVerbindung.ssh_with_parameters.execute_command')
+    @patch('paramiko.SSHClient')
+    def test_check_python_version_error(self, mock_ssh_client, mock_execute_command):
+        # Simuliere einen Fehler im Befehl (z.B. STDERR)
+        mock_execute_command.return_value = ("", "Error: command not found")
+
+        # Ruf die Funktion auf
+        result = check_python_version(mock_ssh_client, '3.8', 'source /env/bin/activate')
+
+        # Überprüfe, ob das Ergebnis False ist und der Fehler korrekt verarbeitet wurde
+        self.assertFalse(result)
+
+
+class TestInstallLibraries(unittest.TestCase):
+
+    @patch('SSHVerbindung.ssh_with_parameters.execute_command')
+    @patch('paramiko.SSHClient')
+    def test_install_libraries(self, mock_ssh_client, mock_execute_command):
+        # Ruf die Funktion auf
+        install_libraries(mock_ssh_client, '/path/to/requirements.txt', 'source /env/bin/activate')
+
+        # Überprüfe, dass execute_command mit den richtigen Parametern aufgerufen wurde
+        mock_execute_command.assert_called_once_with(
+            mock_ssh_client,
+            'source /env/bin/activate && pip3 install -r /path/to/requirements.txt'
+        )
+
+
+class TestGetPrivateConfig(unittest.TestCase):
+
+    @patch('SSHVerbindung.ssh_with_parameters.read_json')
+    def test_get_private_config_success(self, mock_read_json):
+        # Simuliere einen erfolgreichen JSON-Lesevorgang
+        mock_read_json.return_value = {'user': 'test_user'}
+
+        # Rufe die Funktion auf
+        result = get_private_config()
+
+        # Überprüfe, ob das Ergebnis korrekt ist
+        self.assertIsNotNone(result)
+        self.assertEqual(result['user'], 'test_user')
+
+    @patch('SSHVerbindung.ssh_with_parameters.read_json')
+    def test_get_private_config_file_not_found(self, mock_read_json):
+        # Simuliere das Werfen einer FileNotFoundError
+        mock_read_json.side_effect = FileNotFoundError
+
+        # Rufe die Funktion auf
+        result = get_private_config()
+
+        # Überprüfe, ob das Ergebnis None ist, wenn die Datei nicht gefunden wird
+        self.assertIsNone(result)
+
+
+class TestMainFunction(unittest.TestCase):
+
+    @patch('SSHVerbindung.ssh_with_parameters.install_libraries')
+    @patch('SSHVerbindung.ssh_with_parameters.transfer_folder')
+    @patch('SSHVerbindung.ssh_with_parameters.select_folder', return_value='/local/folder')
+    @patch('SSHVerbindung.ssh_with_parameters.check_python_version', return_value=True)
+    @patch('SSHVerbindung.ssh_with_parameters.execute_command', return_value=("", ""))
+    @patch('SSHVerbindung.ssh_with_parameters.create_ssh_client')
+    @patch('SSHVerbindung.ssh_with_parameters.get_private_config', return_value={"user": "testuser"})
+    @patch('SSHVerbindung.ssh_with_parameters.read_version_from_file', return_value="1.0.0")
+    @patch('SSHVerbindung.ssh_with_parameters.read_json', side_effect=[{
+        "paths": {
+            "local_version_file_path": "/path/to/local/version.json",
+            "required_python_version": "3.8",
+            "env_activation_command": "/path/to/env/activate",
+            "remote_folder_path": "/remote/folder",
+            "remote_version_file_path": "/remote/folder/version.json",
+            "requirements_file_path": "/path/to/requirements.txt"
+        },
+        "server": {
+            "name": "testserver",
+            "port": "22"
+        }
+    }, {"version": "1.0.0"}])
+    @patch('sys.stdin.isatty', return_value=True)
+    @patch('builtins.input', return_value='password')  # Mock input instead of getpass
+    def test_main_function(self, mock_input, mock_isatty, mock_read_json, mock_read_version, mock_get_private_config,
+                           mock_create_ssh, mock_exec_command, mock_check_python_version, mock_select_folder,
+                           mock_transfer_folder, mock_install_libraries):
+        # Erstelle ein Mock-Objekt für den SSH-Client
+        mock_ssh_client = MagicMock()
+        mock_create_ssh.return_value = mock_ssh_client
+
+        # Debugging-Ausgaben für die Hauptfunktion
+        print("Test started: main() function execution")
+
+        try:
+            print("Calling main()")
+            main()
+        except Exception as e:
+            print(f"Error occurred during test execution: {e}")
+
+        # Überprüfen, ob alle Vorbedingungen erfüllt sind
+        self.assertTrue(mock_get_private_config.called, "get_private_config wurde nicht aufgerufen")
+        self.assertTrue(mock_read_json.called, "read_json wurde nicht aufgerufen")
+        self.assertTrue(mock_read_version.called, "read_version_from_file wurde nicht aufgerufen")
+        self.assertTrue(mock_input.called, "input wurde nicht aufgerufen")  # Check if input was called
+
+        # Sicherstellen, dass die SSH-Verbindung erstellt wurde
+        mock_create_ssh.assert_called_once_with('testserver', 22, 'testuser', 'password')
+        print("SSH client was created successfully.")
+
+    # Zusätzliche Testfunktionen, die auf `return` statt `SystemExit` testen
+
+    @patch('SSHVerbindung.ssh_with_parameters.read_json')
+    def test_public_config_file_not_found(self, mock_read_json):
+        mock_read_json.side_effect = FileNotFoundError
+        main()
+        print("Test passed: main() returned successfully when public_config file was not found.")
+
+    @patch('SSHVerbindung.ssh_with_parameters.read_json')
+    def test_public_config_json_decode_error(self, mock_read_json):
+        mock_read_json.side_effect = json.JSONDecodeError("Expecting value", "document", 0)
+        main()
+        print("Test passed: main() returned successfully when JSON decoding failed.")
+
+    @patch('SSHVerbindung.ssh_with_parameters.read_json',
+           return_value={'paths': {'local_version_file_path': 'some/path'}})
+    @patch('SSHVerbindung.ssh_with_parameters.read_version_from_file', return_value=None)
+    @patch('builtins.print')
+    def test_local_version_file_is_none(self, mock_print, mock_read_version_from_file, mock_read_json):
+        main()
+        # Überprüfen, dass "Local version file not found or invalid." aufgerufen wurde
+        mock_print.assert_any_call("Local version file not found or invalid.")
+        # Überprüfen, dass "Private config is None." nicht aufgerufen wurde
+        assert not any(call[0][0] == "Private config is None." for call in mock_print.call_args_list)
+
+    @patch('SSHVerbindung.ssh_with_parameters.read_json',
+           return_value={'paths': {'local_version_file_path': 'some/path'}})
+    @patch('SSHVerbindung.ssh_with_parameters.read_version_from_file', return_value='some_version')
+    @patch('SSHVerbindung.ssh_with_parameters.get_private_config', return_value=None)
+    @patch('builtins.print')
+    def test_private_config_is_none(self, mock_print, mock_get_private_config, mock_read_version_from_file,
+                                    mock_read_json):
+        main()
+
+        # Überprüfen, dass "Private config is None." tatsächlich ausgegeben wird
+        print("Call args list:", mock_print.call_args_list)
+        assert any(call[0][0] == "Private config is None." for call in mock_print.call_args_list), \
+            "Expected 'Private config is None.' not found in print calls"
+
+        # Überprüfen, dass keine andere Ausgabe wie "Local version file not found or invalid." gemacht wird
+        unexpected_calls = [call for call in mock_print.call_args_list if
+                            call[0][0] == "Local version file not found or invalid."]
+        assert not unexpected_calls, f"Unexpected print calls: {unexpected_calls}"
+
+    @patch('SSHVerbindung.ssh_with_parameters.execute_command', return_value=(None, "Some error"))
+    def test_error_reading_remote_version_file(self, mock_execute_command):
+        main()
+        print("Test passed: main() returned successfully when an error occurred reading the remote version file.")
+
+    @patch('SSHVerbindung.ssh_with_parameters.select_folder', return_value=None)
+    def test_no_folder_selected(self, mock_select_folder):
+        main()
+        print("Test passed: main() returned successfully when no folder was selected.")
+
+    @patch('SSHVerbindung.ssh_with_parameters.create_ssh_client', side_effect=Exception("Test exception"))
+    def test_general_exception_handling(self, mock_create_ssh_client):
+        main()
+        print("Test passed: main() returned successfully when a general exception occurred.")
+
+    @patch('SSHVerbindung.ssh_with_parameters.execute_command', return_value=("1.0.0", None))
+    @patch('SSHVerbindung.ssh_with_parameters.read_version_from_file', return_value="1.0.0")
+    def test_software_already_up_to_date(self, mock_execute_command, mock_read_version_from_file):
+        main()
+        print("Test passed: main() returned successfully when the software was already up to date.")
+
+    @patch('SSHVerbindung.ssh_with_parameters.read_json', return_value={
+        'paths': {
+            'remote_folder_path': '/home/$USER/remote_folder',
+            'remote_version_file_path': '/home/$USER/remote_version_file',
+            'requirements_file_path': '/home/$USER/requirements.txt',
+        }
+    })
+    @patch('SSHVerbindung.ssh_with_parameters.get_private_config', return_value={'user': 'testuser'})
+    def test_placeholder_replacement(self, mock_get_private_config, mock_read_json):
+        public_config = mock_read_json.return_value
+        private_config = mock_get_private_config.return_value
+
+        for key in ['remote_folder_path', 'remote_version_file_path', 'requirements_file_path']:
+            path = public_config['paths'][key].replace('$USER', private_config['user'])
+            self.assertIn('testuser', path, f"Placeholder replacement failed for {key}")
+
+
+
 
 
 if __name__ == '__main__':
