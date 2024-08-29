@@ -3,13 +3,17 @@ import os
 import stat
 import json
 import unittest
+import sys
 from unittest.mock import patch, MagicMock, mock_open, Mock
 
 #third-party-modules
 import paramiko
 from paramiko.ssh_exception import SSHException
 
-#local-modules
+# Für Dockercontainer zum initialisierren der lokalen Module
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+
+# lokale Module
 import SSHVerbindung.ssh_with_parameters
 from SSHVerbindung.ssh_with_parameters import (
     create_ssh_client, transfer_folder, is_valid, ensure_remote_directory,
