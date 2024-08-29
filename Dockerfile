@@ -18,5 +18,6 @@ ENV PATH /opt/conda/envs/myenv/bin:$PATH
 # Installiere notwendige System-Abhängigkeiten und Build-Tools
 RUN apt-get update && apt-get install -y build-essential && apt-get clean
 
-# Starte das Skript und halte den Container offen
-CMD ["bash", "-c", "python composite_tree.py && tail -f /dev/null"]
+# Standardbefehl setzen, der ausgeführt wird, wenn der Container gestartet wird
+# Hier wird einfach eine Bash-Shell gestartet, um den Container aktiv zu halten
+CMD ["bash"]
