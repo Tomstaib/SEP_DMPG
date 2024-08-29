@@ -1,13 +1,20 @@
+#standard-library-modules
+import os
 import stat
+import json
 import unittest
 from unittest.mock import patch, MagicMock, mock_open, Mock
-import os
+
+#third-party-modules
 import paramiko
 from paramiko.ssh_exception import SSHException
-import json
-import ssh_with_parameters
-from ssh_with_parameters import create_ssh_client, transfer_folder, is_valid, ensure_remote_directory, transfer_file, \
-    read_json
+
+#local-modules
+import SSHVerbindung.ssh_with_parameters
+from SSHVerbindung.ssh_with_parameters import (
+    create_ssh_client, transfer_folder, is_valid, ensure_remote_directory,
+    transfer_file, read_json
+)
 
 
 class TestCreateSShClient(unittest.TestCase):
@@ -142,7 +149,7 @@ class TestTransfer(unittest.TestCase):
     # closed.
     @patch('paramiko.SSHClient')
     @patch('os.walk')
-    @patch('ssh_with_parameters.ensure_remote_directory')
+    @patch('SSHVerbindung.ssh_with_parameters.ensure_remote_directory')
     def test_transfer_folder_success(self, mock_ensure_remote_directory, mock_os_walk, mock_ssh_client):
         mock_sftp_client = mock_ssh_client.return_value.open_sftp.return_value
         mock_sftp_client.stat.side_effect = FileNotFoundError
@@ -163,7 +170,7 @@ class TestTransfer(unittest.TestCase):
     # invalid subdirectory and verifies that no files from the invalid directory are transferred.
     @patch('paramiko.SSHClient')
     @patch('os.walk')
-    @patch('ssh_with_parameters.is_valid')
+    @patch('SSHVerbindung.ssh_with_parameters.is_valid')
     def test_transfer_folder_skip_invalid_directory(self, mock_os_walk, mock_is_valid, mock_ssh_client):
         mock_sftp_client = mock_ssh_client.return_value.open_sftp.return_value
         mock_sftp_client.stat.side_effect = None
@@ -184,7 +191,7 @@ class TestTransfer(unittest.TestCase):
     # invalid file and ensures that the file is not uploaded.
     @patch('paramiko.SSHClient')
     @patch('os.walk')
-    @patch('ssh_with_parameters.is_valid')
+    @patch('SSHVerbindung.ssh_with_parameters.is_valid')
     def test_transfer_folder_invalid_file(self, mock_os_walk, mock_is_valid, mock_ssh_client):
         mock_sftp_client = mock_ssh_client.return_value.open_sftp.return_value
         mock_sftp_client.stat.side_effect = None
@@ -255,27 +262,27 @@ class TestReadVersionFromFile(unittest.TestCase):
     # extracts the version value correctly from the file's content.
     @patch("builtins.open", new_callable=mock_open, read_data='{"version": "1.0.0"}')
     def test_valid_file(self, mock_file):
-        result = ssh_with_parameters.read_version_from_file("dummy_path.json")
+        result = SSHVerbindung.ssh_with_parameters.read_version_from_file("dummy_path.json")
         self.assertEqual(result, "1.0.0")
 
     # evaluates how read_version_from_file handles the case when the file does not exist. It simulates a
     # FileNotFoundError and verifies that the method returns None.
     @patch("builtins.open", side_effect=FileNotFoundError)
     def test_file_not_found(self, mock_file):
-        result = ssh_with_parameters.read_version_from_file("non_existent_file.json")
+        result = SSHVerbindung.ssh_with_parameters.read_version_from_file("non_existent_file.json")
         self.assertIsNone(result)
     # checks if read_version_from_file returns None when the version key is missing in the JSON file. It ensures that
     # the absence of the key is handled correctly.
     @patch("builtins.open", new_callable=mock_open, read_data='{"other_key": "1.0.0"}')
     def test_key_error(self, mock_file):
-        result = ssh_with_parameters.read_version_from_file("missing_version_key.json")
+        result = SSHVerbindung.ssh_with_parameters.read_version_from_file("missing_version_key.json")
         self.assertIsNone(result)
 
     # assesses how read_version_from_file handles errors in JSON decoding. It simulates an invalid JSON format and
     # verifies that the method returns None.
     @patch("builtins.open", new_callable=mock_open, read_data='{"version": ')
     def test_json_decode_error(self, mock_file):
-        result = ssh_with_parameters.read_version_from_file("invalid_json.json")
+        result = SSHVerbindung.ssh_with_parameters.read_version_from_file("invalid_json.json")
         self.assertIsNone(result)
 
 
@@ -293,7 +300,7 @@ class TestExecudeCommand(unittest.TestCase):
         self.stdout_mock.read.return_value = b'command output\n'
         self.stderr_mock.read.return_value = b''
 
-        stdout, stderr = ssh_with_parameters.execute_command(self.ssh_client, 'echo "test"')
+        stdout, stderr = SSHVerbindung.ssh_with_parameters.execute_command(self.ssh_client, 'echo "test"')
 
         self.assertEqual(stdout, 'command output')
         self.assertEqual(stderr, '')
@@ -304,7 +311,7 @@ class TestExecudeCommand(unittest.TestCase):
         self.stdout_mock.read.return_value = b''
         self.stderr_mock.read.return_value = b'error message\n'
 
-        stdout, stderr = ssh_with_parameters.execute_command(self.ssh_client, 'invalid command')
+        stdout, stderr = SSHVerbindung.ssh_with_parameters.execute_command(self.ssh_client, 'invalid command')
 
         self.assertEqual(stdout, '')
         self.assertEqual(stderr, 'error message')
