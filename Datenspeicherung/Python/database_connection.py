@@ -7,14 +7,14 @@ from sqlalchemy.orm import sessionmaker
 import orm
 
 DB_USER = 'sep'
-DB_HOST = 'imt-sep-001.lin.hs-osnabrueck.de'
-DB_PORT = '55432'
+DB_HOST = 'localhost'
+DB_PORT = '5432'
 DB_NAME = 'distributed_computing'
-
+DB_PASSWORD = 'sep'
 
 def connect_to_db():
     # Create the database URL
-    db_url = f"postgresql+psycopg2://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    db_url = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     # The password will be fetched from .pgpass automatically
     engine = create_engine(db_url)
 
@@ -30,6 +30,10 @@ def connect_to_db():
 
 Session = sessionmaker(bind=connect_to_db())
 session = Session()
+
+orm.create_tables()
+
+session.commit()
 
 ###### So kann gespeichert werden #####
 # model = orm.Model(123,'Test')
