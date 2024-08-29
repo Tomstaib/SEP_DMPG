@@ -13,12 +13,15 @@ RUN apt-get update && apt-get install -y build-essential && apt-get clean
 # Erstelle die Conda-Umgebung aus der environment.yml Datei
 RUN conda env create -f environment.yml
 
-# Aktivieren der Conda-Umgebung und Setzen als Standard
+# Aktivieren der Conda-Umgebung und als Standard festlegen
 RUN echo "source activate my_env" >> ~/.bashrc && \
     echo "conda activate my_env" >> ~/.bashrc
 ENV PATH=/opt/conda/envs/my_env/bin:$PATH
 
-# Füge das Arbeitsverzeichnis zum PYTHONPATH hinzu
-ENV PYTHONPATH=/app
-# Hier wird einfach eine Bash-Shell gestartet, um den Container aktiv zu halten
+# Füge das Arbeitsverzeichnis und das Modulverzeichnis zum PYTHONPATH hinzu
+ENV PYTHONPATH=/app:/app/SSHVerbindung
+
+# Ausgabe des aktuellen PYTHONPATH zur Überprüfung
+RUN echo "PYTHONPATH is set to: $PYTHONPATH"
+
 CMD tail -f /dev/null
