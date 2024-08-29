@@ -3,7 +3,7 @@ name: VerteilteBerechnung
 on:
   push:
     branches:
-      - 'simulation-branch'
+      - 'VerteilteBerechnungen'
   workflow_dispatch:
 
 env:
