@@ -35,7 +35,7 @@ class EntityManager(Singleton):
     This class is responsible for adding entities to a tracking list and for the destruction of all entities
     within that list.
     """
-    entities = []
+    entities: list[Entity] = []
     """List of all existing entities instances"""
 
     @classmethod

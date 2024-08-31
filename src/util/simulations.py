@@ -1,3 +1,4 @@
+import os
 import random
 import time
 from datetime import timedelta
@@ -290,18 +291,47 @@ def run_replications(model: Callable, minutes, num_replications, warm_up: Union[
         for source_name, stat in source_stats.items():
             all_source_stats.setdefault(source_name, []).append(stat)
 
-        detailed_stats = {
+        """detailed_stats = {
             'Entity': entity_stats,
             'Server': server_stats,
             'Sink': sink_stats,
             'Source': source_stats
         }
-        Stats.all_detailed_stats.append(detailed_stats)
+        Stats.all_detailed_stats.append(detailed_stats)"""
+        Stats.all_detailed_stats.append({
+            'Entity': entity_stats,
+            'Server': server_stats,
+            'Sink': sink_stats,
+            'Source': source_stats
+        })
 
     tenth_percentage = int(num_replications / 10)
 
-    if multiprocessing:
+    """if multiprocessing:
+        chunk_size = max(1, num_replications // (os.cpu_count() or 1))
         with concurrent.futures.ProcessPoolExecutor() as executor:
+            results = executor.map(
+                replication,
+                [model] * num_replications,
+                [calculate_statistics] * num_replications,
+                [minutes] * num_replications,
+                range(num_replications),
+                chunksize=chunk_size
+            )
+            for r, result in enumerate(results, 1):
+                process_results(*result)
+                if r % tenth_percentage == 0 or r == num_replications:
+                    print_stats(r, num_replications, start, tenth_percentage)
+    else:
+        for r in range(num_replications):
+            process_results(*replication(model, calculate_statistics, minutes, r))
+            if r % tenth_percentage == 0 or r == num_replications:
+                print_stats(r, num_replications, start, tenth_percentage)"""
+
+    if multiprocessing:
+        num_cores = min(os.cpu_count(), num_replications)
+        print(f"Running on {num_cores} cores")
+        with concurrent.futures.ProcessPoolExecutor(max_workers=num_cores) as executor:
             future_results = [executor.submit(replication, model, calculate_statistics, minutes, r)
                               for r in range(num_replications)]
             for r, future in enumerate(concurrent.futures.as_completed(future_results)):
@@ -311,6 +341,8 @@ def run_replications(model: Callable, minutes, num_replications, warm_up: Union[
         for r in range(num_replications):
             process_results(*replication(model, calculate_statistics, minutes, r))
             print_stats(r, num_replications, start, tenth_percentage)
+
+    # print(Stats.all_detailed_stats)
 
     return create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_stats, entity_stat_names,
                         server_stat_names, sink_stat_names, source_stat_names)
@@ -414,7 +446,7 @@ def create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_
     flattened_stats.extend(flatten_stats(aggregate_source_stats, 'Source', source_stat_names))
     # Creating a combined DataFrame from flattened stats
     df_combined = pd.DataFrame(flattened_stats)
-    # Creating the pivot table
+
     pivot_table_combined = df_combined.pivot_table(
         index=['Type', 'Name', 'Stat'],
         values=['Average', 'Minimum', 'Maximum', 'Half-Width'],

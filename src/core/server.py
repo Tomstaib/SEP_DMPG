@@ -1,7 +1,10 @@
 import logging
 import simpy
+from functools import lru_cache
+
 import src.util.global_imports as gi
 from simpy import Event
+from collections import deque
 from src.core.entity import Entity
 from src.core.entity import SubEntity
 from src.util.global_imports import ENTITY_PROCESSING_LOG_ENTRY
@@ -49,7 +52,7 @@ class Server(ResetAbleNamedObject, RoutingObject):
         self.machine_breakdown_duration = machine_breakdown_duration
         self.queue_order = queue_order
 
-        self.server_queue = []
+        self.server_queue: deque = deque()  # changed from []
         """List which contains all entities that have been added to the server queue."""
         self.entities_processed = 0
         """Counter for how many entities are processed yet."""
@@ -109,12 +112,15 @@ class Server(ResetAbleNamedObject, RoutingObject):
                                                    DateTime.get(self.env.now))))
             self.uptime = self.env.now
 
+    @lru_cache(maxsize=512)
     def run(self) -> Event:
         """
         Runs the queued entities while taking the queue order into consideration
         """
         validate_probabilities(self)
         create_connection_cache(self)
+
+        trace_enabled = logging.root.level <= logging.TRACE
 
         while True:
 
@@ -128,10 +134,13 @@ class Server(ResetAbleNamedObject, RoutingObject):
                     if self.queue_order == QueueType.LIFO:
                         entity = self.server_queue.pop()
                     else:
-                        entity = self.server_queue.pop(0)
+                        entity = self.server_queue.popleft()  # changed from pop(0)
 
-                    logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
-                        "".join([self.name, " processing ", entity.name]), DateTime.get(self.env.now)))
+                    if trace_enabled:
+                        logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
+                            "".join([self.name, " processing ", entity.name]), DateTime.get(self.env.now)))
+                    # logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
+                    #     "".join([self.name, " processing ", entity.name]), DateTime.get(self.env.now)))
 
                     processing_time_start = self.env.now
 
@@ -148,8 +157,11 @@ class Server(ResetAbleNamedObject, RoutingObject):
                         yield self.env.timeout(self.time_until_next_machine_breakdown)
                         processing_time -= self.time_until_next_machine_breakdown  # process time remaining
 
-                        logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
-                            "".join([self.name, " failure at "]), DateTime.get(self.env.now)))
+                        if trace_enabled:
+                            logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
+                                "".join([self.name, " failure at "]), DateTime.get(self.env.now)))
+                        # logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
+                        #     "".join([self.name, " failure at "]), DateTime.get(self.env.now)))
 
                         # breakdown
                         self.time_until_next_machine_breakdown = (
@@ -162,15 +174,23 @@ class Server(ResetAbleNamedObject, RoutingObject):
 
                         yield self.env.timeout(breakdown_time)
 
-                        logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
-                            "".join([self.name, " failure corrected at "]), DateTime.get(self.env.now)))
+                        if trace_enabled:
+                            logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
+                                "".join([self.name, " failure corrected at "]), DateTime.get(self.env.now)))
+                        # logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
+                        #     "".join([self.name, " failure corrected at "]), DateTime.get(self.env.now)))
 
                         # continue processing after breakdown
                         yield self.env.timeout(processing_time)
 
-                    logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
-                        "".join([self.name, " processing ", entity.name, " done, time ",
-                                 str(round_value(self.env.now - processing_time_start))]), DateTime.get(self.env.now)))
+                    if trace_enabled:
+                        logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
+                            "".join([self.name, " processing ", entity.name, " done, time ",
+                                     str(round_value(self.env.now - processing_time_start))]),
+                            DateTime.get(self.env.now)))
+                    # logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
+                    #    "".join([self.name, " processing ", entity.name, " done, time ",
+                    #             str(round_value(self.env.now - processing_time_start))]), DateTime.get(self.env.now)))
 
                     if self.env.now > gi.DURATION_WARM_UP:
                         self.total_processing_time_pivot_table += processing_time  # Accumulate total processing time
@@ -189,7 +209,19 @@ class Server(ResetAbleNamedObject, RoutingObject):
                     self.total_uptime += self.uptime
                     self.number_uptimes += 1
 
-                    logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
+                    if trace_enabled:
+                        logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
+                            "".join([self.name, " stops processing, uptime ",
+                                     DateTime.get(self.uptime, time_string_from_initial_date=False),
+                                     ", total uptime ",
+                                     DateTime.get(self.total_uptime, time_string_from_initial_date=False),
+                                     " (", "0" if self.env.now == 0 else
+                                     str(round_value(self.total_uptime / self.env.now * 100)),
+                                     " %), avg uptime ",
+                                     DateTime.get(self.total_uptime / self.number_uptimes,
+                                                  time_string_from_initial_date=False)]),
+                            DateTime.get(self.env.now)))
+                    """logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
                         "".join([self.name, " stops processing, uptime ",
                                  DateTime.get(self.uptime, time_string_from_initial_date=False),
                                  ", total uptime ", DateTime.get(self.total_uptime, time_string_from_initial_date=False),
@@ -198,7 +230,7 @@ class Server(ResetAbleNamedObject, RoutingObject):
                                  " %), avg uptime ",
                                  DateTime.get(self.total_uptime / self.number_uptimes,
                                               time_string_from_initial_date=False)]),
-                        DateTime.get(self.env.now)))
+                        DateTime.get(self.env.now)))"""
 
                     yield self.processing
             else:

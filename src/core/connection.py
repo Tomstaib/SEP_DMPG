@@ -1,5 +1,8 @@
 import logging
+from functools import lru_cache
+
 from simpy import Environment
+from collections import deque
 
 from src.core.entity import Entity
 from src.util.global_imports import ENTITY_PROCESSING_LOG_ENTRY
@@ -18,7 +21,7 @@ class Connection(ResetAbleNamedObject, RoutingObject):
         self.probability = probability
         self.entities_processed = 0
         self.number_entered = 0
-        self.entities_queue = []
+        self.entities_queue: deque = deque()  # changed from []
         self.origin_component = origin_component
         self.next_component = next_component
         self.processing = env.event()
@@ -38,7 +41,7 @@ class Connection(ResetAbleNamedObject, RoutingObject):
     def run(self):
         while True:
             if self.entities_queue:
-                entity = self.entities_queue.pop(0)
+                entity = self.entities_queue.popleft()  # changed from pop(0)
                 self.number_entered += 1
 
                 if self.process_duration:
