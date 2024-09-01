@@ -8,3 +8,4 @@ dependencies:
     - psycopg2-binary
     - orm
     - coverage
+    - pytest
