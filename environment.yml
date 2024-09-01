@@ -7,3 +7,4 @@ dependencies:
   - pip:
     - psycopg2-binary
     - orm
+    - coverage
