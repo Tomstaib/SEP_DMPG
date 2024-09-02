@@ -16,14 +16,14 @@ def setup_model4_1(env):
 
 
 def main():
-    run_simulation(model=setup_model4_1, minutes=1440)                                      # 1 day
+    #run_simulation(model=setup_model4_1, minutes=1440)                                      # 1 day
     # print(pivot_table.at[('Entity', 'Entity', 'AvgTimeInSystem'), 'Value'])               # 6.0036
 
     # 1 week ~ 0:03.3 iteration & 0:33 total
     run_replications(model=setup_model4_1, minutes=10080, num_replications=1000, multiprocessing=False)
 
     # 1 year ~ 0:25 iteration & 4:00 total
-    run_replications(model=setup_model4_1, minutes=525600, num_replications=1000, multiprocessing=True)
+    #run_replications(model=setup_model4_1, minutes=525600, num_replications=1000, multiprocessing=True)
     """
     print(pivot_table3.at[('Entity', 'Entity', 'AvgTimeInSystem'), 'Minimum'])
     print(pivot_table3.at[('Entity', 'Entity', 'AvgTimeInSystem'), 'Average'])

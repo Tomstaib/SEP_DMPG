@@ -2,18 +2,24 @@ import random
 import time
 from datetime import timedelta
 from typing import Callable, Union
+
+import paramiko
 import simpy
 import pandas as pd
 import numpy as np
 import concurrent.futures
 import logging
+import json
+import os
 
+import ssh_with_parameters
 from src.core.entity import EntityManager
 from src.core.server import Server
 from src.core.sink import Sink
 from src.core.source import Source
 from src.util.global_imports import Stats, RANDOM_SEED
 from src.util.helper import round_value
+from src.util.ssh_with_parameters import transfer_file
 
 global seconds_previous_computations
 
@@ -231,6 +237,33 @@ def print_stats(i, num_replications, start, tenth_percentage):
     if tenth_percentage == 0 or (i + 1) % tenth_percentage == 0:
         ct = get_percentage_and_computingtimes(start, i, num_replications)
         logging.info(f"{ct[0]} replication {i + 1}/{num_replications}\t{ct[1]}\t{ct[2]}\t{ct[3]}\t{ct[4]}")
+
+        # if 10% of the calculation is finished, the current results will be sent to the server
+        if (i + 1) == tenth_percentage:
+            send_progress_to_server(ct, i, 1, num_replications)
+
+def send_progress_to_server(ct, i, step, num_replications):
+    ssh_client: paramiko.SSHClient
+    sftp = ssh_client.open_sftp()
+    local_file_path = os.path.join(root, "progress_10_percent.json")
+
+    save_progress_to_json(ct, i, step, num_replications)
+    ssh_with_parameters.transfer_file(ssh_client, )
+
+def save_progress_to_json(ct, i, step, num_replications):
+    progress_data = {
+        "percentage": ct[0],
+        "time_computed": ct[1],
+        "time_to_complete": ct[2],
+        "time_prediction": ct[3],
+        "time_per_iteration": ct[4],
+        "current_iteration": i + 1,
+        "total_iterations": num_replications
+    }
+
+    if (i + 1) == step * (num_replications // 10):
+        with open(f'progress_{step * 10}_percent.json', 'w') as json_file:
+            json.dump(progress_data, json_file, indent=4)
 
 
 def create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_stats, entity_stat_names,
