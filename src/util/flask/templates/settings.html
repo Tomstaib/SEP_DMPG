@@ -36,21 +36,12 @@
 
     <!-- Main content area -->
     <div id="main-content" class="main-content">
-        <h2>Dashboard</h2>
-        <p>You are logged in.</p>
-        <!-- Add more content here -->
+        <h2>Settings</h2>
+        <form method="POST" action="{{ url_for('logout') }}">
+            <input type="submit" value="Logout">
+        </form>
     </div>
 
-    <script>
-        function toggleSidebar() {
-            var sidebar = document.getElementById("sidebar");
-            var topbar = document.getElementById("topbar");
-            var mainContent = document.getElementById("main-content");
-
-            sidebar.classList.toggle("collapsed");
-            topbar.classList.toggle("collapsed");
-            mainContent.classList.toggle("collapsed");
-        }
-    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
