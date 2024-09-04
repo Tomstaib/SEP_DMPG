@@ -3,7 +3,6 @@ import time
 from datetime import timedelta
 from typing import Callable, Union
 
-import paramiko
 import simpy
 import pandas as pd
 import numpy as np
@@ -11,8 +10,8 @@ import concurrent.futures
 import logging
 import json
 import os
+import requests
 
-import ssh_with_parameters
 from src.core.entity import EntityManager
 from src.core.server import Server
 from src.core.sink import Sink
@@ -22,6 +21,7 @@ from src.util.helper import round_value
 from src.util.ssh_with_parameters import transfer_file
 
 global seconds_previous_computations
+URL = 'https://imt-sep-001.lin.hs-osnabrueck.de'
 
 
 def run_simulation(model: Callable, minutes: Union[int, float], store_pivot_in_file: str = None):
@@ -242,15 +242,19 @@ def print_stats(i, num_replications, start, tenth_percentage):
         if (i + 1) == tenth_percentage:
             send_progress_to_server(ct, i, 1, num_replications)
 
+
 def send_progress_to_server(ct, i, step, num_replications):
-    ssh_client: paramiko.SSHClient
-    sftp = ssh_client.open_sftp()
-    local_file_path = os.path.join(root, "progress_10_percent.json")
+    data = save_progress(ct, i, step, num_replications)
+    # Attribut 'verify' muss noch den Pfad eines gültigen Zertifikates bekommen
+    response = requests.get(URL, json=data, verify=False)
 
-    save_progress_to_json(ct, i, step, num_replications)
-    ssh_with_parameters.transfer_file(ssh_client, )
+    if response.status_code != 200:
+        print(f"Fehler beim Senden der Nachricht: {response.status_code}")
+    else:
+        print("Nachricht erfolgreich gesendet")
 
-def save_progress_to_json(ct, i, step, num_replications):
+
+def save_progress(ct, i, step, num_replications):
     progress_data = {
         "percentage": ct[0],
         "time_computed": ct[1],
@@ -260,10 +264,7 @@ def save_progress_to_json(ct, i, step, num_replications):
         "current_iteration": i + 1,
         "total_iterations": num_replications
     }
-
-    if (i + 1) == step * (num_replications // 10):
-        with open(f'progress_{step * 10}_percent.json', 'w') as json_file:
-            json.dump(progress_data, json_file, indent=4)
+    return progress_data
 
 
 def create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_stats, entity_stat_names,
