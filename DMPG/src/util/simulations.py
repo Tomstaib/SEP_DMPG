@@ -8,20 +8,16 @@ import pandas as pd
 import numpy as np
 import concurrent.futures
 import logging
-import json
-import os
-import requests
 
+from src.util.runtime_prediction import send_progress_to_server
 from src.core.entity import EntityManager
 from src.core.server import Server
 from src.core.sink import Sink
 from src.core.source import Source
 from src.util.global_imports import Stats, RANDOM_SEED
 from src.util.helper import round_value
-from src.util.ssh_with_parameters import transfer_file
 
 global seconds_previous_computations
-URL = 'https://imt-sep-001.lin.hs-osnabrueck.de'
 
 
 def run_simulation(model: Callable, minutes: Union[int, float], store_pivot_in_file: str = None):
@@ -241,30 +237,6 @@ def print_stats(i, num_replications, start, tenth_percentage):
         # if 10% of the calculation is finished, the current results will be sent to the server
         if (i + 1) == tenth_percentage:
             send_progress_to_server(ct, i, 1, num_replications)
-
-
-def send_progress_to_server(ct, i, step, num_replications):
-    data = save_progress(ct, i, step, num_replications)
-    # Attribut 'verify' muss noch den Pfad eines gültigen Zertifikates bekommen
-    response = requests.get(URL, json=data, verify=False)
-
-    if response.status_code != 200:
-        print(f"Fehler beim Senden der Nachricht: {response.status_code}")
-    else:
-        print("Nachricht erfolgreich gesendet")
-
-
-def save_progress(ct, i, step, num_replications):
-    progress_data = {
-        "percentage": ct[0],
-        "time_computed": ct[1],
-        "time_to_complete": ct[2],
-        "time_prediction": ct[3],
-        "time_per_iteration": ct[4],
-        "current_iteration": i + 1,
-        "total_iterations": num_replications
-    }
-    return progress_data
 
 
 def create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_stats, entity_stat_names,
