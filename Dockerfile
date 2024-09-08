@@ -28,11 +28,11 @@ RUN echo "source activate myenv" >> ~/.bashrc
 # Kopiere die Logstash-Konfigurationsdatei
 COPY logstash.conf /usr/share/logstash/pipeline/logstash.conf
 
-# Kopiere die requirements.yml für Logstash Plugins (optional)
-COPY requirements.yml /usr/share/logstash/config/requirements.yml
+# Kopiere die environment.yml für Logstash Plugins (optional)
+COPY environment.yml /usr/share/logstash/config/environment.yml
 
 # Installiere Logstash-Plugins (optional)
-RUN /usr/share/logstash/bin/logstash-plugin install --local < /usr/share/logstash/config/requirements.yml
+RUN /usr/share/logstash/bin/logstash-plugin install --local < /usr/share/logstash/config/environment.yml
 
 # Kopiere den gesamten Repository-Code ins Image
 COPY . /usr/share/logstash/code
