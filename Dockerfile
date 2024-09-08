@@ -7,14 +7,14 @@ ENV PATH=$CONDA_DIR/bin:$PATH
 
 # Installiere wget und bzip2, um Conda herunterzuladen und zu installieren
 USER root
-RUN yum install -y wget bzip2 \
+RUN apk add --no-cache wget bash bzip2 \
     && wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh \
     && bash /tmp/miniconda.sh -b -p /opt/conda \
     && rm /tmp/miniconda.sh \
     && /opt/conda/bin/conda init bash \
     && /opt/conda/bin/conda update -n base -c defaults conda \
-    && yum clean all \
-    && rm -rf /var/cache/yum
+    && apk del wget bzip2 \
+    && rm -rf /var/cache/apk/*
 
 # Kopiere die environment.yml (falls du zusätzliche Python-Abhängigkeiten hast)
 COPY environment.yml /tmp/environment.yml
