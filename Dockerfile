@@ -5,16 +5,13 @@ FROM docker.elastic.co/logstash/logstash:7.10.1
 ENV CONDA_DIR /opt/conda
 ENV PATH=$CONDA_DIR/bin:$PATH
 
-# Installiere wget und bzip2, um Conda herunterzuladen und zu installieren
+# Installiere curl, um Miniconda herunterzuladen und zu installieren
 USER root
-RUN apk add --no-cache wget bash bzip2 \
-    && wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh \
+RUN curl -sSL https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o /tmp/miniconda.sh \
     && bash /tmp/miniconda.sh -b -p /opt/conda \
     && rm /tmp/miniconda.sh \
     && /opt/conda/bin/conda init bash \
-    && /opt/conda/bin/conda update -n base -c defaults conda \
-    && apk del wget bzip2 \
-    && rm -rf /var/cache/apk/*
+    && /opt/conda/bin/conda update -n base -c defaults conda
 
 # Kopiere die environment.yml (falls du zusätzliche Python-Abhängigkeiten hast)
 COPY environment.yml /tmp/environment.yml
