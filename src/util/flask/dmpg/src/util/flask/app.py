@@ -1,12 +1,9 @@
-import os
 from functools import wraps
 from flask import Flask, request, redirect, url_for, flash, render_template, session
-from ssh_setup import setup_ssh_connection, close_ssh_connection
-from util.flask.ssh_with_parameters import prepare_env
+from ssh_setup import setup_ssh_connection
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
-USER_DIR = r'C:\Users\Felix\Documents\GitHub\SEP_DMPG\src\util\flask\user'
 
 
 @app.route('/')
@@ -46,17 +43,9 @@ def login():
             session['remote_password'] = password
 
             # Attempt to set up SSH connection
-            ssh_client = setup_ssh_connection(username)
+            setup_ssh_connection(username)
 
             flash('Login successful and SSH key setup completed.')
-            user_folder = os.path.join(USER_DIR, username)
-            if not os.path.exists(user_folder):
-                # Ordner für den Benutzer erstellen
-                os.makedirs(user_folder)
-                flash(f"Folder for user '{username}' has been created.")
-            else:
-                flash(f"Folder for user '{username}' already exists.")
-            close_ssh_connection(ssh_client)
             return redirect(url_for('dashboard'))
     except Exception as e:
         # Log the error (optional: integrate with logging framework)
@@ -96,19 +85,6 @@ def settings():
 def new_job():
     return render_template('new_job.html')
 
-
-@app.route('/prepare-env', methods=['POST'])
-@login_required
-def prepare_env_route():
-    try:
-        prepare_env()  # Call the function
-        flash("Environment preparation started successfully.")
-    except Exception as e:
-        print(f"Error: {e}")
-        flash(f"An error occurred: {e}")
-
-    # Redirect back to the new_job page after processing
-    return redirect(url_for('new_job'))
 
 if __name__ == "__main__":
     app.run(debug=True)

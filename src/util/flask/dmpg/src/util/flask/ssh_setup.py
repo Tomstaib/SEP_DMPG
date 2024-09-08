@@ -74,15 +74,7 @@ def setup_ssh_connection(username):
     try:
         ssh_client.connect(REMOTE_HOST, username=username, pkey=rsa_key)
         print("Connection with RSA key successful")
-        return ssh_client
     except Exception as e:
         print(f"Error with ssh_client: {e}")
-
-
-def close_ssh_connection(ssh_client: paramiko.SSHClient):
-    try:
-        if ssh_client:
-            ssh_client.close()
-            print("SSH connection closed.")
-    except Exception as e:
-        print(f"Error while closing SSH connection: {e}")
+    finally:
+        ssh_client.close()

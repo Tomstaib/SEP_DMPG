@@ -1,0 +1,11 @@
+{
+  "paths": {
+    "local_version_file_path": "C:\\Users\\Felix\\Documents\\GitHub\\SEP_DMPG\\src\\util\\flask\\dmpg\\version.json",
+    "local_folder_path" : "C:\\Users\\Felix\\Documents\\GitHub\\SEP_DMPG\\src\\util\\flask\\dmpg",
+    "remote_folder_path": "/home/$USER/src/DMPG",
+    "remote_version_file_path": "/home/$USER/src/DMPG/version.json",
+    "env_activation_command": "/cluster/user/$USER/venvs/DMPG/bin/activate",
+    "required_python_version": "3.11.9",
+    "requirements_file_path": "/home/$USER/src/DMPG/requirements.txt"
+  }
+}

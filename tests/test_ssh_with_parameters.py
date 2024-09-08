@@ -2,11 +2,8 @@ import unittest
 from unittest.mock import patch, MagicMock, mock_open
 import paramiko
 import os
-import json
-import sys
-import builtins
 
-from src.util import ssh_with_parameters
+from util.flask import ssh_with_parameters
 
 
 class TestSSHWithParameters(unittest.TestCase):

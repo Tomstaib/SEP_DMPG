@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+<!-- Sidebar -->
+<div id="sidebar" class="sidebar">
+    <button class="toggle-btn" onclick="toggleSidebar()">&#9776;</button>
+    <div class="top-section">
+        <a href="{{ url_for('dashboard') }}">
+            <img src="{{ url_for('static', filename='images/dashboard.png') }}" alt="Dashboard Icon">
+            <span>Dashboard</span>
+        </a>
+        <a href="{{ url_for('new_job') }}">
+            <img src="{{ url_for('static', filename='images/new_job.png') }}" alt="New Job Icon">
+            <span>New Job</span>
+        </a>
+    </div>
+    <div class="bottom-section">
+        <a href="{{ url_for('settings') }}">
+            <img src="{{ url_for('static', filename='images/settings.png') }}" alt="Settings Icon">
+            <span>Settings</span>
+        </a>
+    </div>
+</div>
+
+
+    <!-- Top bar -->
+    <div id="topbar" class="topbar">
+        <div class="username">Welcome, {{ session.get('username') }}</div>
+    </div>
+
+    <!-- Main content area -->
+    <div id="main-content" class="main-content">
+        <h2>Settings</h2>
+        <form method="POST" action="{{ url_for('logout') }}">
+            <input type="submit" value="Logout">
+        </form>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
