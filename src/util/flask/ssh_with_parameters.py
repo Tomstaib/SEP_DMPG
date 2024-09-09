@@ -98,7 +98,7 @@ def execute_command(ssh_client: paramiko.SSHClient, command: str) -> Tuple[str, 
 
 
 # Function to check Python version
-def check_python_version(
+"""def check_python_version(
         ssh_client: paramiko.SSHClient, required_version: str, env_activation_command: str
 ) -> bool:
     # Activate the Python environment
@@ -108,7 +108,44 @@ def check_python_version(
         print(f"Error checking Python version: {stderr}")
         return False
     installed_version = stdout.split()[1]
-    return installed_version.startswith(required_version)
+    return installed_version.startswith(required_version)"""
+
+
+def check_venv_exists(ssh_client: paramiko.SSHClient, venv_path: str,
+                      env_activation_command: str, required_version: str) -> bool:
+    # Check if venv directory exists
+    stdout, stderr = execute_command(ssh_client, f'if [ -f {env_activation_command} ]; then echo "exists"; fi')
+
+    if "exists" not in stdout:
+        print(f"Virtual environment at {venv_path} does not exist. Creating it...")
+        create_venv(ssh_client, venv_path)
+
+    # Check the Python version inside the virtual environment
+    activation_command = f'source {env_activation_command} && python3 --version'
+    stdout, stderr = execute_command(ssh_client, activation_command)
+
+    if stderr:
+        print(f"Error checking Python version: {stderr}")
+        return False
+
+    installed_version = stdout.split()[1]
+    if not installed_version.startswith(required_version):
+        print(
+            f"Installed Python version ({installed_version}) does not match the required version ({required_version}).")
+        return False
+
+    return True
+
+
+def create_venv(ssh_client: paramiko.SSHClient, venv_path: str) -> None:
+    # Create virtual environment
+    command = f'python3 -m venv {venv_path}'
+    stdout, stderr = execute_command(ssh_client, command)
+    if stderr:
+        print(f"Error creating virtual environment: {stderr}")
+        exit(1)
+    else:
+        print(f"Virtual environment created at {venv_path}")
 
 
 # Function to install required libraries
@@ -179,11 +216,19 @@ def prepare_env() -> None:
         print("SSH connection established.")
 
         # Check Python version
-        if not check_python_version(ssh_client,
+        """if not check_python_version(ssh_client,
                                     public_config.get('paths').get('required_python_version'),
                                     public_config.get('paths').get('env_activation_command')):
             print(f"Python {public_config.get('paths').get('required_python_version')} "
                   f"is not installed on the remote system.")
+            return"""
+        # Check if the virtual environment exists and has the correct Python version
+        if not check_venv_exists(ssh_client,
+                                 public_config.get('paths').get('venv_path'),
+                                 public_config.get('paths').get('env_activation_command'),
+                                 public_config.get('paths').get('required_python_version')):
+            print(f"Python virtual environment or required version "
+                  f"{public_config.get('paths').get('required_python_version')} is not installed.")
             return
 
         # Check if the remote folder exists
