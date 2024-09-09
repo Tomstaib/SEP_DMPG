@@ -6,10 +6,7 @@ from sqlalchemy.orm import sessionmaker
 import orm
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
-
 DB_USER = 'sep'
-DB_HOST = 'localhost'
-DB_PORT = '5432'
 DB_HOST = 'localhost'
 DB_PORT = '5432'
 DB_NAME = 'distributed_computing'
@@ -18,11 +15,15 @@ DB_PASSWORD = 'sep'
 # Set up basic logging configuration
 logging.basicConfig(level=logging.INFO)
 
+
 def validate_db_config():
+    """Validate that all necessary database configuration variables are set."""
     if not all([DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME]):
         raise ValueError("Database configuration is incomplete. Please check all required fields.")
 
+
 def connect_to_db():
+    """Attempt to connect to the database and return the engine if successful."""
     try:
         # Validate configuration before attempting to connect
         validate_db_config()
@@ -46,7 +47,9 @@ def connect_to_db():
         logging.exception("An unexpected error occurred")
         return None
 
+
 def create_session(engine):
+    """Create a session for interacting with the database."""
     try:
         Session = sessionmaker(bind=engine)
         session = Session()
@@ -55,21 +58,23 @@ def create_session(engine):
         logging.exception("Session creation failed")
         return None
 
+
 def main():
-    # Versuche, eine Verbindung zur Datenbank herzustellen
+    """Main function to connect to the database and manage sessions."""
+    # Attempt to connect to the database
     engine = connect_to_db()
     if engine:
-        # Erstelle die Tabellen, wenn die Verbindung erfolgreich hergestellt wurde
-        orm.create_tables()
+        try:
+            # Create the tables if the connection was successful
+            orm.create_tables()
+        except SQLAlchemyError as se:
+            logging.exception("Failed to create tables")
+            return  # Optional: Return or exit on critical error
 
-        # Erstelle eine Sitzung
+        # Create a session
         session = create_session(engine)
         if session:
             try:
-                ##### Example of how to save data #####
-                # model = orm.Model(123, 'Test')
-                # session.add(model)
-
                 # Commit session
                 session.commit()
                 logging.info("Session committed successfully")
@@ -81,13 +86,13 @@ def main():
                 logging.exception("An unexpected error occurred during session commit")
             finally:
                 session.close()
-
-                ##### Example of how to retrieve data #####
-                # results = session.query(orm.Model).all()
-                # print(results)
+        else:
+            # Case: No session available
+            logging.error("Failed to create session.")
     else:
         logging.error("Failed to connect to the database")
 
+
 # Ensure main() is called only when this script is executed directly
 if __name__ == "__main__":
-   main()
+    main()
