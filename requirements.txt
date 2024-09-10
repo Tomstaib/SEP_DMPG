@@ -1,3 +1,9 @@
 simpy==4.0.1
-graphviz
 watchdog
+typing
+ast
+time
+abc
+matplotlib
+__future__
+os
