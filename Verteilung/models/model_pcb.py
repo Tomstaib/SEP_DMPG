@@ -1,9 +1,3 @@
-from src.util.global_imports import random
-from src.core.source import Source
-from src.core.server import Server
-from src.core.sink import Sink
-
-
 def setup_model_pcb(env):
     # Create servers, sinks, and sources
     source1 = Source(env, "PCB", (random.expovariate, 1 / 6))

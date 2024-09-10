@@ -1,7 +1,6 @@
 from __future__ import annotations
 import os
 import time
-from graphviz import Digraph
 from models.model_pcb import setup_model_pcb
 from util.nodes_for_composite import ManagementNode, Node, input_positive_number, ComputeNode
 from util.singleton import Singleton
