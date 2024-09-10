@@ -7,7 +7,6 @@ dependencies:
   - simpy=4.0.1
   - watchdog
   - matplotlib
-  - __future__
   - pip
   - pip:
       - os
