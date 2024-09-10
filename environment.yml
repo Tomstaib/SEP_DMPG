@@ -9,7 +9,6 @@ dependencies:
   - matplotlib
   - pip
   - pip:
-      - os
       - ast
       - typing
       - time
