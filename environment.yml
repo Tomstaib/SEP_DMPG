@@ -10,5 +10,4 @@ dependencies:
   - pip
   - pip:
       - typing
-      - time
       - abc
