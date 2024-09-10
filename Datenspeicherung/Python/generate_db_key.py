@@ -4,12 +4,12 @@ import sys
 from getpass import getpass
 from sqlalchemy import create_engine
 import psycopg2
+from sqlalchemy.exc import OperationalError
 
 DB_USER = 'sep'
 DB_HOST = 'imt-sep-001.lin.hs-osnabrueck.de'
 DB_PORT = '55432'
 DB_NAME = 'distributed_computing'
-
 
 def input_password() -> str or None:
     try:
@@ -23,18 +23,20 @@ def input_password() -> str or None:
             exit(1)
     except Exception as e:
         print(f"Error with getpass: {e}")
-        return
-
+        return None
 
 def create_pgpass_file(template: str):
-    # Set the path for the .pgpass file to the Downloads directory
     downloads_dir = os.path.join(os.path.expanduser('~'), 'Downloads')
     pgpass_path = os.path.join(downloads_dir, 'pgpass.conf')
 
     print(f"Saving .pgpass file to: {pgpass_path}")
 
     # Ensure the directory exists
-    os.makedirs(os.path.dirname(pgpass_path), exist_ok=True)
+    try:
+        os.makedirs(os.path.dirname(pgpass_path), exist_ok=True)
+    except Exception as e:
+        print(f"Error writing .pgpass file: {e}")
+        return
 
     # Write the .pgpass file
     try:
@@ -51,7 +53,6 @@ def create_pgpass_file(template: str):
             print(f"Permissions set on .pgpass file: {pgpass_path}")
         except Exception as e:
             print(f"Error setting permissions: {e}")
-
 
 def connect_to_db():
     # Create the database URL
@@ -85,7 +86,6 @@ def main():
         connection.close()
     else:
         print("Connection unsuccessful")
-
 
 if __name__ == '__main__':
     main()
