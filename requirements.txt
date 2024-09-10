@@ -1,7 +1,6 @@
 simpy==4.0.1
 watchdog
 typing
-ast
 time
 abc
 matplotlib
