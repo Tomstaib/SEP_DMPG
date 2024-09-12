@@ -4,9 +4,9 @@ channels:
   - conda-forge
 dependencies:
   - python=3.8
-  - graphviz
+  - simpy=4.0.1
   - watchdog
-  - requests
+  - matplotlib
   - pip
   - pip:
-      - graphviz
+      - typing

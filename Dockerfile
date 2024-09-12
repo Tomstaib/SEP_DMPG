@@ -18,8 +18,6 @@ ENV PATH /opt/conda/envs/myenv/bin:$PATH
 # Installiere notwendige System-Abhängigkeiten und Build-Tools
 RUN apt-get update && apt-get install -y build-essential && apt-get clean
 
-# Verifikation durchlaufen lassen (optional, kann entfernt werden, um Beschleunigung zu erhöhen)
-RUN conda list && conda info
-
-# Halte den Container aktiv und gib eine Nachricht aus
+# Standardbefehl setzen, der ausgeführt wird, wenn der Container gestartet wird
+# Hier wird einfach eine Bash-Shell gestartet, um den Container aktiv zu halten
 CMD tail -f /dev/null
