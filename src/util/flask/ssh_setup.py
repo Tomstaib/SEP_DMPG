@@ -66,6 +66,7 @@ def setup_ssh_connection(username) -> paramiko.SSHClient:
     except paramiko.ssh_exception.AuthenticationException:
         ssh_client.close()
 
+    # rsa_key = paramiko.RSAKey(filename=KEY_PATH, password=PASSPHRASE)
     # Ensure RSAKey is loaded correctly
     rsa_key = paramiko.RSAKey(filename=KEY_PATH, password=PASSPHRASE if PASSPHRASE else None)
     ssh_client = paramiko.SSHClient()  # Reinitialize the client
@@ -77,7 +78,6 @@ def setup_ssh_connection(username) -> paramiko.SSHClient:
         return ssh_client
     except Exception as e:
         print(f"Error with ssh_client: {e}")
-
 
 def close_ssh_connection(ssh_client: paramiko.SSHClient):
     try:
