@@ -4,13 +4,12 @@ import sys
 from io import StringIO
 import unittest
 from unittest.mock import patch, mock_open, MagicMock
-
 import paramiko
 
 # Lokale Module
 from generate_ssh_key import generate_ssh_key, send_public_key_to_server, main
 
-
+# Schlüssel- und Server-Informationen
 KEY_PATH = os.path.expanduser("~/.ssh/id_rsa_tunnel_to_server")
 REMOTE_HOST = "imt-sep-001.lin.hs-osnabrueck.de"
 REMOTE_USER = "sep"
@@ -19,18 +18,17 @@ COMMENT = "distributed_server@sep"
 PASSPHRASE = ""
 
 
-# Testklasse für die SSH-Key-Generierung
 class TestGenerateSSHKey(unittest.TestCase):
     """
-    Testet die Funktionalität zur SSH-Schlüsselgenerierung und prüft verschiedene Szenarien.
-    Dies ist wichtig, um sicherzustellen, dass der Schlüssel korrekt erstellt wird,
-    da dies die Grundlage für eine sichere Serververbindung bildet.
+    Testet die Funktionalität zur SSH-Schlüsselgenerierung.
+    Diese Tests prüfen, ob der Schlüssel korrekt erstellt wird,
+    was für eine sichere Kommunikation unerlässlich ist.
     """
 
     @patch("subprocess.run")
     @patch("os.makedirs")
     def test_generate_ssh_key_success(self, mock_makedirs, mock_subprocess):
-        """Testet den Erfolg der SSH-Schlüsselgenerierung."""
+        """Testet die erfolgreiche SSH-Schlüsselgenerierung."""
         result = generate_ssh_key(KEY_PATH, COMMENT, PASSPHRASE)
         mock_makedirs.assert_called_once_with(os.path.dirname(KEY_PATH), exist_ok=True)
         mock_subprocess.assert_called_once_with(
@@ -51,7 +49,7 @@ class TestGenerateSSHKey(unittest.TestCase):
     @patch("builtins.open", new_callable=mock_open, read_data="mocked_public_key")
     @patch("paramiko.SSHClient", autospec=True)
     def test_generate_ssh_key_if_not_exists(self, MockSSHClient, mock_open, mock_generate_ssh_key, mock_exists):
-        """Testet, ob der SSH-Schlüssel generiert wird, wenn er noch nicht existiert."""
+        """Testet, ob der SSH-Schlüssel generiert wird, wenn er nicht existiert."""
         mock_ssh_instance = MockSSHClient.return_value
         main(ssh_client=mock_ssh_instance, remote_password="mock_password")
         mock_generate_ssh_key.assert_called_once_with(KEY_PATH, COMMENT, PASSPHRASE)
@@ -62,7 +60,7 @@ class TestGenerateSSHKey(unittest.TestCase):
     @patch("builtins.open", new_callable=mock_open, read_data="mocked_public_key")
     @patch("paramiko.SSHClient", autospec=True)
     def test_generate_ssh_key_failure_returns(self, MockSSHClient, mock_open, mock_generate_ssh_key, mock_exists):
-        """Testet, dass die Funktion beim Fehlschlagen der Schlüsselgenerierung korrekt endet."""
+        """Testet, dass die Funktion bei Fehlschlagen der Schlüsselgenerierung korrekt beendet wird."""
         mock_ssh_instance = MockSSHClient.return_value
         captured_output = StringIO()
         sys.stdout = captured_output
@@ -73,12 +71,11 @@ class TestGenerateSSHKey(unittest.TestCase):
         self.assertNotIn("Password input received", captured_output.getvalue())
 
 
-# Testklasse für SSH-Verbindungen
 class TestSSHConnection(unittest.TestCase):
     """
     Testet die SSH-Verbindung unter verschiedenen Bedingungen.
-    Wichtig für die reibungslose Kommunikation mit dem Server, insbesondere
-    um Sicherheitsstandards einzuhalten und Verbindungsprobleme zu erkennen.
+    Diese Tests prüfen, ob eine Verbindung ohne Probleme hergestellt werden kann,
+    was für die Kommunikation zwischen Client und Server unerlässlich ist.
     """
 
     @patch("paramiko.SSHClient", autospec=True)
@@ -96,7 +93,7 @@ class TestSSHConnection(unittest.TestCase):
     @patch("os.path.exists", return_value=True)
     @patch("getpass.getpass", return_value="mock_password")
     def test_ssh_connection_close_called(self, mock_getpass, mock_exists, mock_open, MockSSHClient):
-        """Testet, dass die SSH-Verbindung korrekt geschlossen wird."""
+        """Testet, ob die SSH-Verbindung korrekt geschlossen wird."""
         mock_ssh_instance = MockSSHClient.return_value
         main(ssh_client=mock_ssh_instance, remote_password="mock_password")
         mock_ssh_instance.close.assert_called_once()
@@ -106,7 +103,7 @@ class TestSSHConnection(unittest.TestCase):
     @patch("builtins.open", new_callable=mock_open, read_data="mocked_public_key")
     @patch("paramiko.SSHClient", autospec=True)
     def test_send_public_key_failure_returns(self, MockSSHClient, mock_open, mock_send_public_key, mock_exists):
-        """Testet, dass bei Fehlern beim Senden des öffentlichen Schlüssels die Funktion korrekt endet."""
+        """Testet, dass die Funktion bei einem Fehler beim Senden des öffentlichen Schlüssels korrekt beendet wird."""
         mock_ssh_instance = MockSSHClient.return_value
         captured_output = StringIO()
         sys.stdout = captured_output
@@ -116,16 +113,16 @@ class TestSSHConnection(unittest.TestCase):
         self.assertEqual(mock_ssh_instance.connect.call_count, 1)
 
 
-# Testklasse für das Senden des öffentlichen Schlüssels
 class TestSendPublicKeyToServer(unittest.TestCase):
     """
     Testet das Senden des öffentlichen Schlüssels an den Server.
-    Diese Funktion ist entscheidend, um den Zugriff des Servers auf den Client zu ermöglichen.
+    Diese Tests stellen sicher, dass der Schlüssel erfolgreich zum Server hinzugefügt wird,
+    was die Grundlage für eine sichere Authentifizierung ist.
     """
 
     @patch("paramiko.SSHClient")
     def test_send_public_key_success(self, mock_ssh_client):
-        """Testet das erfolgreiche Hinzufügen des öffentlichen Schlüssels zum Server."""
+        """Testet das erfolgreiche Hinzufügen des öffentlichen Schlüssels auf dem Server."""
         mock_sftp_client = MagicMock()
         mock_file = MagicMock()
         mock_sftp_client.open.return_value.__enter__.return_value = mock_file
@@ -156,7 +153,7 @@ class TestSendPublicKeyToServer(unittest.TestCase):
 
     @patch("paramiko.SSHClient")
     def test_send_public_key_open_failure(self, mock_ssh_client):
-        """Testet das Verhalten bei einem Fehler beim Öffnen der authorized_keys-Datei."""
+        """Testet den Fehlerfall beim Öffnen der Datei authorized_keys auf dem Server."""
         mock_sftp_client = MagicMock()
         mock_sftp_client.open.side_effect = IOError("Open failed")
         mock_ssh_client_instance = mock_ssh_client.return_value
@@ -168,7 +165,7 @@ class TestSendPublicKeyToServer(unittest.TestCase):
 
     @patch("paramiko.SSHClient")
     def test_send_public_key_connection_failure(self, mock_ssh_client):
-        """Testet das Verhalten bei einem Verbindungsfehler zum Server."""
+        """Testet den Fehlerfall bei Verbindungsproblemen zum Server."""
         mock_ssh_client_instance = mock_ssh_client.return_value
         mock_ssh_client_instance.open_sftp.side_effect = paramiko.SSHException("Connection failed")
         public_key = "ssh-rsa AAAAB3Nza...mocked_key"
@@ -177,17 +174,20 @@ class TestSendPublicKeyToServer(unittest.TestCase):
         self.assertFalse(result)
 
 
-# Testklasse für das Lesen des SSH-Keys
+
 class TestReadSSHKey(unittest.TestCase):
     """
-    Testet das Lesen des öffentlichen Schlüssels.
-    Dies ist entscheidend, um sicherzustellen, dass der Schlüssel korrekt an den Server gesendet werden kann.
+    Testet das Lesen des öffentlichen Schlüssels, um sicherzustellen,
+    dass dieser korrekt geladen und versendet werden kann.
     """
 
+    @patch('sys.stdin', new_callable=StringIO)
     @patch("builtins.open", new_callable=mock_open, read_data="mocked_public_key")
     @patch("os.path.exists", return_value=True)
-    def test_read_public_key_success(self, mock_exists, mock_open):
-        """Testet, dass der öffentliche Schlüssel korrekt gelesen wird."""
+    def test_read_public_key_success(self, mock_exists, mock_open, mock_stdin):
+        """Testet das erfolgreiche Lesen des öffentlichen Schlüssels."""
+        mock_stdin.write('some input\n')
+        mock_stdin.seek(0)
         main()
         mock_open.assert_called_once_with(f"{KEY_PATH}.pub", "r")
 
@@ -202,11 +202,10 @@ class TestReadSSHKey(unittest.TestCase):
         self.assertIn("Error reading public key", captured_output.getvalue())
 
 
-# Testklasse für die Main-Funktion
 class TestMainFunction(unittest.TestCase):
     """
-    Testet die Main-Funktion, die die Logik zur Generierung des Schlüssels,
-    dem Senden des Schlüssels und dem Herstellen der Verbindung zum Server vereint.
+    Testet die Main-Funktion, die die Logik zur SSH-Schlüsselgenerierung,
+    dem Senden des Schlüssels und dem Verbindungsaufbau zum Server umfasst.
     """
 
     @patch("sys.stdin.isatty", return_value=True)
@@ -216,7 +215,7 @@ class TestMainFunction(unittest.TestCase):
     @patch("paramiko.SSHClient.connect", side_effect=paramiko.SSHException("Connection failed"))
     @patch("builtins.open", new_callable=mock_open, read_data="mocked_public_key")
     def test_main_connection_failure(self, mock_open, mock_connect, mock_getpass, mock_run, mock_exists, mock_isatty):
-        """Testet, dass die Main-Funktion bei Verbindungsfehlern korrekt mit einem Fehler umgeht."""
+        """Testet die Main-Funktion bei Verbindungsproblemen."""
         main()
         mock_run.assert_called_once()
         mock_connect.assert_called_once_with(REMOTE_HOST, username=REMOTE_USER, password="mock_password")
@@ -225,7 +224,7 @@ class TestMainFunction(unittest.TestCase):
     @patch("os.path.exists", return_value=True)
     @patch("paramiko.SSHClient")
     def test_main_public_key_file_not_found(self, mock_ssh_client, mock_exists, mock_open):
-        """Testet, dass die Main-Funktion korrekt mit einem fehlenden öffentlichen Schlüssel umgeht."""
+        """Testet den Fehlerfall, wenn die Datei mit dem öffentlichen Schlüssel nicht gefunden wird."""
         captured_output = StringIO()
         sys.stdout = captured_output
         main()
