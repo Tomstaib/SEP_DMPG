@@ -17,7 +17,6 @@ from paramiko.ssh_exception import SSHException
 
 #local-modules
 import SSHVerbindung.ssh_with_parameters
-from SSHVerbindung import ssh_with_parameters
 from SSHVerbindung.ssh_with_parameters import (
     create_ssh_client, transfer_folder, is_valid, ensure_remote_directory,
     transfer_file, read_json, select_folder, check_python_version, install_libraries, get_private_config, main, read_version_from_file, execute_command
