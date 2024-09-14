@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+
+{% block title %}Experimentierumgebung{% endblock %}
+
+{% block content %}
+<style>
+    /* Main content styling */
+    #main-content {
+        height: 100vh;
+        overflow-y: auto; /* Enable scrolling in the main content */
+        padding: 20px;
+        box-sizing: border-box;
+    }
+
+    button {
+        margin-top: 10px;
+    }
+
+    /* Ensure form inputs and selects fit the content area */
+    form input, form select {
+        width: 100%;
+        max-width: 300px;
+        margin-bottom: 10px;
+    }
+    .item-container {
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+
+    .remove-btn {
+        background-color: red;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        cursor: pointer;
+        margin-top: 10px; /* Space between the last input and the button */
+        display: block; /* Makes the button appear directly below the inputs */
+        width: 10%; /* Full width for better UX */
+        text-align: center;
+    }
+</style>
+
+    <h1>Generate Simulation Configuration</h1>
+
+    <form action="{{ url_for('experimental_environment') }}" method="POST" id="experimentForm">
+
+        <!-- Model Name Section -->
+        <h3>Model Configuration</h3>
+        <label for="model_name">Model Name:</label>
+        <input type="text" id="model_name" name="model_name" placeholder="Model1" required><br><br>
+
+        <label for="scenario_name">Scenario Name:</label>
+        <input type="text" id="scenario_name" name="scenario_name" placeholder="Scenario1" required><br><br>
+
+        <!-- Source Section -->
+        <h3>Source Configuration</h3>
+        <div id="source-container"></div>
+        <button type="button" id="add-source-btn">Add Source</button><br><br>
+
+        <!-- Server Section -->
+        <h3>Server Configuration</h3>
+        <div id="server-container"></div>
+        <button type="button" id="add-server-btn">Add Server</button><br><br>
+
+        <!-- Sink Section -->
+        <h3>Sink Configuration</h3>
+        <div id="sink-container"></div>
+        <button type="button" id="add-sink-btn">Add Sink</button><br><br>
+
+        <!-- Combiner Section -->
+        <h3>Combiner Configuration</h3>
+        <div id="combiner-container"></div>
+        <button type="button" id="add-combiner-btn">Add Combiner</button><br><br>
+
+        <!-- Separator Section -->
+        <h3>Separator Configuration</h3>
+        <div id="separator-container"></div>
+        <button type="button" id="add-separator-btn">Add Separator</button><br><br>
+
+        <input type="submit" value="Generate Configuration">
+    </form>
+
+    <script>
+        let sourceCount = 0;
+        let serverCount = 0;
+        let sinkCount = 0;
+        let combinerCount = 0;
+        let separatorCount = 0;
+
+        // Function to remove the parent container of the clicked delete button
+        function removeItem(event) {
+            event.target.closest('.item-container').remove();
+        }
+
+        document.getElementById('add-source-btn').addEventListener('click', function() {
+            sourceCount++;
+            const container = document.getElementById('source-container');
+            const sourceHtml = `
+                <div class="item-container">
+                    <h4>Source ${sourceCount}</h4>
+                    <label for="source_name_${sourceCount}">Source Name:</label>
+                    <input type="text" id="source_name_${sourceCount}" name="source_name_${sourceCount}" required><br><br>
+                    <label for="entity_creation_rate_${sourceCount}">Entity Creation Rate:</label>
+                    <input type="number" id="entity_creation_rate_${sourceCount}" name="entity_creation_rate_${sourceCount}" step="0.01" required><br><br>
+                    <button type="button" class="remove-btn">Delete Source</button>
+                </div>`;
+            container.insertAdjacentHTML('beforeend', sourceHtml);
+        });
+
+
+        document.getElementById('add-server-btn').addEventListener('click', function() {
+            serverCount++;
+            const container = document.getElementById('server-container');
+            const serverHtml = `
+                <div class="item-container">
+                    <h4>Server ${serverCount}</h4>
+                    <label for="server_name_${serverCount}">Server Name:</label>
+                    <input type="text" id="server_name_${serverCount}" name="server_name_${serverCount}" required><br><br>
+                    <label for="server_dist_${serverCount}">Distribution Type:</label>
+                    <select id="server_dist_${serverCount}" name="server_dist_${serverCount}">
+                        <option value="triangular">Triangular</option>
+                        <option value="uniform">Uniform</option>
+                        <option value="expovariate">Exponential</option>
+                        <option value="normalvariate">Normal</option>
+                    </select><br><br>
+                    <label for="low_${serverCount}">Low Value:</label>
+                    <input type="number" id="low_${serverCount}" name="low_${serverCount}" step="0.01" required><br><br>
+                    <label for="high_${serverCount}">High Value:</label>
+                    <input type="number" id="high_${serverCount}" name="high_${serverCount}" step="0.01" required><br><br>
+                    <button type="button" class="remove-btn">Delete Source</button>
+                </div>`;
+            container.insertAdjacentHTML('beforeend', serverHtml);
+        });
+
+        document.getElementById('add-sink-btn').addEventListener('click', function() {
+            sinkCount++;
+            const container = document.getElementById('sink-container');
+            const sinkHtml = `
+                <div class="item-container">
+                    <h4>Sink ${sinkCount}</h4>
+                    <label for="sink_name_${sinkCount}">Sink Name:</label>
+                    <input type="text" id="sink_name_${sinkCount}" name="sink_name_${sinkCount}" required><br><br>
+                    <button type="button" class="remove-btn">Delete Source</button>
+                </div>`;
+            container.insertAdjacentHTML('beforeend', sinkHtml);
+        });
+
+        document.getElementById('add-combiner-btn').addEventListener('click', function() {
+            combinerCount++;
+            const container = document.getElementById('combiner-container');
+            const combinerHtml = `
+                <div class="item-container">
+                    <h4>Combiner ${combinerCount}</h4>
+                    <label for="combiner_name_${combinerCount}">Combiner Name:</label>
+                    <input type="text" id="combiner_name_${combinerCount}" name="combiner_name_${combinerCount}" required><br><br>
+                    <button type="button" class="remove-btn">Delete Source</button>
+                </div>`;
+            container.insertAdjacentHTML('beforeend', combinerHtml);
+        });
+
+        document.getElementById('add-separator-btn').addEventListener('click', function() {
+            separatorCount++;
+            const container = document.getElementById('separator-container');
+            const separatorHtml = `
+                <div class="item-container">
+                    <h4>Separator ${separatorCount}</h4>
+                    <label for="separator_name_${separatorCount}">Separator Name:</label>
+                    <input type="text" id="separator_name_${separatorCount}" name="separator_name_${separatorCount}" required><br><br>
+                    <button type="button" class="remove-btn">Delete Source</button>
+                </div>`;
+            container.insertAdjacentHTML('beforeend', separatorHtml);
+        });
+
+        // Event delegation to handle the removal of dynamically added elements
+        document.addEventListener('click', function(event) {
+            if (event.target.classList.contains('remove-btn')) {
+                removeItem(event);
+            }
+        });
+
+    </script>
+
+{% endblock %}
