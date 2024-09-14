@@ -23,51 +23,53 @@ def input_password() -> str or None:
             exit(1)
     except Exception as e:
         print(f"Error with getpass: {e}")
-        return None
+        sys.exit(1)
 
-def create_pgpass_file(template: str):
+def create_pgpass_file(template):
     downloads_dir = os.path.join(os.path.expanduser('~'), 'Downloads')
     pgpass_path = os.path.join(downloads_dir, 'pgpass.conf')
 
-    print(f"Saving .pgpass file to: {pgpass_path}")
-
-    # Ensure the directory exists
+    # Überprüfe, ob das Verzeichnis existiert, bevor es erstellt wird
     try:
         os.makedirs(os.path.dirname(pgpass_path), exist_ok=True)
-    except Exception as e:
+    except PermissionError as e:
         print(f"Error writing .pgpass file: {e}")
-        return
+        return  # Fehlerhaft, keine weiteren Schritte unternehmen
 
-    # Write the .pgpass file
     try:
-        with open(pgpass_path, 'w') as pgpass_file:
-            pgpass_file.write(template)
-        print(f".pgpass file created successfully at: {pgpass_path}")
+        with open(pgpass_path, 'w') as f:
+            f.write(template)
+        print(f"Saving .pgpass file to: {pgpass_path}")
     except Exception as e:
         print(f"Error writing .pgpass file: {e}")
 
-    # Set the file permissions to be readable and writable only by the user (for Unix-like systems)
     if os.name != 'nt':
         try:
             os.chmod(pgpass_path, stat.S_IRUSR | stat.S_IWUSR)
-            print(f"Permissions set on .pgpass file: {pgpass_path}")
         except Exception as e:
             print(f"Error setting permissions: {e}")
+
+
 
 def connect_to_db():
     # Create the database URL
     db_url = f"postgresql+psycopg2://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    print(f"Connecting to database with URL: {db_url}")  # Debug-Ausgabe
     # The password will be fetched from .pgpass automatically
     engine = create_engine(db_url)
+    print(f"Engine object: {engine}")  # Debug-Ausgabe
 
     # Test the connection
     try:
         connection = engine.connect()
+        print(f"Connection object: {connection}")  # Debug-Ausgabe
         print("Connection successful")
         return connection
     except Exception as e:
         print(f"Error: {e}")
         return None
+
+
 
 
 def main():
@@ -87,5 +89,5 @@ def main():
     else:
         print("Connection unsuccessful")
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     main()
