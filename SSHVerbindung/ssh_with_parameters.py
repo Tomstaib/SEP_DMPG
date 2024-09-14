@@ -180,6 +180,7 @@ def main() -> None:
     if local_version is None:
         print("Local version file not found or invalid.")
         return
+    print(f"Local version: {local_version}")
 
     private_config: dict = get_private_config()
     if private_config is None:
@@ -212,6 +213,7 @@ def main() -> None:
         remote_folder_path = remote_folder_path.replace('$USER', private_config["user"])
         _, error = execute_command(ssh_client, f'ls {remote_folder_path}')
         folder_exists = not bool(error)
+        print(f"Remote folder exists: {folder_exists}")
 
         remote_version_file_path = public_config.get('paths').get('remote_version_file_path')
         remote_version_file_path = remote_version_file_path.replace('$USER', private_config["user"])
@@ -219,8 +221,10 @@ def main() -> None:
         if folder_exists:
             remote_version, error = execute_command(ssh_client, f'cat {remote_version_file_path}')
             if error:
-                print("Error reading remote version file:", error)
+                print(f"Error reading remote version file: {error}")
                 remote_version = None
+
+            print(f"Remote version: {remote_version}")
 
             if remote_version and remote_version == local_version:
                 print("The software is already up to date. No transfer needed.")
@@ -237,7 +241,9 @@ def main() -> None:
             print("No folder selected.")
             return
 
+        print(f"Transferring folder from {local_folder_path} to {remote_folder_path}")
         transfer_folder(ssh_client, local_folder_path, remote_folder_path)
+
         print(f"Folder successfully transferred to {remote_folder_path}.")
 
         transfer_folder(ssh_client, os.path.dirname(public_config.get('paths').get('local_version_file_path')),
@@ -260,5 +266,6 @@ def main() -> None:
 
 
 
+
 if __name__ == "__main__":
-    main()
+    main() # pragma: no cover
