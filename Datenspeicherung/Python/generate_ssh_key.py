@@ -19,7 +19,7 @@ def generate_ssh_key(key_path, comment="", passphrase=""):
     :param key_path: Path where the SSH key will be saved (without extension).
     :param comment: Comment to be included in the SSH public key.
     :param passphrase: Passphrase for the SSH private key (empty for no passphrase).
-    :return: None
+    :return: True if successful, False otherwise
     """
     # Ensure the .ssh directory exists
     ssh_dir = os.path.dirname(key_path)
@@ -35,80 +35,87 @@ def generate_ssh_key(key_path, comment="", passphrase=""):
         "-N", passphrase  # Passphrase (empty for no passphrase)
     ]
 
-    subprocess.run(command, check=True)
-    print(f"SSH key generated at {key_path}")
+    try:
+        subprocess.run(command, check=True)
+        print(f"SSH key generated at {key_path}")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Error generating SSH key: {e}")
+        return False
 
 
 def send_public_key_to_server(ssh_client, public_key, remote_user, remote_host, remote_key_path):
     """
     Send the public key to the server and add it to the authorized_keys file.
+    :return: True if successful, False otherwise
     """
+    sftp = None
     try:
         sftp = ssh_client.open_sftp()
         try:
-            # Check if the .ssh directory exists on the remote server
             sftp.chdir('.ssh')
         except IOError:
-            # If it doesn't exist, create it
             sftp.mkdir('.ssh')
             sftp.chmod('.ssh', 0o700)
 
-        # Append the public key to the authorized_keys file
-        with sftp.open(remote_key_path, 'a') as authorized_keys_file:
-            authorized_keys_file.write(public_key + "\n")
-        print(f"Public key added to {remote_user}@{remote_host}:{remote_key_path}")
+        try:
+            with sftp.open(remote_key_path, 'a') as authorized_keys_file:
+                authorized_keys_file.write(public_key + "\n")
+            print(f"Public key added to {remote_user}@{remote_host}:{remote_key_path}")
+            return True
+        except Exception as e:
+            print(f"Error adding public key to {remote_key_path}: {e}")
+            return False
+    except Exception as e:
+        print(f"Error sending public key: {e}")
+        return False
     finally:
-        sftp.close()
+        if sftp:
+            sftp.close()
 
 
-def main():
+def main(ssh_client=None, remote_password=None):
+    if ssh_client is None:
+        ssh_client = paramiko.SSHClient()
+
     # Check if the SSH key already exists
     if os.path.exists(KEY_PATH):
         print(f"SSH key already exists at {KEY_PATH}. Skipping key generation.")
     else:
-        # Generate the SSH key
-        generate_ssh_key(KEY_PATH, COMMENT, PASSPHRASE)
+        if not generate_ssh_key(KEY_PATH, COMMENT, PASSPHRASE):
+            return
 
-    # Read the public key
     pub_key_path = f"{KEY_PATH}.pub"
-    with open(pub_key_path, "r") as pub_key_file:
-        public_key = pub_key_file.read()
-
     try:
-        # Check if input can be received
+        with open(pub_key_path, "r") as pub_key_file:
+            public_key = pub_key_file.read()
+    except FileNotFoundError as e:
+        print(f"Error reading public key: {e}")
+        return
+
+    if remote_password is None:
         if sys.stdin.isatty():
             print("stdin is interactive, prompting for password")
-            remote_password: str = getpass(prompt=f'SSH Password for the server: ')
+            remote_password = getpass(prompt=f'SSH Password for the server: ')
             print("Password input received")
         else:
             print("stdin is not interactive, cannot prompt for password")
             return
-    except Exception as e:
-        print(f"Error with getpass: {e}")
-        return
 
-    # Connect to the remote server
-    ssh_client = paramiko.SSHClient()
     ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
     try:
-        # First-time connection using password to upload the public key
         ssh_client.connect(REMOTE_HOST, username=REMOTE_USER, password=remote_password)
         print(REMOTE_KEY_PATH)
-        send_public_key_to_server(ssh_client, public_key, REMOTE_USER, REMOTE_HOST, REMOTE_KEY_PATH)
+        if not send_public_key_to_server(ssh_client, public_key, REMOTE_USER, REMOTE_HOST, REMOTE_KEY_PATH):
+            return
+    except Exception as e:
+        print(f"Error with SSH connection using password: {e}")
+        return
     finally:
         ssh_client.close()
 
-    rsa_key = paramiko.RSAKey(filename=KEY_PATH, password=PASSPHRASE)  # necessary because of paramiko issue
-    try:
-        ssh_client.connect(REMOTE_HOST, username=REMOTE_USER, pkey=rsa_key)
-        print("Connection with rsa successful")
-    except Exception as e:
-        print(f"Error with ssh_client: {e}")
+    
 
-    # Close the SSH connection
-    ssh_client.close()
-
-
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()
