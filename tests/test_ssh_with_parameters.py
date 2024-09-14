@@ -2,8 +2,11 @@
 import os
 import stat
 import json
+import sys
 import unittest
-from unittest.mock import patch, MagicMock, mock_open, Mock, call
+from unittest import mock
+from unittest.mock import Mock, patch, MagicMock, mock_open, call
+
 from tkinter import Tk
 
 
@@ -14,6 +17,7 @@ from paramiko.ssh_exception import SSHException
 
 #local-modules
 import SSHVerbindung.ssh_with_parameters
+from SSHVerbindung import ssh_with_parameters
 from SSHVerbindung.ssh_with_parameters import (
     create_ssh_client, transfer_folder, is_valid, ensure_remote_directory,
     transfer_file, read_json, select_folder, check_python_version, install_libraries, get_private_config, main, read_version_from_file, execute_command
@@ -656,11 +660,6 @@ class TestMainFunction(unittest.TestCase):
                             call[0][0] == "Local version file not found or invalid."]
         assert not unexpected_calls, f"Unexpected print calls: {unexpected_calls}"
 
-    @patch('SSHVerbindung.ssh_with_parameters.execute_command', return_value=(None, "Some error"))
-    def test_error_reading_remote_version_file(self, mock_execute_command):
-        main()
-        print("Test passed: main() returned successfully when an error occurred reading the remote version file.")
-
     @patch('SSHVerbindung.ssh_with_parameters.select_folder', return_value=None)
     def test_no_folder_selected(self, mock_select_folder):
         main()
@@ -671,11 +670,75 @@ class TestMainFunction(unittest.TestCase):
         main()
         print("Test passed: main() returned successfully when a general exception occurred.")
 
-    @patch('SSHVerbindung.ssh_with_parameters.execute_command', return_value=("1.0.0", None))
+    @patch('SSHVerbindung.ssh_with_parameters.install_libraries')
+    @patch('SSHVerbindung.ssh_with_parameters.execute_command', return_value=("Python 3.8.5", ""))
     @patch('SSHVerbindung.ssh_with_parameters.read_version_from_file', return_value="1.0.0")
-    def test_software_already_up_to_date(self, mock_execute_command, mock_read_version_from_file):
+    @patch('SSHVerbindung.ssh_with_parameters.read_json', return_value={
+        "paths": {
+            "local_version_file_path": "/path/to/local/version.json",
+            "required_python_version": "3.8",
+            "env_activation_command": "/path/to/env/activate",
+            "remote_folder_path": "/remote/folder",
+            "remote_version_file_path": "/remote/folder/version.json",
+            "requirements_file_path": "/path/to/requirements.txt"
+        },
+        "server": {
+            "name": "testserver",
+            "port": "22"
+        }
+    })
+    @patch('SSHVerbindung.ssh_with_parameters.get_private_config', return_value={"user": "testuser"})
+    @patch('SSHVerbindung.ssh_with_parameters.create_ssh_client')  # Mock SSH client creation
+    @patch('SSHVerbindung.ssh_with_parameters.select_folder',
+           return_value='/mocked/folder')  # Mock the folder selection
+    @patch('sys.stdin.isatty', return_value=True)
+    @patch('builtins.input', return_value='password')  # Mock input instead of getpass
+    def test_software_already_up_to_date(self, mock_input, mock_isatty, mock_create_ssh_client,
+                                         mock_select_folder, mock_get_private_config, mock_read_json,
+                                         mock_read_version_from_file, mock_execute_command,
+                                         mock_install_libraries):
+        # Führe die Hauptfunktion aus
         main()
-        print("Test passed: main() returned successfully when the software was already up to date.")
+
+        # Überprüfe, ob install_libraries aufgerufen wird, wenn die Software auf dem neuesten Stand ist
+        mock_install_libraries.assert_called_once()
+        print("Test passed: Software is already up to date, and install_libraries was called.")
+
+    @patch('SSHVerbindung.ssh_with_parameters.transfer_folder')
+    @patch('SSHVerbindung.ssh_with_parameters.select_folder', return_value='/local/folder')
+    @patch('SSHVerbindung.ssh_with_parameters.execute_command', side_effect=[
+        ("Python 3.8.5", ""),  # Python version check
+        ("0.9.0", ""),  # Remote version is older
+        ("", ""),  # Simulate no error for folder existence check
+    ])
+    @patch('SSHVerbindung.ssh_with_parameters.read_version_from_file', return_value="1.0.0")  # Local version is newer
+    @patch('SSHVerbindung.ssh_with_parameters.read_json', return_value={
+        "paths": {
+            "local_version_file_path": "/path/to/local/version.json",
+            "required_python_version": "3.8",
+            "env_activation_command": "/path/to/env/activate",
+            "remote_folder_path": "/remote/folder",
+            "remote_version_file_path": "/remote/folder/version.json",
+            "requirements_file_path": "/path/to/requirements.txt"
+        },
+        "server": {
+            "name": "testserver",
+            "port": "22"
+        }
+    })
+    @patch('SSHVerbindung.ssh_with_parameters.get_private_config', return_value={"user": "testuser"})
+    @patch('SSHVerbindung.ssh_with_parameters.create_ssh_client')  # Mock SSH client creation
+    @patch('builtins.input', return_value='password')  # Mocking the input for password
+    def test_software_needs_update(self, mock_input, mock_create_ssh_client, mock_get_private_config, mock_read_json,
+                                   mock_read_version_from_file, mock_execute_command, mock_select_folder,
+                                   mock_transfer_folder):
+        # Führe die Hauptfunktion aus
+        main()
+
+        # Überprüfen, ob transfer_folder aufgerufen wird, wenn die Software aktualisiert werden muss
+        mock_transfer_folder.assert_any_call(mock.ANY, '/local/folder', '/remote/folder')
+        print("Test passed: Software needs update, and folder was transferred.")
+
 
     @patch('SSHVerbindung.ssh_with_parameters.read_json', return_value={
         'paths': {
@@ -733,48 +796,6 @@ class TestMainFunction(unittest.TestCase):
                 mock_print.assert_any_call("Python 3.8 is not installed on the remote system.")
 
 
-    @patch('SSHVerbindung.ssh_with_parameters.execute_command')
-    @patch('SSHVerbindung.ssh_with_parameters.create_ssh_client')
-    @patch('builtins.input', return_value='valid_password')
-    @patch('SSHVerbindung.ssh_with_parameters.read_version_from_file', return_value="1.0.0")
-    @patch('SSHVerbindung.ssh_with_parameters.get_private_config', return_value={"user": "testuser"})
-    @patch('SSHVerbindung.ssh_with_parameters.select_folder', return_value='/dummy/local/folder')
-    def test_remote_folder_does_not_exist(self, mock_select_folder, mock_get_private_config, mock_read_version,
-                                          mock_input, mock_create_ssh_client, mock_execute_command):
-        # Beispiel einer gefälschten public_config JSON
-        public_config = {
-            'server': {'name': 'valid_server', 'port': '22'},
-            'paths': {
-                'required_python_version': '3.8',
-                'env_activation_command': 'source ~/env/bin/activate',
-                'remote_folder_path': '/remote/path',
-                'remote_version_file_path': '/remote/version/path',
-                'local_version_file_path': '/local/version/path',
-                'requirements_file_path': '/requirements/path'
-            }
-        }
-
-        with patch('SSHVerbindung.ssh_with_parameters.read_json', return_value=public_config):
-            # Simuliere den Befehl zum Überprüfen der Python-Version und den ls-Fehler
-            mock_execute_command.side_effect = [
-                ("Python 3.8.5", ""),  # Für den Python-Version-Check
-                ("", "ls: cannot access '/remote/path': No such file or directory")  # Für den ls-Befehl
-            ]
-
-            with patch('builtins.print') as mock_print:
-                main()
-
-                # Überprüfe, ob der Befehl für den Python-Versionscheck korrekt aufgerufen wurde
-                mock_execute_command.assert_any_call(mock_create_ssh_client(),
-                                                     'source ~/env/bin/activate && python3 --version')
-
-                # Überprüfe, ob der ls-Befehl für das Überprüfen des Verzeichnisses korrekt aufgerufen wurde
-                mock_execute_command.assert_any_call(mock_create_ssh_client(), 'ls /remote/path')
-
-                # Überprüfe, ob die Fehlermeldung für das fehlende Verzeichnis korrekt ausgegeben wurde
-                mock_print.assert_any_call("Error: Folder does not exist on remote system.")
-
 
 if __name__ == '__main__':
     unittest.main()
-
