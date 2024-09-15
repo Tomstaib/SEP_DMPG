@@ -1,10 +1,14 @@
 {
-    "model_name": "a",
-    "scenario_name": "b",
+    "model_name": "asfafas",
+    "scenario_name": "grgegsdff",
     "sources": [
         {
-            "name": "\u00f6",
-            "entity_creation_rate": 2.0
+            "name": "awewe",
+            "entity_creation_rate": 13.0
+        },
+        {
+            "name": "wet345",
+            "entity_creation_rate": 234123.0
         }
     ],
     "servers": [],

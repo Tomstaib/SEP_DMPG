@@ -101,7 +101,7 @@
                 <h4>Source ${sourceCount}</h4>
 
                 <label for="source_name_${sourceCount}">Source Name:</label>
-                <input type="text" id="source_name_${sourceCount}" name="source_name_${sourceCount}" required><br><br>
+                <input type="text" id="source_name_${sourceCount}" name="source_name_${sourceCount}" placeholder="Source${sourceCount}" required><br><br>
 
                 <label for="entity_creation_rate_${sourceCount}">Entity Creation Rate:</label>
                 <input type="number" id="entity_creation_rate_${sourceCount}" name="entity_creation_rate_${sourceCount}" step="0.01" required><br><br>
@@ -121,7 +121,7 @@
                 <input type="number" id="high_value_${sourceCount}" name="high_value_${sourceCount}" step="0.01" required><br><br>
 
                 <label for="arrival_table_${sourceCount}">Upload Arrival Table (CSV):</label>
-                <input type="file" id="arrival_table_${sourceCount}" name="arrival_table_${sourceCount}" accept=".csv" onchange="uploadCSV(event, ${sourceCount})"><br><br>
+                <input type="file" id="arrival_table_${sourceCount}" name="arrival_table_file_${sourceCount}" accept=".csv"><br><br>
 
                 <label for="routing_expression_${sourceCount}">Routing Expression:</label>
                 <input type="text" id="routing_expression_${sourceCount}" name="routing_expression_${sourceCount}" placeholder="Routing expression"><br><br>
