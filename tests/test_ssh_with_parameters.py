@@ -14,6 +14,8 @@ from tkinter import Tk
 import paramiko
 from paramiko.ssh_exception import SSHException
 
+# Für Dockercontainer zum initialisierren der lokalen Module
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
 #local-modules
 import SSHVerbindung.ssh_with_parameters
