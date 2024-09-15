@@ -5,11 +5,11 @@ from environment import prepare_env
 import os
 import json
 import paramiko
-
+import experiments
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
-SAVE_DIR = '/var/www/dmpg_api/received_data'
-USER_DIR = '/var/www/dmpg_api/user'
+SAVE_DIR = '/received_data'
+USER_DIR = '/user'
 
 @app.route('/')
 def index():
@@ -121,18 +121,50 @@ def contact():
 def visualization():
     return render_template('visualization.html')
 
-@app.route('/experimental_environment')
+"""@app.route('/experimental_environment', methods=['GET', 'POST'])
 @login_required
-def experimental_enviroment():
-    file_name = os.path.join(SAVE_DIR, 'runtime_prediction.json')
+def experimental_environment():
+    if request.method == 'POST':
+        # This part handles the config generation based on form submission
+        config_filename = experiments.generate_config(request.form, session['username'])
+        flash(f"Configuration generated and saved to {config_filename}!")
+        return redirect(url_for('experimental_environment'))
 
-    if os.path.exists(file_name):
-        with open(file_name, 'r') as json_file:
-            data = json.load(json_file)
-    else:
-        data = {}  # Leeres Dictionary, falls die Datei nicht existiert
+    # For GET requests, load the existing runtime prediction
+    data = experiments.load_runtime_prediction()  # Use the existing data loading logic
+    return render_template('experimental_environment.html', data=data)"""
 
+
+@app.route('/experimental_environment', methods=['GET','POST'])
+@login_required
+def experimental_environment():
+    if request.method == 'POST':
+        try:
+            # Retrieve the file from the file input
+            arrival_table_file = request.files.get('arrival_table_file')
+
+            config_filename = experiments.generate_config(request.form, session['username'])
+
+            # Handle the file upload if present
+            if arrival_table_file and arrival_table_file.filename.endswith('.csv'):
+                # Save the file to a desired location
+                filename = "test_" + arrival_table_file.filename
+                file_path = os.path.join('uploads', filename)  # Adjust 'uploads' to your directory
+                arrival_table_file.save(file_path)
+
+
+                flash(f'File uploaded successfully: {filename}')
+            else:
+                flash('Invalid file format. Only CSV files are allowed.')
+            flash(f'Configuration saved to {config_filename}')
+            return redirect(url_for('experimental_environment'))
+        except Exception as e:
+            flash(f'Error generating configuration: {e}')
+
+    # For GET requests, load the existing runtime prediction
+    data = experiments.load_runtime_prediction()  # Use the existing data loading logic
     return render_template('experimental_environment.html', data=data)
+
 
 @app.route('/receive_runtime_prediction', methods=['POST'])
 def receive_runtime_prediction():
@@ -176,6 +208,17 @@ def upload_json():
         return jsonify({
             "error": "Kein JSON im Request gefunden"
         }), 400
+
+@app.route('/generate_config', methods=['GET', 'POST'])
+@login_required
+def generate_config_route():
+    if request.method == 'POST':
+        # Call the `generate_config` function from the `experiments` module
+        config_filename = experiments.generate_config(request.form, session['username'])
+        flash(f"Configuration generated and saved to {config_filename}!")
+        return redirect(url_for('dashboard'))
+
+    return render_template('generate_config.html')
 
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=5000)

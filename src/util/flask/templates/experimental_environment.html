@@ -43,7 +43,7 @@
 
     <h1>Generate Simulation Configuration</h1>
 
-    <form action="{{ url_for('experimental_environment') }}" method="POST" id="experimentForm">
+    <form action="{{ url_for('experimental_environment') }}" method="POST" enctype="multipart/form-data" id="experimentForm">
 
         <!-- Model Name Section -->
         <h3>Model Configuration</h3>
@@ -94,19 +94,42 @@
         }
 
         document.getElementById('add-source-btn').addEventListener('click', function() {
-            sourceCount++;
-            const container = document.getElementById('source-container');
-            const sourceHtml = `
-                <div class="item-container">
-                    <h4>Source ${sourceCount}</h4>
-                    <label for="source_name_${sourceCount}">Source Name:</label>
-                    <input type="text" id="source_name_${sourceCount}" name="source_name_${sourceCount}" required><br><br>
-                    <label for="entity_creation_rate_${sourceCount}">Entity Creation Rate:</label>
-                    <input type="number" id="entity_creation_rate_${sourceCount}" name="entity_creation_rate_${sourceCount}" step="0.01" required><br><br>
-                    <button type="button" class="remove-btn">Delete Source</button>
-                </div>`;
-            container.insertAdjacentHTML('beforeend', sourceHtml);
-        });
+        sourceCount++;
+        const container = document.getElementById('source-container');
+        const sourceHtml = `
+            <div class="item-container">
+                <h4>Source ${sourceCount}</h4>
+
+                <label for="source_name_${sourceCount}">Source Name:</label>
+                <input type="text" id="source_name_${sourceCount}" name="source_name_${sourceCount}" required><br><br>
+
+                <label for="entity_creation_rate_${sourceCount}">Entity Creation Rate:</label>
+                <input type="number" id="entity_creation_rate_${sourceCount}" name="entity_creation_rate_${sourceCount}" step="0.01" required><br><br>
+
+                <label for="creation_time_dist_type_${sourceCount}">Creation Time Distribution Type:</label>
+                <select id="creation_time_dist_type_${sourceCount}" name="creation_time_dist_type_${sourceCount}">
+                    <option value="triangular">Triangular</option>
+                    <option value="uniform">Uniform</option>
+                    <option value="expovariate">Exponential</option>
+                    <option value="normalvariate">Normal</option>
+                </select><br><br>
+
+                <label for="low_value_${sourceCount}">Low Value:</label>
+                <input type="number" id="low_value_${sourceCount}" name="low_value_${sourceCount}" step="0.01" required><br><br>
+
+                <label for="high_value_${sourceCount}">High Value:</label>
+                <input type="number" id="high_value_${sourceCount}" name="high_value_${sourceCount}" step="0.01" required><br><br>
+
+                <label for="arrival_table_${sourceCount}">Upload Arrival Table (CSV):</label>
+                <input type="file" id="arrival_table_${sourceCount}" name="arrival_table_${sourceCount}" accept=".csv" onchange="uploadCSV(event, ${sourceCount})"><br><br>
+
+                <label for="routing_expression_${sourceCount}">Routing Expression:</label>
+                <input type="text" id="routing_expression_${sourceCount}" name="routing_expression_${sourceCount}" placeholder="Routing expression"><br><br>
+
+                <button type="button" class="remove-btn">Delete Source</button>
+            </div>`;
+        container.insertAdjacentHTML('beforeend', sourceHtml);
+    });
 
 
         document.getElementById('add-server-btn').addEventListener('click', function() {
@@ -180,5 +203,34 @@
         });
 
     </script>
+<script>
+    // Function to handle CSV file upload
+    function uploadCSV(event, sourceCount) {
+        const fileInput = event.target;
+        const file = fileInput.files[0];
+
+        if (file) {
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            const fileType = file.type;
+
+            // Check if the file has a CSV extension and correct MIME type
+            if (fileExtension === 'csv' && fileType === 'text/csv') {
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    // The file content is available in e.target.result
+                    console.log(`File content for Source ${sourceCount}:`, e.target.result);
+
+                    // You can process the CSV file data here, or pass it to the server
+                };
+
+                reader.readAsText(file);
+            } else {
+                alert("Please upload a valid CSV file.");
+                fileInput.value = ""; // Clear the invalid file input
+            }
+        }
+    }
+</script>
 
 {% endblock %}

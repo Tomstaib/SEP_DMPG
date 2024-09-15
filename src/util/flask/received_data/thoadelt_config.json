@@ -1,0 +1,14 @@
+{
+    "model_name": "a",
+    "scenario_name": "b",
+    "sources": [
+        {
+            "name": "\u00f6",
+            "entity_creation_rate": 2.0
+        }
+    ],
+    "servers": [],
+    "sinks": [],
+    "combiners": [],
+    "separators": []
+}

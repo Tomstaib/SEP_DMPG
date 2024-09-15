@@ -9,7 +9,6 @@ from tkinter import Tk
 from tkinter.filedialog import askdirectory
 from getpass import getpass
 from paramiko import SSHClient
-from scp import SCPClient
 from flask import session
 import stat
 
