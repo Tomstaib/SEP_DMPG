@@ -1,6 +1,6 @@
 import requests
 import logging
-import logging
+
 
 URL = 'https://131.173.65.76:5000/receive_runtime_prediction'
 
