@@ -1,3 +1,4 @@
+import logging
 from functools import wraps
 from flask import Flask, request, redirect, url_for, flash, render_template, session, jsonify
 from werkzeug.utils import secure_filename
@@ -8,6 +9,8 @@ import os
 import json
 import paramiko
 import experiments
+from util.flask.experiments import save_config_file
+
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 SAVE_DIR = '/received_data'
@@ -168,16 +171,20 @@ def experimental_environment():
     return render_template('experimental_environment.html', data=data)"""
 
 
-@app.route('/experimental_environment', methods=['GET', 'POST'])
+"""@app.route('/experimental_environment', methods=['GET', 'POST'])
 @login_required
 def experimental_environment():
     if request.method == 'POST':
         try:
+            # Get user, scenario, and model details
             username = session.get('username', '').strip()
             scenario_name = request.form.get('scenario_name', '').strip()
             model_name = request.form.get('model_name', '').strip()
 
-            # Iterate through the form to find all sources and their corresponding files
+            # Dictionary to store file paths for uploaded CSVs
+            source_files = {}
+
+            # Process all form inputs, including file uploads
             for key in request.form:
                 if key.startswith('source_name_'):
                     source_index = key.split('_')[-1]
@@ -187,36 +194,91 @@ def experimental_environment():
                     file_key = f'arrival_table_file_{source_index}'
                     arrival_table_file = request.files.get(file_key)
 
-                    # Handle the file upload if present
+                    # Handle the file upload if a valid CSV file is present
                     if arrival_table_file and arrival_table_file.filename.endswith('.csv'):
-                        # Create the directory structure
+                        # Create the directory structure based on user/model/scenario
                         base_directory = os.path.join('user', username, 'arrival_tables', model_name, scenario_name)
                         os.makedirs(base_directory, exist_ok=True)
 
-                        # Secure the file name and prepend the source name
+                        # Generate a secure filename and prepend the source name
                         filename = secure_filename(arrival_table_file.filename)
                         filename_with_source = f"{source_name}_{filename}"
 
-                        # Save the file to the correct path
+                        # Save the file to the directory
                         file_path = os.path.join(base_directory, filename_with_source)
                         arrival_table_file.save(file_path)
+
+                        # Store the file path in the dictionary for later use in config generation
+                        source_files[source_name] = file_path
 
                         flash(f'File for {source_name} uploaded successfully: {filename_with_source}')
                     else:
                         flash(f'No valid CSV file uploaded for {source_name}')
 
-            # Generate the configuration file
-            config_filename = experiments.generate_config(request.form, username)
+            # Now generate the configuration file using form data and uploaded file paths
+            config_filename = experiments.generate_simulation_configuration(request.form)
             flash(f'Configuration saved to {config_filename}')
 
             return redirect(url_for('experimental_environment'))
 
         except Exception as e:
             flash(f'Error generating configuration: {e}')
+            return redirect(url_for('experimental_environment'))
 
-    # Handle the GET request for the page
+    # Handle the GET request to load the page
+    data = experiments.load_runtime_prediction()
+    return render_template('experimental_environment.html', data=data)"""
+
+@app.route('/experimental_environment', methods=['GET', 'POST'])
+@login_required
+def experimental_environment():
+    if request.method == 'POST':
+        try:
+            # Get user, scenario, and model details
+            username = session.get('username', '').strip()
+            scenario_name = request.form.get('scenario_name', '').strip()
+            model_name = request.form.get('model_name', '').strip()
+
+            logging.info(f"Starting experimental environment for user: {username}, model: {model_name}, scenario: {scenario_name}")
+
+            # Dictionary to store file paths for uploaded CSVs
+            source_files = {}
+
+            # Process all form inputs, including file uploads
+            for key in request.form:
+                if key.startswith('source_name_'):
+                    source_index = key.split('_')[-1]
+                    source_name = request.form[key].strip()
+
+                    # Get the corresponding file for this source
+                    file_key = f'arrival_table_file_{source_index}'
+                    arrival_table_file = request.files.get(file_key)
+
+                    if arrival_table_file and arrival_table_file.filename.endswith('.csv'):
+                        experiments.save_arrival_table(arrival_table_file, model_name, scenario_name, source_files, source_name,
+                                                       username)
+                    else:
+                        logging.warning(f"No valid CSV file uploaded for {source_name}")
+
+            # Now generate the configuration file using form data and uploaded file paths
+            config_json = experiments.generate_simulation_configuration(request.form)
+            logging.info(f"Configuration successfully generated: {config_json}")
+            save_config_file(config_json, os.path.join('user', username, model_name, scenario_name), model_name + "_" + scenario_name + ".json")
+            flash('Configuration successfully generated')
+
+            return redirect(url_for('experimental_environment'))
+
+        except Exception as e:
+            logging.error(f"Error generating configuration: {e}")
+            flash(f'Error generating configuration: {e}')
+            return redirect(url_for('experimental_environment'))
+
+    # Handle the GET request to load the page
     data = experiments.load_runtime_prediction()
     return render_template('experimental_environment.html', data=data)
+
+
+
 
 
 @app.route('/receive_runtime_prediction', methods=['POST'])

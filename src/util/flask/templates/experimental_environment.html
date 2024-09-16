@@ -68,144 +68,181 @@
         <div id="sink-container"></div>
         <button type="button" id="add-sink-btn">Add Sink</button><br><br>
 
-        <!-- Combiner Section -->
-        <h3>Combiner Configuration</h3>
-        <div id="combiner-container"></div>
-        <button type="button" id="add-combiner-btn">Add Combiner</button><br><br>
-
-        <!-- Separator Section -->
-        <h3>Separator Configuration</h3>
-        <div id="separator-container"></div>
-        <button type="button" id="add-separator-btn">Add Separator</button><br><br>
-
         <input type="submit" value="Generate Configuration">
     </form>
+<script>
+    let componentCounts = {
+        source: 0,
+        server: 0,
+        sink: 0,
+    };
 
-    <script>
-        let sourceCount = 0;
-        let serverCount = 0;
-        let sinkCount = 0;
-        let combinerCount = 0;
-        let separatorCount = 0;
+    // General function to add a new component
+    function addComponent(type) {
+        componentCounts[type]++;
+        const container = document.getElementById(`${type}-container`);
+        const count = componentCounts[type];
 
-        // Function to remove the parent container of the clicked delete button
-        function removeItem(event) {
-            event.target.closest('.item-container').remove();
-        }
-
-        document.getElementById('add-source-btn').addEventListener('click', function() {
-        sourceCount++;
-        const container = document.getElementById('source-container');
-        const sourceHtml = `
+        let componentHtml = `
             <div class="item-container">
-                <h4>Source ${sourceCount}</h4>
+                <h4>${capitalize(type)} ${count}</h4>`;
 
-                <label for="source_name_${sourceCount}">Source Name:</label>
-                <input type="text" id="source_name_${sourceCount}" name="source_name_${sourceCount}" placeholder="Source${sourceCount}" required><br><br>
+        // Add fields common to all components
+        componentHtml += `
+            <label for="${type}_name_${count}">${capitalize(type)} Name:</label>
+            <input type="text" id="${type}_name_${count}" name="${type}_name_${count}" required><br><br>`;
 
-                <label for="entity_creation_rate_${sourceCount}">Entity Creation Rate:</label>
-                <input type="number" id="entity_creation_rate_${sourceCount}" name="entity_creation_rate_${sourceCount}" step="0.01" required><br><br>
-
-                <label for="creation_time_dist_type_${sourceCount}">Creation Time Distribution Type:</label>
-                <select id="creation_time_dist_type_${sourceCount}" name="creation_time_dist_type_${sourceCount}">
+        if (type === 'source') {
+            componentHtml += `
+                <label for="dist_type_${count}">Creation Time Distribution Type:</label>
+                <select id="dist_type_${count}" name="dist_type_${count}" onchange="updateDistributionParams(${count})">
+                    <option value="">Select Distribution</option>
                     <option value="triangular">Triangular</option>
                     <option value="uniform">Uniform</option>
                     <option value="expovariate">Exponential</option>
                     <option value="normalvariate">Normal</option>
                 </select><br><br>
 
-                <label for="low_value_${sourceCount}">Low Value:</label>
-                <input type="number" id="low_value_${sourceCount}" name="low_value_${sourceCount}" step="0.01" required><br><br>
+                <!-- Container for distribution-specific parameters -->
+                <div id="dist_params_${count}" class="dist-params-container"></div>
 
-                <label for="high_value_${sourceCount}">High Value:</label>
-                <input type="number" id="high_value_${sourceCount}" name="high_value_${sourceCount}" step="0.01" required><br><br>
 
-                <label for="arrival_table_${sourceCount}">Upload Arrival Table (CSV):</label>
-                <input type="file" id="arrival_table_${sourceCount}" name="arrival_table_file_${sourceCount}" accept=".csv"><br><br>
+                <label for="arrival_table_${count}">Upload Arrival Table (CSV):</label>
+                <input type="file" id="arrival_table_${count}" name="arrival_table_file_${count}" accept=".csv"><br><br>`;
+        }
+        // Fields specific to 'server' component
+        if (type === 'server') {
+            componentHtml += `
+                <label for="dist_type_${count}">Processing Time Distribution Type:</label>
+                <select id="dist_type_${count}" name="dist_type_${count}" onchange="updateDistributionParams(${count})">
+                    <option value="">Select Distribution</option>
+                    <option value="triangular">Triangular</option>
+                    <option value="uniform">Uniform</option>
+                    <option value="expovariate">Exponential</option>
+                    <option value="normalvariate">Normal</option>
+                </select><br><br>
 
-                <label for="routing_expression_${sourceCount}">Routing Expression:</label>
-                <input type="text" id="routing_expression_${sourceCount}" name="routing_expression_${sourceCount}" placeholder="Routing expression"><br><br>
+                <!-- Container for distribution-specific parameters -->
+                <div id="dist_params_${count}" class="dist-params-container"></div>
 
-                <button type="button" class="remove-btn">Delete Source</button>
-            </div>`;
-        container.insertAdjacentHTML('beforeend', sourceHtml);
+                <label for="queue_order_${count}">Queue Order:</label>
+                <select id="queue_order_${count}" name="queue_order_${count}">
+                    <option value="FIFO">FIFO</option>
+                    <option value="LIFO">LIFO</option>
+                </select><br><br>
+
+                <label for="time_between_machine_breakdown_${count}">Time Between Machine Breakdown (optional):</label>
+                <input type="number" id="time_between_machine_breakdown_${count}" name="time_between_machine_breakdown_${count}" step="0.01" placeholder="Optional" oninput="toggleBreakdownDuration(${count})"><br><br>
+
+                <!-- Hidden by default, will appear when time_between_machine_breakdown is filled -->
+                <div id="breakdown_duration_container_${count}" style="display: none;">
+                    <label for="machine_breakdown_duration_${count}">Duration of Machine Breakdown:</label>
+                    <input type="number" id="machine_breakdown_duration_${count}" name="machine_breakdown_duration_${count}" step="0.01" placeholder="Optional"><br><br>
+                </div>`;
+        }
+        if (type === 'sink') {
+            componentHtml += `
+                <label for="addon_process_trigger_${count}">Addon Process Trigger (Optional):</label>
+                <input type="text" id="addon_process_trigger_${count}" name="addon_process_trigger_${count}" placeholder="Addon Process Trigger"><br><br>`;
+    }
+
+        componentHtml += `
+            <button type="button" class="remove-btn">Delete ${capitalize(type)}</button>
+        </div>`;
+
+        container.insertAdjacentHTML('beforeend', componentHtml);
+    }
+
+    // Function to toggle the visibility of "Machine Breakdown Duration" based on input in "Time Between Machine Breakdown"
+    function toggleBreakdownDuration(count) {
+        const timeBetweenBreakdown = document.getElementById(`time_between_machine_breakdown_${count}`).value;
+        const breakdownDurationContainer = document.getElementById(`breakdown_duration_container_${count}`);
+
+        if (timeBetweenBreakdown) {
+            // Show the breakdown duration input if time between breakdown is filled
+            breakdownDurationContainer.style.display = 'block';
+        } else {
+            // Hide the breakdown duration input if time between breakdown is not filled
+            breakdownDurationContainer.style.display = 'none';
+        }
+    }
+
+    // Function to update the distribution-specific parameters based on the selection
+    function updateDistributionParams(count) {
+        const distType = document.getElementById(`dist_type_${count}`).value;
+        const distParamsContainer = document.getElementById(`dist_params_${count}`);
+        distParamsContainer.innerHTML = ''; // Clear previous inputs
+
+        let paramsHtml = '';
+
+        // Add the correct inputs based on the selected distribution
+        if (distType === 'triangular') {
+            paramsHtml = `
+                <label for="low_${count}">Low:</label>
+                <input type="number" id="low_${count}" name="low_${count}" step="0.01" min="0" required><br><br>
+
+                <label for="mode_${count}">Mode:</label>
+                <input type="number" id="mode_${count}" name="mode_${count}" step="0.01" required><br><br>
+
+                <label for="high_${count}">High:</label>
+                <input type="number" id="high_${count}" name="high_${count}" step="0.01" min="0" required><br><br>
+            `;
+        } else if (distType === 'uniform') {
+            paramsHtml = `
+                <label for="low_${count}">Low:</label>
+                <input type="number" id="low_${count}" name="low_${count}" step="0.01" min="0" required><br><br>
+
+                <label for="high_${count}">High:</label>
+                <input type="number" id="high_${count}" name="high_${count}" step="0.01" min="0" required><br><br>
+            `;
+        } else if (distType === 'expovariate') {
+            paramsHtml = `
+                <label for="lambda_${count}">Lambda (Rate):</label>
+                <input type="number" id="lambda_${count}" name="lambda_${count}" step="0.01" min="0" required><br><br>
+            `;
+        } else if (distType === 'normalvariate') {
+            paramsHtml = `
+                <label for="mu_${count}">Mean (μ):</label>
+                <input type="number" id="mu_${count}" name="mu_${count}" step="0.01" required><br><br>
+
+                <label for="sigma_${count}">Standard Deviation (σ):</label>
+                <input type="number" id="sigma_${count}" name="sigma_${count}" step="0.01" required><br><br>
+            `;
+        }
+
+    // Insert the parameters into the container
+    distParamsContainer.innerHTML = paramsHtml;
+
+
+}
+
+    // Event listeners for each button
+    document.getElementById('add-source-btn').addEventListener('click', function() {
+        addComponent('source');
     });
 
+    document.getElementById('add-server-btn').addEventListener('click', function() {
+        addComponent('server');
+    });
 
-        document.getElementById('add-server-btn').addEventListener('click', function() {
-            serverCount++;
-            const container = document.getElementById('server-container');
-            const serverHtml = `
-                <div class="item-container">
-                    <h4>Server ${serverCount}</h4>
-                    <label for="server_name_${serverCount}">Server Name:</label>
-                    <input type="text" id="server_name_${serverCount}" name="server_name_${serverCount}" required><br><br>
-                    <label for="server_dist_${serverCount}">Distribution Type:</label>
-                    <select id="server_dist_${serverCount}" name="server_dist_${serverCount}">
-                        <option value="triangular">Triangular</option>
-                        <option value="uniform">Uniform</option>
-                        <option value="expovariate">Exponential</option>
-                        <option value="normalvariate">Normal</option>
-                    </select><br><br>
-                    <label for="low_${serverCount}">Low Value:</label>
-                    <input type="number" id="low_${serverCount}" name="low_${serverCount}" step="0.01" required><br><br>
-                    <label for="high_${serverCount}">High Value:</label>
-                    <input type="number" id="high_${serverCount}" name="high_${serverCount}" step="0.01" required><br><br>
-                    <button type="button" class="remove-btn">Delete Source</button>
-                </div>`;
-            container.insertAdjacentHTML('beforeend', serverHtml);
-        });
+    document.getElementById('add-sink-btn').addEventListener('click', function() {
+        addComponent('sink');
+    });
 
-        document.getElementById('add-sink-btn').addEventListener('click', function() {
-            sinkCount++;
-            const container = document.getElementById('sink-container');
-            const sinkHtml = `
-                <div class="item-container">
-                    <h4>Sink ${sinkCount}</h4>
-                    <label for="sink_name_${sinkCount}">Sink Name:</label>
-                    <input type="text" id="sink_name_${sinkCount}" name="sink_name_${sinkCount}" required><br><br>
-                    <button type="button" class="remove-btn">Delete Source</button>
-                </div>`;
-            container.insertAdjacentHTML('beforeend', sinkHtml);
-        });
+    // Function to remove the parent container of the clicked delete button
+    function removeItem(event) {
+        event.target.closest('.item-container').remove();
+    }
 
-        document.getElementById('add-combiner-btn').addEventListener('click', function() {
-            combinerCount++;
-            const container = document.getElementById('combiner-container');
-            const combinerHtml = `
-                <div class="item-container">
-                    <h4>Combiner ${combinerCount}</h4>
-                    <label for="combiner_name_${combinerCount}">Combiner Name:</label>
-                    <input type="text" id="combiner_name_${combinerCount}" name="combiner_name_${combinerCount}" required><br><br>
-                    <button type="button" class="remove-btn">Delete Source</button>
-                </div>`;
-            container.insertAdjacentHTML('beforeend', combinerHtml);
-        });
+    // Event delegation to handle the removal of dynamically added elements
+    document.addEventListener('click', function(event) {
+        if (event.target.classList.contains('remove-btn')) {
+            removeItem(event);
+        }
+    });
 
-        document.getElementById('add-separator-btn').addEventListener('click', function() {
-            separatorCount++;
-            const container = document.getElementById('separator-container');
-            const separatorHtml = `
-                <div class="item-container">
-                    <h4>Separator ${separatorCount}</h4>
-                    <label for="separator_name_${separatorCount}">Separator Name:</label>
-                    <input type="text" id="separator_name_${separatorCount}" name="separator_name_${separatorCount}" required><br><br>
-                    <button type="button" class="remove-btn">Delete Source</button>
-                </div>`;
-            container.insertAdjacentHTML('beforeend', separatorHtml);
-        });
-
-        // Event delegation to handle the removal of dynamically added elements
-        document.addEventListener('click', function(event) {
-            if (event.target.classList.contains('remove-btn')) {
-                removeItem(event);
-            }
-        });
-
-    </script>
-<script>
     // Function to handle CSV file upload
-    function uploadCSV(event, sourceCount) {
+    function uploadCSV(event, count) {
         const fileInput = event.target;
         const file = fileInput.files[0];
 
@@ -219,7 +256,7 @@
 
                 reader.onload = function(e) {
                     // The file content is available in e.target.result
-                    console.log(`File content for Source ${sourceCount}:`, e.target.result);
+                    console.log(`File content for Source ${count}:`, e.target.result);
 
                     // You can process the CSV file data here, or pass it to the server
                 };
@@ -231,6 +268,13 @@
             }
         }
     }
+
+    // Helper function to capitalize the first letter of a string
+    function capitalize(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
 </script>
+
+
 
 {% endblock %}
