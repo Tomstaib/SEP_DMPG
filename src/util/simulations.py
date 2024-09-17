@@ -1,3 +1,4 @@
+import gc
 import os
 import random
 import time
@@ -8,6 +9,8 @@ import pandas as pd
 import numpy as np
 import concurrent.futures
 import logging
+
+
 import src.util.global_imports as gi
 
 from src.core.entity import EntityManager
@@ -71,6 +74,12 @@ def run_simulation(model: Callable, minutes: Union[int, float], warm_up: Union[i
 
     # Create DataFrame
     df = pd.DataFrame(data)
+
+    # Optimize DataFrame memory usage
+    df['Value'] = pd.to_numeric(df['Value'], downcast='float')  # Downcast to float32 if possible
+    df['Type'] = df['Type'].astype('category')  # Convert to categorical type
+    df['Name'] = df['Name'].astype('category')  # Convert to categorical type
+    df['Stat'] = df['Stat'].astype('category')  # Convert to categorical type
 
     # Create Pivot Table
     pivot_table = df.pivot_table(index=['Type', 'Name', 'Stat'], values='Value', aggfunc='mean')
@@ -211,7 +220,12 @@ def replication(env_setup_func, calculate_stats_func, minutes, r) -> pd.DataFram
     env = simpy.Environment()
     env_setup_func(env)
     env.run(until=minutes)
-    return calculate_stats_func(env)
+
+    result = calculate_stats_func(env)
+
+    del env
+    gc.collect()
+    return result
 
 
 def get_percentage_and_computingtimes(computing_time_start, i, num_replications) -> Tuple[str, str, str, str, str]:
@@ -271,7 +285,7 @@ def run_replications(model: Callable, minutes, num_replications, warm_up: Union[
     all_sink_stats = {}
     all_source_stats = {}
 
-    Stats.all_detailed_stats = []
+    # Stats.all_detailed_stats = []
 
     def process_results(entity_stats, server_stats, sink_stats, source_stats) -> None:
         """
@@ -298,12 +312,12 @@ def run_replications(model: Callable, minutes, num_replications, warm_up: Union[
             'Source': source_stats
         }
         Stats.all_detailed_stats.append(detailed_stats)"""
-        Stats.all_detailed_stats.append({
+        """Stats.all_detailed_stats.append({
             'Entity': entity_stats,
             'Server': server_stats,
             'Sink': sink_stats,
             'Source': source_stats
-        })
+        })"""
 
     tenth_percentage = int(num_replications / 10)
 

@@ -77,6 +77,8 @@
         sink: 0,
     };
 
+    let connections = [];
+
     // General function to add a new component
     function addComponent(type) {
         componentCounts[type]++;
@@ -84,13 +86,14 @@
         const count = componentCounts[type];
 
         let componentHtml = `
-            <div class="item-container">
-                <h4>${capitalize(type)} ${count}</h4>`;
+            <div id="${type}-${count}" class="item-container">
+            <h4>${capitalize(type)} ${count}</h4>`;
+
 
         // Add fields common to all components
         componentHtml += `
             <label for="${type}_name_${count}">${capitalize(type)} Name:</label>
-            <input type="text" id="${type}_name_${count}" name="${type}_name_${count}" required><br><br>`;
+            <input type="text" id="${type}_name_${count}" name="${type}_name_${count}" onchange="updateConnections('${type}', ${count})" required><br><br>`;
 
         if (type === 'source') {
             componentHtml += `
@@ -144,13 +147,100 @@
             componentHtml += `
                 <label for="addon_process_trigger_${count}">Addon Process Trigger (Optional):</label>
                 <input type="text" id="addon_process_trigger_${count}" name="addon_process_trigger_${count}" placeholder="Addon Process Trigger"><br><br>`;
-    }
+        }
+
+        // Add a dropdown for selecting the target component for connections, only for 'source' and 'server'
+        if (type === 'source' || type === 'server') {
+            componentHtml += `
+                <div id="connection_fields_${type}_${count}">
+                    <label for="${type}_connection_${count}_1">Connect to:</label>
+                    <select id="${type}_connection_${count}_1" name="${type}_connection_${count}_1" onchange="addConnectionDropdown('${type}', ${count}, 1, '${type}-${count}')"
+)">
+                        <option value="">Select Target Component</option>
+                    </select><br><br>
+                </div>`;
+        }
 
         componentHtml += `
             <button type="button" class="remove-btn">Delete ${capitalize(type)}</button>
         </div>`;
 
         container.insertAdjacentHTML('beforeend', componentHtml);
+
+        console.log(`New component added: ${type}-${count}`);
+        console.log(`Expected select ID: ${type}_connection_${count}`);
+
+        // setTimeout to ensure DOM is updated before populating the dropdowns
+        setTimeout(() => updateConnectionOptions(`${type}_connection_${count}_1`, `${type}-${count}`), 0);
+    }
+
+    // Function to handle dynamically adding new dropdowns for connections
+    function addConnectionDropdown(type, count, dropdownNumber, componentToExclude) {
+        const selectedValue = document.getElementById(`${type}_connection_${count}_${dropdownNumber}`).value;
+
+        // Only add a new dropdown if a selection has been made
+        if (selectedValue !== "") {
+            const container = document.getElementById(`connection_fields_${type}_${count}`);
+            const nextDropdownNumber = dropdownNumber + 1;
+
+            // Check if the next dropdown already exists; if not, create it
+            if (!document.getElementById(`${type}_connection_${count}_${nextDropdownNumber}`)) {
+                let newDropdownHtml = `
+                    <label for="${type}_connection_${count}_${nextDropdownNumber}">Connect to:</label>
+                    <select id="${type}_connection_${count}_${nextDropdownNumber}" name="${type}_connection_${count}_${nextDropdownNumber}" onchange="addConnectionDropdown('${type}', ${count}, ${nextDropdownNumber}, '${type}-${count}')">
+                        <option value="">Select Target Component</option>
+                    </select><br><br>`;
+
+                container.insertAdjacentHTML('beforeend', newDropdownHtml);
+
+                // Update only the newly added dropdown, exclude the current component
+                updateConnectionOptions(`${type}_connection_${count}_${nextDropdownNumber}`, componentToExclude);
+            }
+        }
+
+        // Dynamically manage connections
+        updateConnections(type, count);
+    }
+
+
+
+        function updateConnectionOptions(dropdownIdToUpdate = null, componentToExclude = null) {
+        const sources = document.querySelectorAll('.item-container[id^="source"]');
+        const servers = document.querySelectorAll('.item-container[id^="server"]');
+        const sinks = document.querySelectorAll('.item-container[id^="sink"]'); // Ensure sinks are included here
+
+        // Allow all components (sources, servers, sinks) as connection targets except the current component itself
+        const allTargetComponents = [...sources, ...servers, ...sinks];
+
+        if (dropdownIdToUpdate) {
+            const dropdown = document.getElementById(dropdownIdToUpdate);
+            dropdown.innerHTML = `<option value="">Select Target Component</option>`;
+
+            allTargetComponents.forEach((targetComponent) => {
+                const targetType = targetComponent.id.split('-')[0];
+                const targetCount = targetComponent.id.split('-')[1];
+                const targetId = `${targetType}-${targetCount}`;
+
+                // Exclude the current component itself
+                if (targetId !== componentToExclude) {
+                    dropdown.innerHTML += `<option value="${targetId}">${capitalize(targetType)} ${targetCount}</option>`;
+                }
+            });
+        }
+    }
+
+
+    // Function to dynamically add connection-specific fields
+    function addConnectionFields(type, count, connections) {
+        const container = document.getElementById(`connections_params_${type}_${count}`);
+        container.innerHTML = ''; // Clear existing fields
+
+        connections.forEach((connection) => {
+            const connectionHtml = `
+                <label for="connection_param_${connection.target}_${count}">Parameter for Connection to ${connection.target}:</label>
+                <input type="text" id="connection_param_${connection.target}_${count}" name="connection_param_${connection.target}_${count}" placeholder="Enter value"><br><br>`;
+            container.insertAdjacentHTML('beforeend', connectionHtml);
+        });
     }
 
     // Function to toggle the visibility of "Machine Breakdown Duration" based on input in "Time Between Machine Breakdown"
@@ -231,7 +321,15 @@
 
     // Function to remove the parent container of the clicked delete button
     function removeItem(event) {
-        event.target.closest('.item-container').remove();
+        const itemContainer = event.target.closest('.item-container');
+        const componentId = itemContainer.id;
+
+        // Remove any connections involving this component
+        connections = connections.filter(conn => conn.source !== componentId && conn.target !== componentId);
+        console.log("Updated connections after deletion:", connections);
+
+        itemContainer.remove();
+        updateConnectionOptions();
     }
 
     // Event delegation to handle the removal of dynamically added elements
