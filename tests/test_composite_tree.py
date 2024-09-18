@@ -9,6 +9,8 @@ import unittest
 from composite_tree import CompositeTree
 from util.nodes_for_composite import ManagementNode, Node, ComputeNode
 
+sys.path.append('/app/Verteilung/util')
+
 class TestCompositeTree(unittest.TestCase):
     '''
     The code uses patch to replace specific components in the composite_tree module with mock objects
