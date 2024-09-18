@@ -93,7 +93,7 @@
         // Add fields common to all components
         componentHtml += `
             <label for="${type}_name_${count}">${capitalize(type)} Name:</label>
-            <input type="text" id="${type}_name_${count}" name="${type}_name_${count}" onchange="updateConnections('${type}', ${count})" required><br><br>`;
+            <input type="text" id="${type}_name_${count}" name="${type}_name_${count}" required><br><br>`;
 
         if (type === 'source') {
             componentHtml += `
@@ -143,6 +143,7 @@
                     <input type="number" id="machine_breakdown_duration_${count}" name="machine_breakdown_duration_${count}" step="0.01" placeholder="Optional"><br><br>
                 </div>`;
         }
+
         if (type === 'sink') {
             componentHtml += `
                 <label for="addon_process_trigger_${count}">Addon Process Trigger (Optional):</label>
@@ -154,8 +155,7 @@
             componentHtml += `
                 <div id="connection_fields_${type}_${count}">
                     <label for="${type}_connection_${count}_1">Connect to:</label>
-                    <select id="${type}_connection_${count}_1" name="${type}_connection_${count}_1" onchange="addConnectionDropdown('${type}', ${count}, 1, '${type}-${count}')"
-)">
+                    <select id="${type}_connection_${count}_1" name="${type}_connection_${count}_1" onchange="addConnectionDropdown('${type}', ${count}, 1, '${type}-${count}')">
                         <option value="">Select Target Component</option>
                     </select><br><br>
                 </div>`;
@@ -170,13 +170,20 @@
         console.log(`New component added: ${type}-${count}`);
         console.log(`Expected select ID: ${type}_connection_${count}`);
 
-        // setTimeout to ensure DOM is updated before populating the dropdowns
-        setTimeout(() => updateConnectionOptions(`${type}_connection_${count}_1`, `${type}-${count}`), 0);
+        // Use requestAnimationFrame to ensure the DOM is updated before populating the dropdown
+        requestAnimationFrame(() => {
+            if (type === 'source' || type === 'server') {
+                updateConnectionOptions(`${type}_connection_${count}_1`, `${type}-${count}`);
+            }
+            // Update all dropdowns to include the new component
+            updateConnectionOptions();
+        });
     }
 
     // Function to handle dynamically adding new dropdowns for connections
     function addConnectionDropdown(type, count, dropdownNumber, componentToExclude) {
-        const selectedValue = document.getElementById(`${type}_connection_${count}_${dropdownNumber}`).value;
+        const currentDropdown = document.getElementById(`${type}_connection_${count}_${dropdownNumber}`);
+        const selectedValue = currentDropdown.value;
 
         // Only add a new dropdown if a selection has been made
         if (selectedValue !== "") {
@@ -193,42 +200,78 @@
 
                 container.insertAdjacentHTML('beforeend', newDropdownHtml);
 
-                // Update only the newly added dropdown, exclude the current component
-                updateConnectionOptions(`${type}_connection_${count}_${nextDropdownNumber}`, componentToExclude);
+                // Update only the newly added dropdown, exclude the current component and already connected components
+                updateConnectionOptions(`${type}_connection_${count}_${nextDropdownNumber}`, componentToExclude, getCurrentConnections(type, count));
             }
         }
 
-        // Dynamically manage connections
-        updateConnections(type, count);
+        // Update all dropdowns in this component to remove the selected value as an option
+        updateComponentDropdowns(type, count, componentToExclude);
     }
 
+    function updateComponentDropdowns(type, count, componentToExclude) {
+        const connectedComponents = getCurrentConnections(type, count);
+        let i = 1;
+        let dropdown;
+        while (dropdown = document.getElementById(`${type}_connection_${count}_${i}`)) {
+            updateConnectionOptions(dropdown.id, componentToExclude, connectedComponents);
+            i++;
+        }
+    }
 
-
-        function updateConnectionOptions(dropdownIdToUpdate = null, componentToExclude = null) {
+    function updateConnectionOptions(dropdownIdToUpdate = null, componentToExclude = null, connectedComponents = []) {
         const sources = document.querySelectorAll('.item-container[id^="source"]');
         const servers = document.querySelectorAll('.item-container[id^="server"]');
-        const sinks = document.querySelectorAll('.item-container[id^="sink"]'); // Ensure sinks are included here
+        const sinks = document.querySelectorAll('.item-container[id^="sink"]');
 
-        // Allow all components (sources, servers, sinks) as connection targets except the current component itself
-        const allTargetComponents = [...sources, ...servers, ...sinks];
+        const allTargetComponents = [...servers, ...sinks];
+        const allComponentsForServersAndSinks = [...sources, ...servers, ...sinks];
 
-        if (dropdownIdToUpdate) {
-            const dropdown = document.getElementById(dropdownIdToUpdate);
-            dropdown.innerHTML = `<option value="">Select Target Component</option>`;
+        function updateDropdown(dropdown) {
+            if (!dropdown) return;
+
+            const previousSelection = dropdown.value;
+            dropdown.innerHTML = '<option value="">Select Target Component</option>';
 
             allTargetComponents.forEach((targetComponent) => {
                 const targetType = targetComponent.id.split('-')[0];
                 const targetCount = targetComponent.id.split('-')[1];
                 const targetId = `${targetType}-${targetCount}`;
 
-                // Exclude the current component itself
-                if (targetId !== componentToExclude) {
+                if (targetId !== componentToExclude && !connectedComponents.includes(targetId)) {
                     dropdown.innerHTML += `<option value="${targetId}">${capitalize(targetType)} ${targetCount}</option>`;
                 }
+            });
+
+            if (previousSelection && !connectedComponents.includes(previousSelection)) {
+                dropdown.value = previousSelection;
+            }
+        }
+
+        if (dropdownIdToUpdate) {
+            updateDropdown(document.getElementById(dropdownIdToUpdate));
+        } else {
+            allComponentsForServersAndSinks.forEach((component) => {
+                const [type, count] = component.id.split('-');
+                const connectionFields = document.querySelectorAll(`#connection_fields_${type}_${count} select`);
+                connectionFields.forEach(updateDropdown);
             });
         }
     }
 
+    // Helper function to get all current connections for a component
+    function getCurrentConnections(type, count) {
+        const connections = [];
+        let i = 1;
+        let dropdown;
+        while (dropdown = document.getElementById(`${type}_connection_${count}_${i}`)) {
+            if (dropdown.value) {
+                connections.push(dropdown.value);
+            }
+            i++;
+        }
+        return connections;
+    }
 
     // Function to dynamically add connection-specific fields
     function addConnectionFields(type, count, connections) {
@@ -304,7 +347,7 @@
     distParamsContainer.innerHTML = paramsHtml;
 
 
-}
+    }
 
     // Event listeners for each button
     document.getElementById('add-source-btn').addEventListener('click', function() {
