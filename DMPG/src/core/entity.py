@@ -13,7 +13,6 @@ class Entity:
         return f"{self.name} ({self.creation_time})" if not self.destruction_time \
             else f"{self.name} ({self.destruction_time - self.creation_time})"
 
-
 class EntityManager(Singleton):
     entities = []
 

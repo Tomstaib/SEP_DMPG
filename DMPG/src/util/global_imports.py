@@ -1,8 +1,8 @@
 import logging
 import random
 from matplotlib import pyplot as plt
-
 from src.util.singleton import Singleton
+
 from src.util.helper import add_logging_level
 
 RANDOM_SEED = 1

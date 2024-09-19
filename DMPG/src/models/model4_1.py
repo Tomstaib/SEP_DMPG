@@ -1,8 +1,14 @@
+import sys
+
+# Für Dockercontainer zum initialisierren der lokalen Module
+sys.path.append('/app/DMPG/')
+
 from src.util.global_imports import random
 from src.core.source import Source
 from src.core.server import Server
 from src.core.sink import Sink
 from src.util.simulations import run_simulation, run_replications
+
 
 
 def setup_model4_1(env):
@@ -16,11 +22,11 @@ def setup_model4_1(env):
 
 
 def main():
-    #run_simulation(model=setup_model4_1, minutes=1440)                                      # 1 day
+    run_simulation(model=setup_model4_1, minutes=1440)                                      # 1 day
     # print(pivot_table.at[('Entity', 'Entity', 'AvgTimeInSystem'), 'Value'])               # 6.0036
 
     # 1 week ~ 0:03.3 iteration & 0:33 total
-    run_replications(model=setup_model4_1, minutes=10080, num_replications=100, multiprocessing=False)
+    # run_replications(model=setup_model4_1, minutes=10080, num_replications=100, multiprocessing=False)
 
     # 1 year ~ 0:25 iteration & 4:00 total
     #run_replications(model=setup_model4_1, minutes=525600, num_replications=1000, multiprocessing=True)

@@ -3,7 +3,6 @@ from simpy import Environment
 
 from src.core.entity import Entity
 from src.util.global_imports import ENTITY_PROCESSING_LOG_ENTRY
-from src.util.date_time import DateTime
 
 
 class Sink:

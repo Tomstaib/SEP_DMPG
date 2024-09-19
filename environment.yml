@@ -11,4 +11,6 @@ dependencies:
     - numpy
     - paramiko
     - pytest 
-    - coverage 
+    - coverage
+    - requests
+    - matplotlib

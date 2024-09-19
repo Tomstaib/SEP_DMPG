@@ -5,7 +5,6 @@ from src.util.global_imports import random, ENTITY_PROCESSING_LOG_ENTRY
 from src.core.server import Server
 from src.core.entity import Entity
 from src.util.helper import get_value_from_distribution_with_parameters, validate_probabilities, create_connection_cache
-from src.util.date_time import DateTime
 
 
 class Source:

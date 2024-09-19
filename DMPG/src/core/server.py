@@ -5,8 +5,6 @@ from src.util.global_imports import random, ENTITY_PROCESSING_LOG_ENTRY
 from src.util.helper import get_value_from_distribution_with_parameters, validate_probabilities, round_value, \
     create_connection_cache
 from src.core.queue_orders import QueueOrders
-from src.util.date_time import DateTime
-
 
 class Server:
     servers = []
