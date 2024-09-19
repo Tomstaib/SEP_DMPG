@@ -1,0 +1,16 @@
+name: my_env
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pip
+  - pip:
+    - simpy
+    - pandas
+    - numpy
+    - paramiko
+    - pytest 
+    - coverage 
+  - tkinter  # Teil der Standardbibliothek, unter Linux möglicherweise Paketabhängigkeit
+
