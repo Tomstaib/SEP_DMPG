@@ -51,6 +51,7 @@ class CompositeTree(metaclass=Singleton):
         else:
             raise ValueError("Number of replictaions cant be negativ")
 
+    # Issue: AttributeError bei Aufruf von ManagementNode.reset_instance_count in den Tests
     @classmethod
     def create_custom_composite_tree(cls):
         """
