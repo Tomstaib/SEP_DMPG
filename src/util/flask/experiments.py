@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 
 from werkzeug.utils import secure_filename
 
@@ -29,172 +30,141 @@ def save_runtime_prediction(data):
 import json
 import logging
 
-def generate_simulation_configuration(form_data, source_files):
-    logging.info("Starting configuration generation")
+import json
 
-    # Initialize the main configuration dictionary
+def generate_simulation_configuration(form_data, source_files):
     config = {
-        'model_name': form_data.get('model_name'),
-        'scenario_name': form_data.get('scenario_name'),
+        'model_name': form_data.get('model_name', '').strip(),
+        'scenario_name': form_data.get('scenario_name', '').strip(),
         'sources': [],
         'servers': [],
         'sinks': []
     }
 
-    logging.info(f"Form data for model: {config['model_name']}, scenario: {config['scenario_name']}")
-
     # Process sources
     for key in form_data:
         if key.startswith('name_source_'):
             unique_id = key.replace('name_', '')  # Extract 'source_X' identifier
-            logging.info(f"Processing source {unique_id}")
             source = {
                 'name': form_data.get(f'name_{unique_id}'),
                 'distribution': {
-                    'type': form_data.get(f'dist_type_${unique_id}'),
+                    'type': form_data.get(f'dist_type_{unique_id}'),
                     'params': {}
                 },
                 'connections': [],
                 'arrival_table': None
             }
 
-            # Include CSV file path if available
-            csv_file_path = source_files.get(unique_id)
-            if csv_file_path:
-                source['arrival_table'] = csv_file_path
+            # Include arrival table path if available
+            arrival_table_path = source_files.get(unique_id)
+            if arrival_table_path:
+                source['arrival_table'] = arrival_table_path
 
-            # Handle distribution parameters
-            dist_type = form_data.get(f'dist_type_{unique_id}')
-            if dist_type == 'triangular':
-                source['distribution']['params'] = {
-                    'low': float(form_data.get(f'low_{unique_id}', 0)),
-                    'mode': float(form_data.get(f'mode_{unique_id}', 0)),
-                    'high': float(form_data.get(f'high_{unique_id}', 0))
-                }
-            elif dist_type == 'uniform':
-                source['distribution']['params'] = {
-                    'low': float(form_data.get(f'low_{unique_id}', 0)),
-                    'high': float(form_data.get(f'high_{unique_id}', 0))
-                }
-            elif dist_type == 'expovariate':
-                source['distribution']['params'] = {
-                    'lambda': float(form_data.get(f'lambda_{unique_id}', 0))
-                }
-            elif dist_type == 'normalvariate':
-                source['distribution']['params'] = {
-                    'mu': float(form_data.get(f'mu_{unique_id}', 0)),
-                    'sigma': float(form_data.get(f'sigma_{unique_id}', 0))
-                }
+            # Get distribution parameters
+            dist_type = source['distribution']['type']
+            if dist_type:
+                params = {}
+                if dist_type == 'triangular':
+                    params['low'] = form_data.get(f'low_{unique_id}')
+                    params['mode'] = form_data.get(f'mode_{unique_id}')
+                    params['high'] = form_data.get(f'high_{unique_id}')
+                elif dist_type == 'uniform':
+                    params['low'] = form_data.get(f'low_{unique_id}')
+                    params['high'] = form_data.get(f'high_{unique_id}')
+                elif dist_type == 'expovariate':
+                    params['lambd'] = form_data.get(f'lambd_{unique_id}')
+                elif dist_type == 'normalvariate':
+                    params['mu'] = form_data.get(f'mu_{unique_id}')
+                    params['sigma'] = form_data.get(f'sigma_{unique_id}')
+                source['distribution']['params'] = params
 
-            # Process connections
-            connection_number = 1
-            while form_data.get(f'connection_{unique_id}_{connection_number}'):
-                target_component = form_data.get(f'connection_{unique_id}_{connection_number}')
-                probability = form_data.get(f'probability_{unique_id}_{connection_number}', '').strip()
-                process_duration = form_data.get(f'process_duration_{unique_id}_{connection_number}', '').strip()
-
-                # Convert probability and process_duration to float if they are provided
-                probability = float(probability) if probability else None
-                process_duration = float(process_duration) if process_duration else None
-
+            # Get connections
+            connection_index = 1
+            while True:
+                connection_key = f'connection_{unique_id}_{connection_index}'
+                target = form_data.get(connection_key)
+                if not target:
+                    break
                 connection = {
-                    'target': target_component,
-                    'probability': probability,
-                    'process_duration': process_duration
+                    'target': target,
+                    'probability': form_data.get(f'probability_{unique_id}_{connection_index}'),
+                    'process_duration': form_data.get(f'process_duration_{unique_id}_{connection_index}')
                 }
-
                 source['connections'].append(connection)
-                logging.info(f"Added connection to source {unique_id}: {connection}")
-                connection_number += 1
+                connection_index += 1
 
-            logging.info(f"Added source config: {source}")
             config['sources'].append(source)
 
     # Process servers
     for key in form_data:
         if key.startswith('name_server_'):
             unique_id = key.replace('name_', '')  # Extract 'server_X' identifier
-            logging.info(f"Processing server {unique_id}")
             server = {
                 'name': form_data.get(f'name_{unique_id}'),
                 'distribution': {
                     'type': form_data.get(f'dist_type_{unique_id}'),
                     'params': {}
                 },
-                'queue_order': form_data.get(f'queue_order_{unique_id}'),
+                'queue_order': form_data.get(f'queue_order_{unique_id}', 'FIFO'),
                 'breakdown': {},
                 'connections': []
             }
 
-            # Handle distribution parameters
-            dist_type = form_data.get(f'dist_type_{unique_id}')
-            if dist_type == 'triangular':
-                server['distribution']['params'] = {
-                    'low': float(form_data.get(f'low_{unique_id}', 0)),
-                    'mode': float(form_data.get(f'mode_{unique_id}', 0)),
-                    'high': float(form_data.get(f'high_{unique_id}', 0))
-                }
-            elif dist_type == 'uniform':
-                server['distribution']['params'] = {
-                    'low': float(form_data.get(f'low_{unique_id}', 0)),
-                    'high': float(form_data.get(f'high_{unique_id}', 0))
-                }
-            elif dist_type == 'expovariate':
-                server['distribution']['params'] = {
-                    'lambda': float(form_data.get(f'lambda_{unique_id}', 0))
-                }
-            elif dist_type == 'normalvariate':
-                server['distribution']['params'] = {
-                    'mu': float(form_data.get(f'mu_{unique_id}', 0)),
-                    'sigma': float(form_data.get(f'sigma_{unique_id}', 0))
-                }
+            # Get distribution parameters
+            dist_type = server['distribution']['type']
+            if dist_type:
+                params = {}
+                if dist_type == 'triangular':
+                    params['low'] = form_data.get(f'low_{unique_id}')
+                    params['mode'] = form_data.get(f'mode_{unique_id}')
+                    params['high'] = form_data.get(f'high_{unique_id}')
+                elif dist_type == 'uniform':
+                    params['low'] = form_data.get(f'low_{unique_id}')
+                    params['high'] = form_data.get(f'high_{unique_id}')
+                elif dist_type == 'expovariate':
+                    params['lambd'] = form_data.get(f'lambd_{unique_id}')
+                elif dist_type == 'normalvariate':
+                    params['mu'] = form_data.get(f'mu_{unique_id}')
+                    params['sigma'] = form_data.get(f'sigma_{unique_id}')
+                server['distribution']['params'] = params
 
-            # Handle breakdown parameters
-            time_between_breakdown = form_data.get(f'time_between_machine_breakdown_{unique_id}', '').strip()
+            # Get breakdown parameters
+            time_between_breakdown = form_data.get(f'time_between_machine_breakdown_{unique_id}')
             if time_between_breakdown:
-                server['breakdown']['time_between_machine_breakdown'] = float(time_between_breakdown)
-                breakdown_duration = form_data.get(f'machine_breakdown_duration_{unique_id}', '').strip()
+                server['breakdown']['time_between_machine_breakdown'] = time_between_breakdown
+                breakdown_duration = form_data.get(f'machine_breakdown_duration_{unique_id}')
                 if breakdown_duration:
-                    server['breakdown']['machine_breakdown_duration'] = float(breakdown_duration)
+                    server['breakdown']['machine_breakdown_duration'] = breakdown_duration
 
-            # Process connections
-            connection_number = 1
-            while form_data.get(f'connection_{unique_id}_{connection_number}'):
-                target_component = form_data.get(f'connection_{unique_id}_{connection_number}')
-                probability = form_data.get(f'probability_{unique_id}_{connection_number}', '').strip()
-                process_duration = form_data.get(f'process_duration_{unique_id}_{connection_number}', '').strip()
-
-                probability = float(probability) if probability else None
-                process_duration = float(process_duration) if process_duration else None
-
+            # Get connections
+            connection_index = 1
+            while True:
+                connection_key = f'connection_{unique_id}_{connection_index}'
+                target = form_data.get(connection_key)
+                if not target:
+                    break
                 connection = {
-                    'target': target_component,
-                    'probability': probability,
-                    'process_duration': process_duration
+                    'target': target,
+                    'probability': form_data.get(f'probability_{unique_id}_{connection_index}'),
+                    'process_duration': form_data.get(f'process_duration_{unique_id}_{connection_index}')
                 }
-
                 server['connections'].append(connection)
-                logging.info(f"Added connection to server {unique_id}: {connection}")
-                connection_number += 1
+                connection_index += 1
 
-            logging.info(f"Added server config: {server}")
             config['servers'].append(server)
 
     # Process sinks
     for key in form_data:
         if key.startswith('name_sink_'):
             unique_id = key.replace('name_', '')  # Extract 'sink_X' identifier
-            logging.info(f"Processing sink {unique_id}")
             sink = {
                 'name': form_data.get(f'name_{unique_id}'),
-                'addon_process_trigger': form_data.get(f'addon_process_trigger_{unique_id}')
+                'addon_process_trigger': form_data.get(f'addon_process_trigger_{unique_id}', ''),
             }
             config['sinks'].append(sink)
-            logging.info(f"Added sink config: {sink}")
 
-    config_json = json.dumps(config, indent=4)
-    logging.info(f"Generated config: {config_json}")
-    return config_json
+    return json.dumps(config, indent=4)
+
 
 
 def save_config_file(config_json, path, filename):
@@ -207,21 +177,61 @@ def save_config_file(config_json, path, filename):
 
 
 def save_arrival_table(arrival_table_file, model_name, scenario_name, source_name, username):
-    # Create the directory structure based on user/model/scenario
+    # Secure the filename to prevent directory traversal attacks
+    filename = secure_filename(arrival_table_file.filename)
+    filename_without_ext, ext = os.path.splitext(filename)
+
+    # Check if source_name is already in the filename
+    if source_name not in filename_without_ext:
+        # Prepend source_name to the filename
+        filename_with_source = f"{source_name}_{filename}"
+    else:
+        # Use the original filename
+        filename_with_source = filename
+
+    # Define the path to save the arrival table
     base_directory = os.path.join('user', username, model_name, scenario_name, 'arrival_tables')
     os.makedirs(base_directory, exist_ok=True)
-
-    # Generate a secure filename and prepend the source name
-    filename = secure_filename(arrival_table_file.filename)
-    filename_with_source = f"{source_name}_{filename}"
-
-    # Save the file to the directory
     file_path = os.path.join(base_directory, filename_with_source)
+
+    # Save the arrival table file
     arrival_table_file.save(file_path)
 
-    # Return the file path for inclusion in the configuration
+    # Return the file path
     return file_path
 
+
+def copy_arrival_table(existing_file_path, new_model_name, new_scenario_name, source_name, username):
+    # Validate existing_file_path
+    user_directory = os.path.abspath(os.path.join('user', username))
+    existing_file_path_abs = os.path.abspath(existing_file_path)
+    if not existing_file_path_abs.startswith(user_directory):
+        raise ValueError("Invalid existing arrival table path.")
+
+    # Construct the new directory path
+    base_directory = os.path.join('user', username, new_model_name, new_scenario_name, 'arrival_tables')
+    os.makedirs(base_directory, exist_ok=True)
+
+    # Get the filename from the existing file path
+    filename = os.path.basename(existing_file_path)
+    filename_without_ext, ext = os.path.splitext(filename)
+
+    # Check if source_name is already in the filename
+    if source_name not in filename_without_ext:
+        # Prepend source_name to the filename
+        filename_with_source = f"{source_name}_{filename}"
+    else:
+        # Use the original filename
+        filename_with_source = filename
+
+    # Construct the new file path
+    new_file_path = os.path.join(base_directory, filename_with_source)
+
+    # Copy the file
+    shutil.copyfile(existing_file_path, new_file_path)
+
+    # Return the new file path
+    return new_file_path
 
 """def generate_config(form_data, username, source_files):
 

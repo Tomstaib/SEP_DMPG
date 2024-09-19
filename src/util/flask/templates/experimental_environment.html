@@ -53,6 +53,10 @@
         <label for="scenario_name">Scenario Name:</label>
         <input type="text" id="scenario_name" name="scenario_name" placeholder="Scenario1" required><br><br>
 
+        <!-- Hidden fields for original names -->
+        <input type="hidden" name="original_model_name" id="original_model_name">
+        <input type="hidden" name="original_scenario_name" id="original_scenario_name">
+
         <!-- Source Section -->
         <h3>Source Configuration</h3>
         <div id="source-container"></div>
@@ -71,6 +75,10 @@
         <input type="submit" value="Generate Configuration">
     </form>
 <script>
+    var configData = {{ config_data|tojson|default('null', true) }};
+</script>
+
+<script>
     let componentCounts = {
         source: 0,
         server: 0,
@@ -80,7 +88,7 @@
     let connections = [];
 
     // General function to add a new component
-function addComponent(type) {
+function addComponent(type, data = null, handleConnections = true) {
     componentCounts[type]++;
     const container = document.getElementById(`${type}-container`);
     const count = componentCounts[type];
@@ -111,6 +119,14 @@ function addComponent(type) {
 
             <label for="arrival_table_${uniqueId}">Upload Arrival Table (CSV):</label>
             <input type="file" id="arrival_table_${uniqueId}" name="arrival_table_file_${uniqueId}" accept=".csv"><br><br>`;
+
+        // If there is an existing arrival table, add a hidden input and display a message
+        if (data && data.arrival_table) {
+            componentHtml += `
+                <input type="hidden" id="existing_arrival_table_${uniqueId}" name="existing_arrival_table_${uniqueId}" value="${data.arrival_table}">
+                <p>Existing Arrival Table: ${data.arrival_table}</p>
+                <p>You can upload a new file to replace the existing arrival table.</p>`;
+        }
     }
     // Fields specific to 'server' component
     if (type === 'server') {
@@ -151,16 +167,24 @@ function addComponent(type) {
 
     // Add a dropdown for selecting the target component for connections, only for 'source' and 'server'
     if (type === 'source' || type === 'server') {
-        componentHtml += `
-            <div id="connection_fields_${uniqueId}">
-                <label for="connection_${uniqueId}_1">Connect to:</label>
-                <select id="connection_${uniqueId}_1" name="connection_${uniqueId}_1" onchange="addConnectionDropdown('${uniqueId}', 1, '${uniqueId}')">
+        let connectionFieldsHtml = `<div id="connection_fields_${uniqueId}">`;
+
+        // Determine the number of connection dropdowns needed
+        let connectionsCount = data && data.connections ? data.connections.length : 1;
+
+        for (let i = 1; i <= connectionsCount; i++) {
+            connectionFieldsHtml += `
+                <label for="connection_${uniqueId}_${i}">Connect to:</label>
+                <select id="connection_${uniqueId}_${i}" name="connection_${uniqueId}_${i}" onchange="addConnectionDropdown('${uniqueId}', ${i}, '${uniqueId}')">
                     <option value="">Select Target Component</option>
                 </select><br><br>
 
                 <!-- Container for connection-specific parameters -->
-                <div id="connection_params_${uniqueId}_1"></div>
-            </div>`;
+                <div id="connection_params_${uniqueId}_${i}"></div>`;
+        }
+
+        connectionFieldsHtml += `</div>`;
+        componentHtml += connectionFieldsHtml;
     }
 
     componentHtml += `
@@ -180,6 +204,52 @@ function addComponent(type) {
         // Update all dropdowns to include the new component
         updateConnectionOptions();
     });
+
+    // Pre-fill fields if data is provided
+    if (data) {
+        document.getElementById(`name_${uniqueId}`).value = data.name || '';
+
+        // Set distribution type and parameters
+        if (data.distribution) {
+            document.getElementById(`dist_type_${uniqueId}`).value = data.distribution.type || '';
+            updateDistributionParams(uniqueId); // Load appropriate fields
+
+            // Set distribution parameters
+            const params = data.distribution.params || {};
+            for (const [key, value] of Object.entries(params)) {
+                const paramField = document.getElementById(`${key}_${uniqueId}`);
+                if (paramField) {
+                    paramField.value = value;
+                }
+            }
+        }
+
+        // Handle arrival_table for sources
+        if (type === 'source' && data.arrival_table) {
+            // The hidden input and message are already added in componentHtml
+        }
+
+        // Handle breakdown parameters for servers
+        if (type === 'server' && data.breakdown) {
+            const breakdown = data.breakdown;
+            if (breakdown.time_between_machine_breakdown) {
+                document.getElementById(`time_between_machine_breakdown_${uniqueId}`).value = breakdown.time_between_machine_breakdown;
+                toggleBreakdownDuration(uniqueId);
+            }
+            if (breakdown.machine_breakdown_duration) {
+                document.getElementById(`machine_breakdown_duration_${uniqueId}`).value = breakdown.machine_breakdown_duration;
+            }
+        }
+
+        // Set queue order for servers
+        if (type === 'server' && data.queue_order) {
+            document.getElementById(`queue_order_${uniqueId}`).value = data.queue_order;
+        }
+
+        // Connections are handled separately in initializeForm when handleConnections is false
+    }
+
+    return uniqueId;
 }
 
 // Function to handle dynamically adding new dropdowns for connections
@@ -443,8 +513,110 @@ function getCurrentConnections(uniqueId) {
     function capitalize(str) {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
-</script>
 
+function initializeForm() {
+    if (configData) {
+        // Pre-fill the form with configData
+        document.getElementById('model_name').value = configData.model_name || '';
+        document.getElementById('scenario_name').value = configData.scenario_name || '';
+
+        // Set original model_name and scenario_name
+        document.getElementById('original_model_name').value = configData.model_name || '';
+        document.getElementById('original_scenario_name').value = configData.scenario_name || '';
+
+        // Keep track of component unique IDs and their data
+        const componentDataList = [];
+
+        // Initialize components without handling connections
+        if (configData.sources) {
+            configData.sources.forEach(function(source) {
+                const uniqueId = addComponent('source', source, false); // false to skip connections
+                componentDataList.push({ uniqueId, data: source });
+            });
+        }
+        if (configData.servers) {
+            configData.servers.forEach(function(server) {
+                const uniqueId = addComponent('server', server, false);
+                componentDataList.push({ uniqueId, data: server });
+            });
+        }
+        if (configData.sinks) {
+            configData.sinks.forEach(function(sink) {
+                const uniqueId = addComponent('sink', sink, false);
+                componentDataList.push({ uniqueId, data: sink });
+            });
+        }
+
+        // Update all connection dropdown options now that all components are added
+        updateConnectionOptions();
+
+        // Now set up the connections for each component
+        componentDataList.forEach(function(item) {
+            const uniqueId = item.uniqueId;
+            const data = item.data;
+            if (data.connections) {
+                data.connections.forEach(function(connection, index) {
+                    const dropdownNumber = index + 1;
+
+                    // Ensure the connection dropdown exists
+                    let connectionField = document.getElementById(`connection_${uniqueId}_${dropdownNumber}`);
+                    if (!connectionField) {
+                        // Create the connection dropdown if it doesn't exist
+                        const container = document.getElementById(`connection_fields_${uniqueId}`);
+                        let newDropdownHtml = `
+                            <label for="connection_${uniqueId}_${dropdownNumber}">Connect to:</label>
+                            <select id="connection_${uniqueId}_${dropdownNumber}" name="connection_${uniqueId}_${dropdownNumber}" onchange="addConnectionDropdown('${uniqueId}', ${dropdownNumber}, '${uniqueId}')">
+                                <option value="">Select Target Component</option>
+                            </select><br><br>
+
+                            <!-- Container for connection-specific parameters -->
+                            <div id="connection_params_${uniqueId}_${dropdownNumber}"></div>`;
+                        container.insertAdjacentHTML('beforeend', newDropdownHtml);
+
+                        // Update the options for this dropdown
+                        updateConnectionOptions(`connection_${uniqueId}_${dropdownNumber}`, uniqueId, getCurrentConnections(uniqueId));
+                        connectionField = document.getElementById(`connection_${uniqueId}_${dropdownNumber}`);
+                    }
+
+                    // Set the value of the connection dropdown
+                    connectionField.value = connection.target;
+
+                    // Call addConnectionDropdown to handle parameters
+                    addConnectionDropdown(uniqueId, dropdownNumber, uniqueId);
+
+                    // Set connection parameters
+                    if (connection.probability !== null && connection.probability !== undefined) {
+                        const probabilityField = document.getElementById(`probability_${uniqueId}_${dropdownNumber}`);
+                        if (probabilityField) {
+                            probabilityField.value = connection.probability;
+                        }
+                    }
+                    if (connection.process_duration !== null && connection.process_duration !== undefined) {
+                        const processDurationField = document.getElementById(`process_duration_${uniqueId}_${dropdownNumber}`);
+                        if (processDurationField) {
+                            processDurationField.value = connection.process_duration;
+                        }
+                    }
+                });
+            }
+        });
+    }
+}
+
+
+
+    window.onload = initializeForm;
+</script>
+<h2>Load Existing Configuration</h2>
+<form action="{{ url_for('load_configuration') }}" method="POST">
+    <label for="config_file">Select Configuration:</label>
+    <select id="config_file" name="config_file">
+        {% for config in configurations %}
+        <option value="{{ config.file_path }}">{{ config.model_name }} - {{ config.scenario_name }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit">Load Configuration</button>
+</form>
 
 
 {% endblock %}

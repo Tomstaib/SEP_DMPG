@@ -232,16 +232,39 @@ def experimental_environment():
 @app.route('/experimental_environment', methods=['GET', 'POST'])
 @login_required
 def experimental_environment():
+    username = session.get('username', '').strip()
+    user_directory = os.path.join('user', username)
+    configurations = []
+    config_data = session.pop('config_data', None)  # Retrieve and remove config_data from session
+
+    # Traverse the user's directory to find configuration files
+    for root, dirs, files in os.walk(user_directory):
+        for file in files:
+            if file.endswith('.json'):
+                config_path = os.path.join(root, file)
+                # Extract model and scenario names from the path
+                parts = os.path.relpath(config_path, user_directory).split(os.sep)
+                if len(parts) >= 2:
+                    model_name = parts[0]
+                    scenario_name = parts[1]
+                    configurations.append({
+                        'model_name': model_name,
+                        'scenario_name': scenario_name,
+                        'file_name': file,
+                        'file_path': config_path
+                    })
+
     if request.method == 'POST':
         try:
-            # Get user, scenario, and model details
-            username = session.get('username', '').strip()
-            scenario_name = request.form.get('scenario_name', '').strip()
+            # Retrieve original and new model/scenario names
+            original_model_name = request.form.get('original_model_name', '').strip()
+            original_scenario_name = request.form.get('original_scenario_name', '').strip()
             model_name = request.form.get('model_name', '').strip()
+            scenario_name = request.form.get('scenario_name', '').strip()
 
-            logging.info(f"Starting experimental environment for user: {username}, model: {model_name}, scenario: {scenario_name}")
+            logging.info(f"Processing configuration for user: {username}, model: {model_name}, scenario: {scenario_name}")
 
-            # Dictionary to store file paths for uploaded CSVs
+            # Dictionary to store file paths for arrival tables
             source_files = {}
 
             # Process all form inputs, including file uploads
@@ -254,32 +277,70 @@ def experimental_environment():
                     file_key = f'arrival_table_file_{unique_id}'
                     arrival_table_file = request.files.get(file_key)
 
-                    if arrival_table_file and arrival_table_file.filename.endswith('.csv'):
-                        # Save the CSV file and get its path
-                        file_path = experiments.save_arrival_table(arrival_table_file, model_name, scenario_name, source_name, username)
-                        # Store the file path in the dictionary using the unique_id
-                        source_files[unique_id] = file_path
-                        logging.info(f"File for {source_name} uploaded successfully: {file_path}")
-                    else:
-                        logging.warning(f"No valid CSV file uploaded for {source_name}")
+                    # Check for existing arrival table path
+                    existing_arrival_table = request.form.get(f'existing_arrival_table_{unique_id}')
 
-            # Generate the configuration file using form data and the CSV file paths
+                    if arrival_table_file and arrival_table_file.filename.endswith('.csv'):
+                        # Save the new CSV file and get its path
+                        file_path = experiments.save_arrival_table(arrival_table_file, model_name, scenario_name, source_name, username)
+                        source_files[unique_id] = file_path
+                        logging.info(f"New arrival table for {source_name} uploaded: {file_path}")
+                    elif existing_arrival_table:
+                        # Check if model_name or scenario_name has changed
+                        if model_name != original_model_name or scenario_name != original_scenario_name:
+                            # Copy the arrival table to the new location
+                            new_file_path = experiments.copy_arrival_table(existing_arrival_table, model_name, scenario_name, source_name, username)
+                            source_files[unique_id] = new_file_path
+                            logging.info(f"Arrival table for {source_name} copied to new location: {new_file_path}")
+                        else:
+                            # Use the existing arrival table path
+                            source_files[unique_id] = existing_arrival_table
+                            logging.info(f"Using existing arrival table for {source_name}: {existing_arrival_table}")
+                    else:
+                        logging.warning(f"No arrival table provided for {source_name}")
+
+            # Generate the configuration file using form data and the arrival table paths
             config_json = experiments.generate_simulation_configuration(request.form, source_files)
-            logging.info(f"Configuration successfully generated: {config_json}")
+            logging.info(f"Configuration successfully generated.")
+
+            # Save the configuration file
             save_config_file(config_json, os.path.join('user', username, model_name, scenario_name), f"{model_name}_{scenario_name}.json")
             flash('Configuration successfully generated')
 
             return redirect(url_for('experimental_environment'))
 
         except Exception as e:
-            logging.error(f"Error generating configuration: {e}")
-            flash(f'Error generating configuration: {e}')
+            logging.error(f"Error processing configuration: {e}")
+            flash(f'Error processing configuration: {e}')
             return redirect(url_for('experimental_environment'))
 
     # Handle the GET request to load the page
-    return render_template('experimental_environment.html')
+    return render_template('experimental_environment.html', configurations=configurations, config_data=config_data)
 
 
+@app.route('/load_configuration', methods=['POST'])
+@login_required
+def load_configuration():
+    username = session.get('username', '').strip()
+    selected_config_path = request.form.get('config_file')
+
+    # Ensure the selected configuration is within the user's directory
+    user_directory = os.path.join('user', username)
+    if not selected_config_path.startswith(user_directory):
+        flash('Invalid configuration selected.')
+        return redirect(url_for('experimental_environment'))
+
+    # Load the configuration file
+    try:
+        with open(selected_config_path, 'r') as f:
+            config_data = json.load(f)
+        # Store the configuration data in the session or pass it to the template
+        session['config_data'] = config_data
+        return redirect(url_for('experimental_environment'))
+    except Exception as e:
+        logging.error(f"Error loading configuration: {e}")
+        flash('Error loading configuration.')
+        return redirect(url_for('experimental_environment'))
 
 
 @app.route('/receive_runtime_prediction', methods=['POST'])
