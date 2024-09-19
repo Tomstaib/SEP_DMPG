@@ -49,6 +49,90 @@ class ModelScenario(Base):
     scenario = relationship('Scenario', back_populates='model_scenarios')
 
 
+class Source(Base):
+    __tablename__ = 'sources'
+    source_id = Column(Integer, primary_key=True)
+    scenario_id = Column(Integer, ForeignKey('scenarios.scenario_id'), primary_key=True)
+    source_name = Column(String(255))
+    number_created = Column(Integer)
+    number_exited = Column(Integer)
+    creation_time_distribution_with_parameters = Column(Float)
+
+    scenario = relationship('Scenario', back_populates='sources')
+
+
+class Server(Base):
+    __tablename__ = 'servers'
+    server_id = Column(Integer, primary_key=True)
+    scenario_id = Column(Integer, ForeignKey('scenarios.scenario_id'), primary_key=True)
+    server_name = Column(String(255))
+    scheduled_utilization = Column(Float)
+    units_utilized = Column(Integer)
+    avg_time_processing = Column(Float)
+    total_time_processing = Column(Float)
+    number_entered = Column(Integer)
+    number_exited = Column(Integer)
+    number_downtimes = Column(Integer)
+    total_downtime = Column(Float)
+    processing_time_distribution_with_parameters = Column(Float)
+    time_between_machine_breakdowns = Column(Float)
+    machine_breakdown_duration = Column(Float)
+    entities_processed = Column(Integer)
+    total_uptime = Column(Float)
+    number_uptimes = Column(Integer)
+
+    scenario = relationship('Scenario', back_populates='servers')
+
+
+class Sink(Base):
+    __tablename__ = 'sinks'
+    sink_id = Column(Integer, primary_key=True)
+    scenario_id = Column(Integer, ForeignKey('scenarios.scenario_id'), primary_key=True)
+    sink_name = Column(String(255))
+    entities_processed = Column(Integer)
+    total_time_in_system = Column(Float)
+    number_entered = Column(Integer)
+    max_time_in_system = Column(Float)
+    min_time_in_system = Column(Float)
+
+    scenario = relationship('Scenario', back_populates='sinks')
+
+
+class Connection(Base):
+    __tablename__ = 'connections'
+    connection_id = Column(Integer, primary_key=True)
+    scenario_id = Column(Integer, ForeignKey('scenarios.scenario_id'), primary_key=True)
+    connection_name = Column(String(255))
+    entities_processed = Column(Integer)
+    number_entered = Column(Integer)
+    processing_duration = Column(Float)
+    availability = Column(Float)
+
+    scenario = relationship('Scenario', back_populates='connections')
+
+
+class Entity(Base):
+    __tablename__ = 'entities'
+    entity_id = Column(Integer, primary_key=True)
+    scenario_id = Column(Integer, ForeignKey('scenarios.scenario_id'), primary_key=True)
+    entity_name = Column(String(255))
+    creation_time = Column(Float)
+
+    scenario = relationship('Scenario', back_populates='entities')
+
+
+class PivotTable(Base):
+    __tablename__ = 'pivot_table'
+    id = Column(Integer, primary_key=True)
+    type = Column(String(255))
+    name = Column(String(255))
+    stat = Column(String(255))
+    average = Column(Float)
+    minimum = Column(Float)
+    maximum = Column(Float)
+    half_width = Column(Float)
+
+
 def create_tables():
     db_user = 'sep'
     db_host = 'localhost'
