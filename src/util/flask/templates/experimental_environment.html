@@ -89,7 +89,6 @@
             <div id="${type}-${count}" class="item-container">
             <h4>${capitalize(type)} ${count}</h4>`;
 
-
         // Add fields common to all components
         componentHtml += `
             <label for="${type}_name_${count}">${capitalize(type)} Name:</label>
@@ -108,7 +107,6 @@
 
                 <!-- Container for distribution-specific parameters -->
                 <div id="dist_params_${count}" class="dist-params-container"></div>
-
 
                 <label for="arrival_table_${count}">Upload Arrival Table (CSV):</label>
                 <input type="file" id="arrival_table_${count}" name="arrival_table_file_${count}" accept=".csv"><br><br>`;
@@ -227,7 +225,7 @@
         const allTargetComponents = [...servers, ...sinks];
         const allComponentsForServersAndSinks = [...sources, ...servers, ...sinks];
 
-        function updateDropdown(dropdown) {
+        function updateDropdown(dropdown, componentToExclude, connectedComponents) {
             if (!dropdown) return;
 
             const previousSelection = dropdown.value;
@@ -238,23 +236,30 @@
                 const targetCount = targetComponent.id.split('-')[1];
                 const targetId = `${targetType}-${targetCount}`;
 
-                if (targetId !== componentToExclude && !connectedComponents.includes(targetId)) {
+                // Include the previous selection even if it's in connectedComponents
+                if (targetId !== componentToExclude && (!connectedComponents.includes(targetId) || targetId === previousSelection)) {
                     dropdown.innerHTML += `<option value="${targetId}">${capitalize(targetType)} ${targetCount}</option>`;
                 }
             });
 
-            if (previousSelection && !connectedComponents.includes(previousSelection)) {
+            // Set the dropdown's value back to the previous selection if it still exists
+            if (previousSelection && dropdown.querySelector(`option[value="${previousSelection}"]`)) {
                 dropdown.value = previousSelection;
             }
         }
 
         if (dropdownIdToUpdate) {
-            updateDropdown(document.getElementById(dropdownIdToUpdate));
+            const dropdown = document.getElementById(dropdownIdToUpdate);
+            updateDropdown(dropdown, componentToExclude, connectedComponents);
         } else {
             allComponentsForServersAndSinks.forEach((component) => {
                 const [type, count] = component.id.split('-');
+                const componentToExclude = `${type}-${count}`;
+                const connectedComponents = getCurrentConnections(type, count);
                 const connectionFields = document.querySelectorAll(`#connection_fields_${type}_${count} select`);
-                connectionFields.forEach(updateDropdown);
+                connectionFields.forEach((dropdown) => {
+                    updateDropdown(dropdown, componentToExclude, connectedComponents);
+                });
             });
         }
     }
