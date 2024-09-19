@@ -10,9 +10,9 @@ from watchdog.events import FileSystemEvent
 from graphviz import Digraph
 
 # Für Dockercontainer zum initialisierren der lokalen Module
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../Verteilung')))
 
-from Verteilung.composite_tree import CompositeTree
+import CompositeTree
 from util.nodes_for_composite import ManagementNode, Node, ComputeNode
 
 sys.path.append('/app/Verteilung/util')
