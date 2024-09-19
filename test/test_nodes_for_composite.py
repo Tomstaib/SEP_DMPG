@@ -1,12 +1,20 @@
 from __future__ import annotations
 from typing import Optional
 import unittest
+import os
 import sys
 from io import StringIO
+
 sys.path.append('/app/Verteilung/util')
+
 from unittest.mock import patch
-from util.nodes_for_composite import Node, ManagementNode, ComputeNode, create_composite_tree, MINIMUM_OF_REPLICATIONS_FOR_COMPOSITE, NUM_REPLICATIONS, compute_tree_sizes, add_nodes, input_positive_number
 from unittest.mock import MagicMock
+
+# Für Dockercontainer zum initialisierren der lokalen Module
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+
+from util.nodes_for_composite import Node, ManagementNode, ComputeNode, create_composite_tree, MINIMUM_OF_REPLICATIONS_FOR_COMPOSITE, NUM_REPLICATIONS, compute_tree_sizes, add_nodes, input_positive_number
+
 
 class ConcreteNode(Node):
     '''
