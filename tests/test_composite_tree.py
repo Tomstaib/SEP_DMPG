@@ -12,7 +12,7 @@ from graphviz import Digraph
 # Für Dockercontainer zum initialisierren der lokalen Module
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../Verteilung')))
 
-import CompositeTree
+from Verteilung.composite_tree import CompositeTree
 from util.nodes_for_composite import ManagementNode, Node, ComputeNode
 
 sys.path.append('/app/Verteilung/util')
