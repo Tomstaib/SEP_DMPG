@@ -4,14 +4,12 @@ from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
-
 class HSUser(Base):
     __tablename__ = 'HSUser'
     user_id = Column(Integer, primary_key=True)
     user_name = Column(String(255))
     number_started_simulations = Column(Integer)
     models = relationship('Model', back_populates='hsuser')
-
 
 class Model(Base):
     __tablename__ = 'Model'
@@ -20,7 +18,6 @@ class Model(Base):
     user_id = Column(Integer, ForeignKey('HSUser.user_id'))
     hsuser = relationship('HSUser', back_populates='models')
     model_scenarios = relationship('ModelScenario', back_populates='model')
-
 
 class Scenario(Base):
     __tablename__ = 'Scenario'
@@ -40,7 +37,6 @@ class Scenario(Base):
     entities = relationship('Entity', back_populates='scenario')
     model_scenarios = relationship('ModelScenario', back_populates='scenario')
 
-
 class ModelScenario(Base):
     __tablename__ = 'Model_Scenario'
     model_id = Column(Integer, ForeignKey('Model.model_id'), primary_key=True)
@@ -48,11 +44,10 @@ class ModelScenario(Base):
     model = relationship('Model', back_populates='model_scenarios')
     scenario = relationship('Scenario', back_populates='model_scenarios')
 
-
 class Source(Base):
     __tablename__ = 'sources'
-    source_id = Column(Integer, primary_key=True)
-    scenario_id = Column(Integer, ForeignKey('scenarios.scenario_id'), primary_key=True)
+    source_id = Column(Integer, primary_key=True)  # autoincrement entfernt
+    scenario_id = Column(Integer, ForeignKey('Scenario.scenario_id'), primary_key=True)
     source_name = Column(String(255))
     number_created = Column(Integer)
     number_exited = Column(Integer)
@@ -61,10 +56,12 @@ class Source(Base):
     scenario = relationship('Scenario', back_populates='sources')
 
 
+
+
 class Server(Base):
     __tablename__ = 'servers'
-    server_id = Column(Integer, primary_key=True)
-    scenario_id = Column(Integer, ForeignKey('scenarios.scenario_id'), primary_key=True)
+    server_id = Column(Integer, primary_key=True)  # autoincrement hinzugefügt
+    scenario_id = Column(Integer, ForeignKey('Scenario.scenario_id'), primary_key=True)
     server_name = Column(String(255))
     scheduled_utilization = Column(Float)
     units_utilized = Column(Integer)
@@ -87,7 +84,7 @@ class Server(Base):
 class Sink(Base):
     __tablename__ = 'sinks'
     sink_id = Column(Integer, primary_key=True)
-    scenario_id = Column(Integer, ForeignKey('scenarios.scenario_id'), primary_key=True)
+    scenario_id = Column(Integer, ForeignKey('Scenario.scenario_id'), primary_key=True)
     sink_name = Column(String(255))
     entities_processed = Column(Integer)
     total_time_in_system = Column(Float)
@@ -101,7 +98,7 @@ class Sink(Base):
 class Connection(Base):
     __tablename__ = 'connections'
     connection_id = Column(Integer, primary_key=True)
-    scenario_id = Column(Integer, ForeignKey('scenarios.scenario_id'), primary_key=True)
+    scenario_id = Column(Integer, ForeignKey('Scenario.scenario_id'), primary_key=True)
     connection_name = Column(String(255))
     entities_processed = Column(Integer)
     number_entered = Column(Integer)
@@ -114,7 +111,7 @@ class Connection(Base):
 class Entity(Base):
     __tablename__ = 'entities'
     entity_id = Column(Integer, primary_key=True)
-    scenario_id = Column(Integer, ForeignKey('scenarios.scenario_id'), primary_key=True)
+    scenario_id = Column(Integer, ForeignKey('Scenario.scenario_id'), primary_key=True)
     entity_name = Column(String(255))
     creation_time = Column(Float)
 
