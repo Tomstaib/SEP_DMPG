@@ -80,216 +80,240 @@
     let connections = [];
 
     // General function to add a new component
-    function addComponent(type) {
-        componentCounts[type]++;
-        const container = document.getElementById(`${type}-container`);
-        const count = componentCounts[type];
+function addComponent(type) {
+    componentCounts[type]++;
+    const container = document.getElementById(`${type}-container`);
+    const count = componentCounts[type];
+    const uniqueId = `${type}_${count}`;
 
-        let componentHtml = `
-            <div id="${type}-${count}" class="item-container">
-            <h4>${capitalize(type)} ${count}</h4>`;
+    let componentHtml = `
+        <div id="${uniqueId}" class="item-container">
+        <h4>${capitalize(type)} ${count}</h4>`;
 
-        // Add fields common to all components
+    // Add fields common to all components
+    componentHtml += `
+        <label for="name_${uniqueId}">${capitalize(type)} Name:</label>
+        <input type="text" id="name_${uniqueId}" name="name_${uniqueId}" required><br><br>`;
+
+    if (type === 'source') {
         componentHtml += `
-            <label for="${type}_name_${count}">${capitalize(type)} Name:</label>
-            <input type="text" id="${type}_name_${count}" name="${type}_name_${count}" required><br><br>`;
+            <label for="dist_type_${uniqueId}">Creation Time Distribution Type:</label>
+            <select id="dist_type_${uniqueId}" name="dist_type_${uniqueId}" onchange="updateDistributionParams('${uniqueId}')">
+                <option value="">Select Distribution</option>
+                <option value="triangular">Triangular</option>
+                <option value="uniform">Uniform</option>
+                <option value="expovariate">Exponential</option>
+                <option value="normalvariate">Normal</option>
+            </select><br><br>
 
-        if (type === 'source') {
-            componentHtml += `
-                <label for="dist_type_${count}">Creation Time Distribution Type:</label>
-                <select id="dist_type_${count}" name="dist_type_${count}" onchange="updateDistributionParams(${count})">
-                    <option value="">Select Distribution</option>
-                    <option value="triangular">Triangular</option>
-                    <option value="uniform">Uniform</option>
-                    <option value="expovariate">Exponential</option>
-                    <option value="normalvariate">Normal</option>
+            <!-- Container for distribution-specific parameters -->
+            <div id="dist_params_${uniqueId}" class="dist-params-container"></div>
+
+            <label for="arrival_table_${uniqueId}">Upload Arrival Table (CSV):</label>
+            <input type="file" id="arrival_table_${uniqueId}" name="arrival_table_file_${uniqueId}" accept=".csv"><br><br>`;
+    }
+    // Fields specific to 'server' component
+    if (type === 'server') {
+        componentHtml += `
+            <label for="dist_type_${uniqueId}">Processing Time Distribution Type:</label>
+            <select id="dist_type_${uniqueId}" name="dist_type_${uniqueId}" onchange="updateDistributionParams('${uniqueId}')">
+                <option value="">Select Distribution</option>
+                <option value="triangular">Triangular</option>
+                <option value="uniform">Uniform</option>
+                <option value="expovariate">Exponential</option>
+                <option value="normalvariate">Normal</option>
+            </select><br><br>
+
+            <!-- Container for distribution-specific parameters -->
+            <div id="dist_params_${uniqueId}" class="dist-params-container"></div>
+
+            <label for="queue_order_${uniqueId}">Queue Order:</label>
+            <select id="queue_order_${uniqueId}" name="queue_order_${uniqueId}">
+                <option value="FIFO">FIFO</option>
+                <option value="LIFO">LIFO</option>
+            </select><br><br>
+
+            <label for="time_between_machine_breakdown_${uniqueId}">Time Between Machine Breakdown (optional):</label>
+            <input type="number" id="time_between_machine_breakdown_${uniqueId}" name="time_between_machine_breakdown_${uniqueId}" step="0.01" placeholder="Optional" oninput="toggleBreakdownDuration('${uniqueId}')"><br><br>
+
+            <!-- Hidden by default, will appear when time_between_machine_breakdown is filled -->
+            <div id="breakdown_duration_container_${uniqueId}" style="display: none;">
+                <label for="machine_breakdown_duration_${uniqueId}">Duration of Machine Breakdown:</label>
+                <input type="number" id="machine_breakdown_duration_${uniqueId}" name="machine_breakdown_duration_${uniqueId}" step="0.01" placeholder="Optional"><br><br>
+            </div>`;
+    }
+
+    if (type === 'sink') {
+        componentHtml += `
+            <label for="addon_process_trigger_${uniqueId}">Addon Process Trigger (Optional):</label>
+            <input type="text" id="addon_process_trigger_${uniqueId}" name="addon_process_trigger_${uniqueId}" placeholder="Addon Process Trigger"><br><br>`;
+    }
+
+    // Add a dropdown for selecting the target component for connections, only for 'source' and 'server'
+    if (type === 'source' || type === 'server') {
+        componentHtml += `
+            <div id="connection_fields_${uniqueId}">
+                <label for="connection_${uniqueId}_1">Connect to:</label>
+                <select id="connection_${uniqueId}_1" name="connection_${uniqueId}_1" onchange="addConnectionDropdown('${uniqueId}', 1, '${uniqueId}')">
+                    <option value="">Select Target Component</option>
                 </select><br><br>
 
-                <!-- Container for distribution-specific parameters -->
-                <div id="dist_params_${count}" class="dist-params-container"></div>
+                <!-- Container for connection-specific parameters -->
+                <div id="connection_params_${uniqueId}_1"></div>
+            </div>`;
+    }
 
-                <label for="arrival_table_${count}">Upload Arrival Table (CSV):</label>
-                <input type="file" id="arrival_table_${count}" name="arrival_table_file_${count}" accept=".csv"><br><br>`;
-        }
-        // Fields specific to 'server' component
-        if (type === 'server') {
-            componentHtml += `
-                <label for="dist_type_${count}">Processing Time Distribution Type:</label>
-                <select id="dist_type_${count}" name="dist_type_${count}" onchange="updateDistributionParams(${count})">
-                    <option value="">Select Distribution</option>
-                    <option value="triangular">Triangular</option>
-                    <option value="uniform">Uniform</option>
-                    <option value="expovariate">Exponential</option>
-                    <option value="normalvariate">Normal</option>
-                </select><br><br>
+    componentHtml += `
+        <button type="button" class="remove-btn">Delete ${capitalize(type)}</button>
+    </div>`;
 
-                <!-- Container for distribution-specific parameters -->
-                <div id="dist_params_${count}" class="dist-params-container"></div>
+    container.insertAdjacentHTML('beforeend', componentHtml);
 
-                <label for="queue_order_${count}">Queue Order:</label>
-                <select id="queue_order_${count}" name="queue_order_${count}">
-                    <option value="FIFO">FIFO</option>
-                    <option value="LIFO">LIFO</option>
-                </select><br><br>
+    console.log(`New component added: ${uniqueId}`);
+    console.log(`Expected select ID: connection_${uniqueId}_1`);
 
-                <label for="time_between_machine_breakdown_${count}">Time Between Machine Breakdown (optional):</label>
-                <input type="number" id="time_between_machine_breakdown_${count}" name="time_between_machine_breakdown_${count}" step="0.01" placeholder="Optional" oninput="toggleBreakdownDuration(${count})"><br><br>
-
-                <!-- Hidden by default, will appear when time_between_machine_breakdown is filled -->
-                <div id="breakdown_duration_container_${count}" style="display: none;">
-                    <label for="machine_breakdown_duration_${count}">Duration of Machine Breakdown:</label>
-                    <input type="number" id="machine_breakdown_duration_${count}" name="machine_breakdown_duration_${count}" step="0.01" placeholder="Optional"><br><br>
-                </div>`;
-        }
-
-        if (type === 'sink') {
-            componentHtml += `
-                <label for="addon_process_trigger_${count}">Addon Process Trigger (Optional):</label>
-                <input type="text" id="addon_process_trigger_${count}" name="addon_process_trigger_${count}" placeholder="Addon Process Trigger"><br><br>`;
-        }
-
-        // Add a dropdown for selecting the target component for connections, only for 'source' and 'server'
+    // Use requestAnimationFrame to ensure the DOM is updated before populating the dropdown
+    requestAnimationFrame(() => {
         if (type === 'source' || type === 'server') {
-            componentHtml += `
-                <div id="connection_fields_${type}_${count}">
-                    <label for="${type}_connection_${count}_1">Connect to:</label>
-                    <select id="${type}_connection_${count}_1" name="${type}_connection_${count}_1" onchange="addConnectionDropdown('${type}', ${count}, 1, '${type}-${count}')">
-                        <option value="">Select Target Component</option>
-                    </select><br><br>
-                </div>`;
+            updateConnectionOptions(`connection_${uniqueId}_1`, uniqueId);
         }
+        // Update all dropdowns to include the new component
+        updateConnectionOptions();
+    });
+}
 
-        componentHtml += `
-            <button type="button" class="remove-btn">Delete ${capitalize(type)}</button>
-        </div>`;
+// Function to handle dynamically adding new dropdowns for connections
+function addConnectionDropdown(uniqueId, dropdownNumber, componentToExclude) {
+    const currentDropdown = document.getElementById(`connection_${uniqueId}_${dropdownNumber}`);
+    const selectedValue = currentDropdown.value;
 
-        container.insertAdjacentHTML('beforeend', componentHtml);
+    // Remove existing connection parameters for this dropdown number
+    const paramsContainer = document.getElementById(`connection_params_${uniqueId}_${dropdownNumber}`);
+    if (paramsContainer) {
+        paramsContainer.remove();
+    }
 
-        console.log(`New component added: ${type}-${count}`);
-        console.log(`Expected select ID: ${type}_connection_${count}`);
+    // Only add a new dropdown if a selection has been made
+    if (selectedValue !== "") {
+        const container = document.getElementById(`connection_fields_${uniqueId}`);
+        const nextDropdownNumber = dropdownNumber + 1;
 
-        // Use requestAnimationFrame to ensure the DOM is updated before populating the dropdown
-        requestAnimationFrame(() => {
-            if (type === 'source' || type === 'server') {
-                updateConnectionOptions(`${type}_connection_${count}_1`, `${type}-${count}`);
+        // Add fields for Probability and Process Duration
+        let connectionParamsHtml = `
+            <div id="connection_params_${uniqueId}_${dropdownNumber}">
+                <label for="probability_${uniqueId}_${dropdownNumber}">Probability (1-100):</label>
+                <input type="number" id="probability_${uniqueId}_${dropdownNumber}" name="probability_${uniqueId}_${dropdownNumber}" min="1" max="100" step="0.01" placeholder="Optional"><br><br>
+
+                <label for="process_duration_${uniqueId}_${dropdownNumber}">Process Duration (Positive Float):</label>
+                <input type="number" id="process_duration_${uniqueId}_${dropdownNumber}" name="process_duration_${uniqueId}_${dropdownNumber}" min="0" step="0.01" placeholder="Optional"><br><br>
+            </div>`;
+
+        container.insertAdjacentHTML('beforeend', connectionParamsHtml);
+
+        // Check if the next dropdown already exists; if not, create it
+        if (!document.getElementById(`connection_${uniqueId}_${nextDropdownNumber}`)) {
+            let newDropdownHtml = `
+                <label for="connection_${uniqueId}_${nextDropdownNumber}">Connect to:</label>
+                <select id="connection_${uniqueId}_${nextDropdownNumber}" name="connection_${uniqueId}_${nextDropdownNumber}" onchange="addConnectionDropdown('${uniqueId}', ${nextDropdownNumber}, '${uniqueId}')">
+                    <option value="">Select Target Component</option>
+                </select><br><br>
+
+                <!-- Container for connection-specific parameters -->
+                <div id="connection_params_${uniqueId}_${nextDropdownNumber}"></div>`;
+
+            container.insertAdjacentHTML('beforeend', newDropdownHtml);
+
+            // Update only the newly added dropdown
+            updateConnectionOptions(`connection_${uniqueId}_${nextDropdownNumber}`, uniqueId, getCurrentConnections(uniqueId));
+        }
+    }
+
+    // Update all dropdowns in this component to remove the selected value as an option
+    updateComponentDropdowns(uniqueId, uniqueId);
+}
+
+
+function updateComponentDropdowns(type, count, componentToExclude) {
+    const connectedComponents = getCurrentConnections(type, count);
+    let i = 1;
+    let dropdown;
+    while ((dropdown = document.getElementById(`${type}_connection_${count}_${i}`))) {
+        updateConnectionOptions(dropdown.id, componentToExclude, connectedComponents);
+        i++;
+    }
+}
+
+function updateConnectionOptions(dropdownIdToUpdate = null, componentToExclude = null, connectedComponents = []) {
+    const sources = document.querySelectorAll('.item-container[id^="source_"]');
+    const servers = document.querySelectorAll('.item-container[id^="server_"]');
+    const sinks = document.querySelectorAll('.item-container[id^="sink_"]');
+
+    const allTargetComponents = [...servers, ...sinks];
+    const allComponentsForServersAndSinks = [...sources, ...servers, ...sinks];
+
+    function updateDropdown(dropdown, componentToExclude, connectedComponents) {
+        if (!dropdown) return;
+
+        const previousSelection = dropdown.value;
+        dropdown.innerHTML = '<option value="">Select Target Component</option>';
+
+        allTargetComponents.forEach((targetComponent) => {
+            const targetId = targetComponent.id;
+
+            // Extract type and count for display purposes
+            const [targetType, targetCount] = targetId.split('_');
+
+            // Include the previous selection even if it's in connectedComponents
+            if (targetId !== componentToExclude && (!connectedComponents.includes(targetId) || targetId === previousSelection)) {
+                dropdown.innerHTML += `<option value="${targetId}">${capitalize(targetType)} ${targetCount}</option>`;
             }
-            // Update all dropdowns to include the new component
-            updateConnectionOptions();
         });
-    }
 
-    // Function to handle dynamically adding new dropdowns for connections
-    function addConnectionDropdown(type, count, dropdownNumber, componentToExclude) {
-        const currentDropdown = document.getElementById(`${type}_connection_${count}_${dropdownNumber}`);
-        const selectedValue = currentDropdown.value;
-
-        // Only add a new dropdown if a selection has been made
-        if (selectedValue !== "") {
-            const container = document.getElementById(`connection_fields_${type}_${count}`);
-            const nextDropdownNumber = dropdownNumber + 1;
-
-            // Check if the next dropdown already exists; if not, create it
-            if (!document.getElementById(`${type}_connection_${count}_${nextDropdownNumber}`)) {
-                let newDropdownHtml = `
-                    <label for="${type}_connection_${count}_${nextDropdownNumber}">Connect to:</label>
-                    <select id="${type}_connection_${count}_${nextDropdownNumber}" name="${type}_connection_${count}_${nextDropdownNumber}" onchange="addConnectionDropdown('${type}', ${count}, ${nextDropdownNumber}, '${type}-${count}')">
-                        <option value="">Select Target Component</option>
-                    </select><br><br>`;
-
-                container.insertAdjacentHTML('beforeend', newDropdownHtml);
-
-                // Update only the newly added dropdown, exclude the current component and already connected components
-                updateConnectionOptions(`${type}_connection_${count}_${nextDropdownNumber}`, componentToExclude, getCurrentConnections(type, count));
-            }
-        }
-
-        // Update all dropdowns in this component to remove the selected value as an option
-        updateComponentDropdowns(type, count, componentToExclude);
-    }
-
-    function updateComponentDropdowns(type, count, componentToExclude) {
-        const connectedComponents = getCurrentConnections(type, count);
-        let i = 1;
-        let dropdown;
-        while (dropdown = document.getElementById(`${type}_connection_${count}_${i}`)) {
-            updateConnectionOptions(dropdown.id, componentToExclude, connectedComponents);
-            i++;
-        }
-    }
-
-    function updateConnectionOptions(dropdownIdToUpdate = null, componentToExclude = null, connectedComponents = []) {
-        const sources = document.querySelectorAll('.item-container[id^="source"]');
-        const servers = document.querySelectorAll('.item-container[id^="server"]');
-        const sinks = document.querySelectorAll('.item-container[id^="sink"]');
-
-        const allTargetComponents = [...servers, ...sinks];
-        const allComponentsForServersAndSinks = [...sources, ...servers, ...sinks];
-
-        function updateDropdown(dropdown, componentToExclude, connectedComponents) {
-            if (!dropdown) return;
-
-            const previousSelection = dropdown.value;
-            dropdown.innerHTML = '<option value="">Select Target Component</option>';
-
-            allTargetComponents.forEach((targetComponent) => {
-                const targetType = targetComponent.id.split('-')[0];
-                const targetCount = targetComponent.id.split('-')[1];
-                const targetId = `${targetType}-${targetCount}`;
-
-                // Include the previous selection even if it's in connectedComponents
-                if (targetId !== componentToExclude && (!connectedComponents.includes(targetId) || targetId === previousSelection)) {
-                    dropdown.innerHTML += `<option value="${targetId}">${capitalize(targetType)} ${targetCount}</option>`;
-                }
-            });
-
-            // Set the dropdown's value back to the previous selection if it still exists
-            if (previousSelection && dropdown.querySelector(`option[value="${previousSelection}"]`)) {
-                dropdown.value = previousSelection;
-            }
-        }
-
-        if (dropdownIdToUpdate) {
-            const dropdown = document.getElementById(dropdownIdToUpdate);
-            updateDropdown(dropdown, componentToExclude, connectedComponents);
+        // Set the dropdown's value back to the previous selection if it still exists
+        if (previousSelection && dropdown.querySelector(`option[value="${previousSelection}"]`)) {
+            dropdown.value = previousSelection;
         } else {
-            allComponentsForServersAndSinks.forEach((component) => {
-                const [type, count] = component.id.split('-');
-                const componentToExclude = `${type}-${count}`;
-                const connectedComponents = getCurrentConnections(type, count);
-                const connectionFields = document.querySelectorAll(`#connection_fields_${type}_${count} select`);
-                connectionFields.forEach((dropdown) => {
-                    updateDropdown(dropdown, componentToExclude, connectedComponents);
-                });
-            });
-        }
-    }
-
-    // Helper function to get all current connections for a component
-    function getCurrentConnections(type, count) {
-        const connections = [];
-        let i = 1;
-        let dropdown;
-        while (dropdown = document.getElementById(`${type}_connection_${count}_${i}`)) {
-            if (dropdown.value) {
-                connections.push(dropdown.value);
+            // If the previous selection is no longer valid, remove associated parameters
+            const paramsContainerId = dropdown.id.replace('connection', 'connection_params');
+            const paramsContainer = document.getElementById(paramsContainerId);
+            if (paramsContainer) {
+                paramsContainer.remove();
             }
-            i++;
         }
-        return connections;
     }
 
-    // Function to dynamically add connection-specific fields
-    function addConnectionFields(type, count, connections) {
-        const container = document.getElementById(`connections_params_${type}_${count}`);
-        container.innerHTML = ''; // Clear existing fields
-
-        connections.forEach((connection) => {
-            const connectionHtml = `
-                <label for="connection_param_${connection.target}_${count}">Parameter for Connection to ${connection.target}:</label>
-                <input type="text" id="connection_param_${connection.target}_${count}" name="connection_param_${connection.target}_${count}" placeholder="Enter value"><br><br>`;
-            container.insertAdjacentHTML('beforeend', connectionHtml);
+    if (dropdownIdToUpdate) {
+        const dropdown = document.getElementById(dropdownIdToUpdate);
+        updateDropdown(dropdown, componentToExclude, connectedComponents);
+    } else {
+        allComponentsForServersAndSinks.forEach((component) => {
+            const uniqueId = component.id;
+            const componentToExclude = uniqueId;
+            const connectedComponents = getCurrentConnections(uniqueId);
+            const connectionFields = document.querySelectorAll(`#connection_fields_${uniqueId} select`);
+            connectionFields.forEach((dropdown) => {
+                updateDropdown(dropdown, componentToExclude, connectedComponents);
+            });
         });
     }
+}
+
+
+// Helper function to get all current connections for a component
+function getCurrentConnections(uniqueId) {
+    const connections = [];
+    let i = 1;
+    let dropdown;
+    while ((dropdown = document.getElementById(`connection_${uniqueId}_${i}`))) {
+        if (dropdown.value) {
+            connections.push(dropdown.value);
+        }
+        i++;
+    }
+    return connections;
+}
+
+
 
     // Function to toggle the visibility of "Machine Breakdown Duration" based on input in "Time Between Machine Breakdown"
     function toggleBreakdownDuration(count) {
@@ -306,9 +330,9 @@
     }
 
     // Function to update the distribution-specific parameters based on the selection
-    function updateDistributionParams(count) {
-        const distType = document.getElementById(`dist_type_${count}`).value;
-        const distParamsContainer = document.getElementById(`dist_params_${count}`);
+    function updateDistributionParams(uniqueId) {
+        const distType = document.getElementById(`dist_type_${uniqueId}`).value;
+        const distParamsContainer = document.getElementById(`dist_params_${uniqueId}`);
         distParamsContainer.innerHTML = ''; // Clear previous inputs
 
         let paramsHtml = '';
@@ -316,35 +340,35 @@
         // Add the correct inputs based on the selected distribution
         if (distType === 'triangular') {
             paramsHtml = `
-                <label for="low_${count}">Low:</label>
-                <input type="number" id="low_${count}" name="low_${count}" step="0.01" min="0" required><br><br>
+                <label for="low_${uniqueId}">Low:</label>
+                <input type="number" id="low_${uniqueId}" name="low_${uniqueId}" step="0.01" min="0" required><br><br>
 
-                <label for="mode_${count}">Mode:</label>
-                <input type="number" id="mode_${count}" name="mode_${count}" step="0.01" required><br><br>
+                <label for="mode_${uniqueId}">Mode:</label>
+                <input type="number" id="mode_${uniqueId}" name="mode_${uniqueId}" step="0.01" required><br><br>
 
-                <label for="high_${count}">High:</label>
-                <input type="number" id="high_${count}" name="high_${count}" step="0.01" min="0" required><br><br>
+                <label for="high_${uniqueId}">High:</label>
+                <input type="number" id="high_${uniqueId}" name="high_${uniqueId}" step="0.01" min="0" required><br><br>
             `;
         } else if (distType === 'uniform') {
             paramsHtml = `
-                <label for="low_${count}">Low:</label>
-                <input type="number" id="low_${count}" name="low_${count}" step="0.01" min="0" required><br><br>
+                <label for="low_${uniqueId}">Low:</label>
+                <input type="number" id="low_${uniqueId}" name="low_${uniqueId}" step="0.01" min="0" required><br><br>
 
-                <label for="high_${count}">High:</label>
-                <input type="number" id="high_${count}" name="high_${count}" step="0.01" min="0" required><br><br>
+                <label for="high_${uniqueId}">High:</label>
+                <input type="number" id="high_${uniqueId}" name="high_${uniqueId}" step="0.01" min="0" required><br><br>
             `;
         } else if (distType === 'expovariate') {
             paramsHtml = `
-                <label for="lambda_${count}">Lambda (Rate):</label>
-                <input type="number" id="lambda_${count}" name="lambda_${count}" step="0.01" min="0" required><br><br>
+                <label for="lambda_${uniqueId}">Lambda (Rate):</label>
+                <input type="number" id="lambda_${uniqueId}" name="lambda_${uniqueId}" step="0.01" min="0" required><br><br>
             `;
         } else if (distType === 'normalvariate') {
             paramsHtml = `
-                <label for="mu_${count}">Mean (μ):</label>
-                <input type="number" id="mu_${count}" name="mu_${count}" step="0.01" required><br><br>
+                <label for="mu_${uniqueId}">Mean (μ):</label>
+                <input type="number" id="mu_${uniqueId}" name="mu_${uniqueId}" step="0.01" required><br><br>
 
-                <label for="sigma_${count}">Standard Deviation (σ):</label>
-                <input type="number" id="sigma_${count}" name="sigma_${count}" step="0.01" required><br><br>
+                <label for="sigma_${uniqueId}">Standard Deviation (σ):</label>
+                <input type="number" id="sigma_${uniqueId}" name="sigma_${uniqueId}" step="0.01" required><br><br>
             `;
         }
 

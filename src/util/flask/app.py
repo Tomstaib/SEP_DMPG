@@ -246,24 +246,27 @@ def experimental_environment():
 
             # Process all form inputs, including file uploads
             for key in request.form:
-                if key.startswith('source_name_'):
-                    source_index = key.split('_')[-1]
+                if key.startswith('name_source_'):
+                    unique_id = key.replace('name_', '')  # Extract 'source_X' identifier
                     source_name = request.form[key].strip()
 
                     # Get the corresponding file for this source
-                    file_key = f'arrival_table_file_{source_index}'
+                    file_key = f'arrival_table_file_{unique_id}'
                     arrival_table_file = request.files.get(file_key)
 
                     if arrival_table_file and arrival_table_file.filename.endswith('.csv'):
-                        experiments.save_arrival_table(arrival_table_file, model_name, scenario_name, source_files, source_name,
-                                                       username)
+                        # Save the CSV file and get its path
+                        file_path = experiments.save_arrival_table(arrival_table_file, model_name, scenario_name, source_name, username)
+                        # Store the file path in the dictionary using the unique_id
+                        source_files[unique_id] = file_path
+                        logging.info(f"File for {source_name} uploaded successfully: {file_path}")
                     else:
                         logging.warning(f"No valid CSV file uploaded for {source_name}")
 
-            # Now generate the configuration file using form data and uploaded file paths
-            config_json = experiments.generate_simulation_configuration(request.form)
+            # Generate the configuration file using form data and the CSV file paths
+            config_json = experiments.generate_simulation_configuration(request.form, source_files)
             logging.info(f"Configuration successfully generated: {config_json}")
-            save_config_file(config_json, os.path.join('user', username, model_name, scenario_name), model_name + "_" + scenario_name + ".json")
+            save_config_file(config_json, os.path.join('user', username, model_name, scenario_name), f"{model_name}_{scenario_name}.json")
             flash('Configuration successfully generated')
 
             return redirect(url_for('experimental_environment'))
@@ -274,9 +277,7 @@ def experimental_environment():
             return redirect(url_for('experimental_environment'))
 
     # Handle the GET request to load the page
-    data = experiments.load_runtime_prediction()
-    return render_template('experimental_environment.html', data=data)
-
+    return render_template('experimental_environment.html')
 
 
 

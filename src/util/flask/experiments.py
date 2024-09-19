@@ -29,7 +29,7 @@ def save_runtime_prediction(data):
 import json
 import logging
 
-def generate_simulation_configuration(form_data):
+def generate_simulation_configuration(form_data, source_files):
     logging.info("Starting configuration generation")
 
     # Initialize the main configuration dictionary
@@ -41,102 +41,159 @@ def generate_simulation_configuration(form_data):
         'sinks': []
     }
 
-    logging.warning(f"Form data for model: {form_data.get('model_name')}, scenario: {form_data.get('scenario_name')}")
+    logging.info(f"Form data for model: {config['model_name']}, scenario: {config['scenario_name']}")
 
     # Process sources
-    source_count = 1
-    while form_data.get(f'source_name_{source_count}'):
-        logging.warning(f"Processing source {source_count}")
-        source = {
-            'name': form_data.get(f'source_name_{source_count}'),
-            'distribution': {
-                'type': form_data.get(f'dist_type_{source_count}'),
-                'params': {}
-            }
-        }
-
-        dist_type = form_data.get(f'dist_type_{source_count}')
-        if dist_type == 'triangular':
-            source['distribution']['params'] = {
-                'low': float(form_data.get(f'low_{source_count}', 0)),
-                'mode': float(form_data.get(f'mode_{source_count}', 0)),
-                'high': float(form_data.get(f'high_{source_count}', 0))
-            }
-        elif dist_type == 'uniform':
-            source['distribution']['params'] = {
-                'low': float(form_data.get(f'low_{source_count}', 0)),
-                'high': float(form_data.get(f'high_{source_count}', 0))
-            }
-        elif dist_type == 'expovariate':
-            source['distribution']['params'] = {
-                'lambda': float(form_data.get(f'lambda_{source_count}', 0))
-            }
-        elif dist_type == 'normalvariate':
-            source['distribution']['params'] = {
-                'mu': float(form_data.get(f'mu_{source_count}', 0)),
-                'sigma': float(form_data.get(f'sigma_{source_count}', 0))
+    for key in form_data:
+        if key.startswith('name_source_'):
+            unique_id = key.replace('name_', '')  # Extract 'source_X' identifier
+            logging.info(f"Processing source {unique_id}")
+            source = {
+                'name': form_data.get(f'name_{unique_id}'),
+                'distribution': {
+                    'type': form_data.get(f'dist_type_${unique_id}'),
+                    'params': {}
+                },
+                'connections': [],
+                'arrival_table': None
             }
 
-        logging.info(f"Added source config: {source}")
-        config['sources'].append(source)
-        source_count += 1
+            # Include CSV file path if available
+            csv_file_path = source_files.get(unique_id)
+            if csv_file_path:
+                source['arrival_table'] = csv_file_path
+
+            # Handle distribution parameters
+            dist_type = form_data.get(f'dist_type_{unique_id}')
+            if dist_type == 'triangular':
+                source['distribution']['params'] = {
+                    'low': float(form_data.get(f'low_{unique_id}', 0)),
+                    'mode': float(form_data.get(f'mode_{unique_id}', 0)),
+                    'high': float(form_data.get(f'high_{unique_id}', 0))
+                }
+            elif dist_type == 'uniform':
+                source['distribution']['params'] = {
+                    'low': float(form_data.get(f'low_{unique_id}', 0)),
+                    'high': float(form_data.get(f'high_{unique_id}', 0))
+                }
+            elif dist_type == 'expovariate':
+                source['distribution']['params'] = {
+                    'lambda': float(form_data.get(f'lambda_{unique_id}', 0))
+                }
+            elif dist_type == 'normalvariate':
+                source['distribution']['params'] = {
+                    'mu': float(form_data.get(f'mu_{unique_id}', 0)),
+                    'sigma': float(form_data.get(f'sigma_{unique_id}', 0))
+                }
+
+            # Process connections
+            connection_number = 1
+            while form_data.get(f'connection_{unique_id}_{connection_number}'):
+                target_component = form_data.get(f'connection_{unique_id}_{connection_number}')
+                probability = form_data.get(f'probability_{unique_id}_{connection_number}', '').strip()
+                process_duration = form_data.get(f'process_duration_{unique_id}_{connection_number}', '').strip()
+
+                # Convert probability and process_duration to float if they are provided
+                probability = float(probability) if probability else None
+                process_duration = float(process_duration) if process_duration else None
+
+                connection = {
+                    'target': target_component,
+                    'probability': probability,
+                    'process_duration': process_duration
+                }
+
+                source['connections'].append(connection)
+                logging.info(f"Added connection to source {unique_id}: {connection}")
+                connection_number += 1
+
+            logging.info(f"Added source config: {source}")
+            config['sources'].append(source)
 
     # Process servers
-    server_count = 1
-    while form_data.get(f'server_name_{server_count}'):
-        logging.info(f"Processing server {server_count}")
-        server = {
-            'name': form_data.get(f'server_name_{server_count}'),
-            'distribution': {
-                'type': form_data.get(f'dist_type_{server_count}'),
-                'params': {}
-            },
-            'queue_order': form_data.get(f'queue_order_{server_count}'),
-            'breakdown': {
-                'time_between_machine_breakdown': form_data.get(f'time_between_machine_breakdown_{server_count}'),
-                'machine_breakdown_duration': form_data.get(f'machine_breakdown_duration_{server_count}')
-            }
-        }
-
-        dist_type = form_data.get(f'dist_type_{server_count}')
-        if dist_type == 'triangular':
-            server['distribution']['params'] = {
-                'low': float(form_data.get(f'low_{server_count}', 0)),
-                'mode': float(form_data.get(f'mode_{server_count}', 0)),
-                'high': float(form_data.get(f'high_{server_count}', 0))
-            }
-        elif dist_type == 'uniform':
-            server['distribution']['params'] = {
-                'low': float(form_data.get(f'low_{server_count}', 0)),
-                'high': float(form_data.get(f'high_{server_count}', 0))
-            }
-        elif dist_type == 'expovariate':
-            server['distribution']['params'] = {
-                'lambda': float(form_data.get(f'lambda_{server_count}', 0))
-            }
-        elif dist_type == 'normalvariate':
-            server['distribution']['params'] = {
-                'mu': float(form_data.get(f'mu_{server_count}', 0)),
-                'sigma': float(form_data.get(f'sigma_{server_count}', 0))
+    for key in form_data:
+        if key.startswith('name_server_'):
+            unique_id = key.replace('name_', '')  # Extract 'server_X' identifier
+            logging.info(f"Processing server {unique_id}")
+            server = {
+                'name': form_data.get(f'name_{unique_id}'),
+                'distribution': {
+                    'type': form_data.get(f'dist_type_{unique_id}'),
+                    'params': {}
+                },
+                'queue_order': form_data.get(f'queue_order_{unique_id}'),
+                'breakdown': {},
+                'connections': []
             }
 
-        logging.info(f"Added server config: {server}")
-        config['servers'].append(server)
-        server_count += 1
+            # Handle distribution parameters
+            dist_type = form_data.get(f'dist_type_{unique_id}')
+            if dist_type == 'triangular':
+                server['distribution']['params'] = {
+                    'low': float(form_data.get(f'low_{unique_id}', 0)),
+                    'mode': float(form_data.get(f'mode_{unique_id}', 0)),
+                    'high': float(form_data.get(f'high_{unique_id}', 0))
+                }
+            elif dist_type == 'uniform':
+                server['distribution']['params'] = {
+                    'low': float(form_data.get(f'low_{unique_id}', 0)),
+                    'high': float(form_data.get(f'high_{unique_id}', 0))
+                }
+            elif dist_type == 'expovariate':
+                server['distribution']['params'] = {
+                    'lambda': float(form_data.get(f'lambda_{unique_id}', 0))
+                }
+            elif dist_type == 'normalvariate':
+                server['distribution']['params'] = {
+                    'mu': float(form_data.get(f'mu_{unique_id}', 0)),
+                    'sigma': float(form_data.get(f'sigma_{unique_id}', 0))
+                }
+
+            # Handle breakdown parameters
+            time_between_breakdown = form_data.get(f'time_between_machine_breakdown_{unique_id}', '').strip()
+            if time_between_breakdown:
+                server['breakdown']['time_between_machine_breakdown'] = float(time_between_breakdown)
+                breakdown_duration = form_data.get(f'machine_breakdown_duration_{unique_id}', '').strip()
+                if breakdown_duration:
+                    server['breakdown']['machine_breakdown_duration'] = float(breakdown_duration)
+
+            # Process connections
+            connection_number = 1
+            while form_data.get(f'connection_{unique_id}_{connection_number}'):
+                target_component = form_data.get(f'connection_{unique_id}_{connection_number}')
+                probability = form_data.get(f'probability_{unique_id}_{connection_number}', '').strip()
+                process_duration = form_data.get(f'process_duration_{unique_id}_{connection_number}', '').strip()
+
+                probability = float(probability) if probability else None
+                process_duration = float(process_duration) if process_duration else None
+
+                connection = {
+                    'target': target_component,
+                    'probability': probability,
+                    'process_duration': process_duration
+                }
+
+                server['connections'].append(connection)
+                logging.info(f"Added connection to server {unique_id}: {connection}")
+                connection_number += 1
+
+            logging.info(f"Added server config: {server}")
+            config['servers'].append(server)
 
     # Process sinks
-    sink_count = 1
-    while form_data.get(f'sink_name_{sink_count}'):
-        logging.info(f"Processing sink {sink_count}")
-        sink = {
-            'name': form_data.get(f'sink_name_{sink_count}'),
-            'addon_process_trigger': form_data.get(f'addon_process_trigger_{sink_count}')
-        }
-        config['sinks'].append(sink)
-        sink_count += 1
+    for key in form_data:
+        if key.startswith('name_sink_'):
+            unique_id = key.replace('name_', '')  # Extract 'sink_X' identifier
+            logging.info(f"Processing sink {unique_id}")
+            sink = {
+                'name': form_data.get(f'name_{unique_id}'),
+                'addon_process_trigger': form_data.get(f'addon_process_trigger_{unique_id}')
+            }
+            config['sinks'].append(sink)
+            logging.info(f"Added sink config: {sink}")
 
     config_json = json.dumps(config, indent=4)
-    logging.warning(f"Generated config: {config_json}")
+    logging.info(f"Generated config: {config_json}")
     return config_json
 
 
@@ -149,19 +206,21 @@ def save_config_file(config_json, path, filename):
         f.write(config_json)
 
 
-def save_arrival_table(arrival_table_file, model_name, scenario_name, source_files, source_name, username):
+def save_arrival_table(arrival_table_file, model_name, scenario_name, source_name, username):
     # Create the directory structure based on user/model/scenario
-    base_directory = os.path.join('user', username, model_name, scenario_name, 'arrival_tables', )
+    base_directory = os.path.join('user', username, model_name, scenario_name, 'arrival_tables')
     os.makedirs(base_directory, exist_ok=True)
+
     # Generate a secure filename and prepend the source name
     filename = secure_filename(arrival_table_file.filename)
     filename_with_source = f"{source_name}_{filename}"
+
     # Save the file to the directory
     file_path = os.path.join(base_directory, filename_with_source)
     arrival_table_file.save(file_path)
-    logging.info(f"File for {source_name} uploaded successfully: {file_path}")
-    # Store the file path in the dictionary for later use in config generation
-    source_files[source_name] = file_path
+
+    # Return the file path for inclusion in the configuration
+    return file_path
 
 
 """def generate_config(form_data, username, source_files):
