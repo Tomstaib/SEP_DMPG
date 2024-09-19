@@ -12,5 +12,3 @@ dependencies:
     - paramiko
     - pytest 
     - coverage 
-  - tkinter  # Teil der Standardbibliothek, unter Linux möglicherweise Paketabhängigkeit
-
