@@ -1,11 +1,19 @@
+import os
+import sys
+import time
+import unittest
+
 from __future__ import annotations
 from typing import Optional
 from unittest.mock import patch, MagicMock, call
 from watchdog.events import FileSystemEvent
 from graphviz import Digraph
-import os
-import time
-import unittest
+
+
+# Für Dockercontainer zum initialisierren der lokalen Module
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+
+
 from composite_tree import CompositeTree
 from util.nodes_for_composite import ManagementNode, Node, ComputeNode
 
