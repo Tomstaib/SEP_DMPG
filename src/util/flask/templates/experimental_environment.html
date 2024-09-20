@@ -45,13 +45,13 @@
 
     <form action="{{ url_for('experimental_environment') }}" method="POST" enctype="multipart/form-data" id="experimentForm">
 
-        <!-- Model Name Section -->
-        <h3>Model Configuration</h3>
+        <!-- Model Name -->
         <label for="model_name">Model Name:</label>
-        <input type="text" id="model_name" name="model_name" placeholder="Model1" required><br><br>
+        <input type="text" id="model_name" name="model_name" required value="{{ form_data['model_name'][0] if form_data and 'model_name' in form_data else '' }}"><br><br>
 
+        <!-- Scenario Name -->
         <label for="scenario_name">Scenario Name:</label>
-        <input type="text" id="scenario_name" name="scenario_name" placeholder="Scenario1" required><br><br>
+        <input type="text" id="scenario_name" name="scenario_name" required value="{{ form_data['scenario_name'][0] if form_data and 'scenario_name' in form_data else '' }}"><br><br>
 
         <!-- Hidden fields for original names -->
         <input type="hidden" name="original_model_name" id="original_model_name">
@@ -72,10 +72,14 @@
         <div id="sink-container"></div>
         <button type="button" id="add-sink-btn">Add Sink</button><br><br>
 
+        <!-- Overwrite button -->
+        <input type="hidden" name="overwrite_confirmed" id="overwrite_confirmed" value="false">
+
         <input type="submit" value="Generate Configuration">
     </form>
 <script>
     var configData = {{ config_data|tojson|default('null', true) }};
+    var formData = {{ form_data|tojson|default('null', true) }};
 </script>
 
 <script>
@@ -515,33 +519,43 @@ function getCurrentConnections(uniqueId) {
     }
 
 function initializeForm() {
-    if (configData) {
-        // Pre-fill the form with configData
-        document.getElementById('model_name').value = configData.model_name || '';
-        document.getElementById('scenario_name').value = configData.scenario_name || '';
+    let dataToUse = null;
+
+    if (formData) {
+        // Use formData to reconstruct the form
+        dataToUse = formDataToConfigData(formData);
+    } else if (configData) {
+        // Use configData if formData is not available
+        dataToUse = configData;
+    }
+
+    if (dataToUse) {
+        // Pre-fill the form with dataToUse
+        document.getElementById('model_name').value = dataToUse.model_name || '';
+        document.getElementById('scenario_name').value = dataToUse.scenario_name || '';
 
         // Set original model_name and scenario_name
-        document.getElementById('original_model_name').value = configData.model_name || '';
-        document.getElementById('original_scenario_name').value = configData.scenario_name || '';
+        document.getElementById('original_model_name').value = dataToUse.model_name || '';
+        document.getElementById('original_scenario_name').value = dataToUse.scenario_name || '';
 
         // Keep track of component unique IDs and their data
         const componentDataList = [];
 
         // Initialize components without handling connections
-        if (configData.sources) {
-            configData.sources.forEach(function(source) {
+        if (dataToUse.sources) {
+            dataToUse.sources.forEach(function(source) {
                 const uniqueId = addComponent('source', source, false); // false to skip connections
                 componentDataList.push({ uniqueId, data: source });
             });
         }
-        if (configData.servers) {
-            configData.servers.forEach(function(server) {
+        if (dataToUse.servers) {
+            dataToUse.servers.forEach(function(server) {
                 const uniqueId = addComponent('server', server, false);
                 componentDataList.push({ uniqueId, data: server });
             });
         }
-        if (configData.sinks) {
-            configData.sinks.forEach(function(sink) {
+        if (dataToUse.sinks) {
+            dataToUse.sinks.forEach(function(sink) {
                 const uniqueId = addComponent('sink', sink, false);
                 componentDataList.push({ uniqueId, data: sink });
             });
@@ -554,6 +568,7 @@ function initializeForm() {
         componentDataList.forEach(function(item) {
             const uniqueId = item.uniqueId;
             const data = item.data;
+
             if (data.connections) {
                 data.connections.forEach(function(connection, index) {
                     const dropdownNumber = index + 1;
@@ -601,6 +616,179 @@ function initializeForm() {
             }
         });
     }
+}
+
+function formDataToConfigData(formData) {
+    let config = {
+        model_name: formData['model_name'] ? formData['model_name'][0] : '',
+        scenario_name: formData['scenario_name'] ? formData['scenario_name'][0] : '',
+        sources: [],
+        servers: [],
+        sinks: []
+    };
+
+    // Process sources
+    let sourceIndices = new Set();
+    for (let key in formData) {
+        if (key.startsWith('name_source_')) {
+            let uniqueId = key.replace('name_', '');
+            sourceIndices.add(uniqueId);
+        }
+    }
+    sourceIndices.forEach(function(uniqueId) {
+        let source = {
+            name: formData[`name_${uniqueId}`] ? formData[`name_${uniqueId}`][0] : '',
+            distribution: {
+                type: formData[`dist_type_${uniqueId}`] ? formData[`dist_type_${uniqueId}`][0] : '',
+                params: {}
+            },
+            arrival_table: null,
+            connections: []
+        };
+
+        // Set distribution parameters
+        let distType = source.distribution.type;
+        if (distType) {
+            let params = {};
+            if (distType === 'triangular') {
+                params['low'] = formData[`low_${uniqueId}`] ? formData[`low_${uniqueId}`][0] : '';
+                params['mode'] = formData[`mode_${uniqueId}`] ? formData[`mode_${uniqueId}`][0] : '';
+                params['high'] = formData[`high_${uniqueId}`] ? formData[`high_${uniqueId}`][0] : '';
+            } else if (distType === 'uniform') {
+                params['low'] = formData[`low_${uniqueId}`] ? formData[`low_${uniqueId}`][0] : '';
+                params['high'] = formData[`high_${uniqueId}`] ? formData[`high_${uniqueId}`][0] : '';
+            } else if (distType === 'expovariate') {
+                params['lambd'] = formData[`lambd_${uniqueId}`] ? formData[`lambd_${uniqueId}`][0] : '';
+            } else if (distType === 'normalvariate') {
+                params['mu'] = formData[`mu_${uniqueId}`] ? formData[`mu_${uniqueId}`][0] : '';
+                params['sigma'] = formData[`sigma_${uniqueId}`] ? formData[`sigma_${uniqueId}`][0] : '';
+            }
+            source.distribution.params = params;
+        }
+
+        // Arrival table (we cannot pre-populate file inputs, but we can note that one was uploaded)
+        if (formData[`existing_arrival_table_${uniqueId}`]) {
+            source.arrival_table = formData[`existing_arrival_table_${uniqueId}`][0];
+        }
+
+        // Handle connections
+        let connections = [];
+        let index = 1;
+        while (true) {
+            let connectionKey = `connection_${uniqueId}_${index}`;
+            if (!formData[connectionKey]) {
+                break;
+            }
+            let target = formData[connectionKey][0];
+            if (!target) {
+                break;
+            }
+            let connection = {
+                target: target,
+                probability: formData[`probability_${uniqueId}_${index}`] ? formData[`probability_${uniqueId}_${index}`][0] : null,
+                process_duration: formData[`process_duration_${uniqueId}_${index}`] ? formData[`process_duration_${uniqueId}_${index}`][0] : null
+            };
+            connections.push(connection);
+            index++;
+        }
+        source.connections = connections;
+
+        config.sources.push(source);
+    });
+
+    // Process servers
+    let serverIndices = new Set();
+    for (let key in formData) {
+        if (key.startsWith('name_server_')) {
+            let uniqueId = key.replace('name_', '');
+            serverIndices.add(uniqueId);
+        }
+    }
+    serverIndices.forEach(function(uniqueId) {
+        let server = {
+            name: formData[`name_${uniqueId}`] ? formData[`name_${uniqueId}`][0] : '',
+            distribution: {
+                type: formData[`dist_type_${uniqueId}`] ? formData[`dist_type_${uniqueId}`][0] : '',
+                params: {}
+            },
+            queue_order: formData[`queue_order_${uniqueId}`] ? formData[`queue_order_${uniqueId}`][0] : 'FIFO',
+            breakdown: {},
+            connections: []
+        };
+
+        // Set distribution parameters
+        let distType = server.distribution.type;
+        if (distType) {
+            let params = {};
+            if (distType === 'triangular') {
+                params['low'] = formData[`low_${uniqueId}`] ? formData[`low_${uniqueId}`][0] : '';
+                params['mode'] = formData[`mode_${uniqueId}`] ? formData[`mode_${uniqueId}`][0] : '';
+                params['high'] = formData[`high_${uniqueId}`] ? formData[`high_${uniqueId}`][0] : '';
+            } else if (distType === 'uniform') {
+                params['low'] = formData[`low_${uniqueId}`] ? formData[`low_${uniqueId}`][0] : '';
+                params['high'] = formData[`high_${uniqueId}`] ? formData[`high_${uniqueId}`][0] : '';
+            } else if (distType === 'expovariate') {
+                params['lambd'] = formData[`lambd_${uniqueId}`] ? formData[`lambd_${uniqueId}`][0] : '';
+            } else if (distType === 'normalvariate') {
+                params['mu'] = formData[`mu_${uniqueId}`] ? formData[`mu_${uniqueId}`][0] : '';
+                params['sigma'] = formData[`sigma_${uniqueId}`] ? formData[`sigma_${uniqueId}`][0] : '';
+            }
+            server.distribution.params = params;
+        }
+
+        // Breakdown parameters
+        let timeBetweenBreakdown = formData[`time_between_machine_breakdown_${uniqueId}`] ? formData[`time_between_machine_breakdown_${uniqueId}`][0] : '';
+        if (timeBetweenBreakdown) {
+            server.breakdown['time_between_machine_breakdown'] = timeBetweenBreakdown;
+            let breakdownDuration = formData[`machine_breakdown_duration_${uniqueId}`] ? formData[`machine_breakdown_duration_${uniqueId}`][0] : '';
+            if (breakdownDuration) {
+                server.breakdown['machine_breakdown_duration'] = breakdownDuration;
+            }
+        }
+
+        // Handle connections
+        let connections = [];
+        let index = 1;
+        while (true) {
+            let connectionKey = `connection_${uniqueId}_${index}`;
+            if (!formData[connectionKey]) {
+                break;
+            }
+            let target = formData[connectionKey][0];
+            if (!target) {
+                break;
+            }
+            let connection = {
+                target: target,
+                probability: formData[`probability_${uniqueId}_${index}`] ? formData[`probability_${uniqueId}_${index}`][0] : null,
+                process_duration: formData[`process_duration_${uniqueId}_${index}`] ? formData[`process_duration_${uniqueId}_${index}`][0] : null
+            };
+            connections.push(connection);
+            index++;
+        }
+        server.connections = connections;
+
+        config.servers.push(server);
+    });
+
+    // Process sinks
+    let sinkIndices = new Set();
+    for (let key in formData) {
+        if (key.startsWith('name_sink_')) {
+            let uniqueId = key.replace('name_', '');
+            sinkIndices.add(uniqueId);
+        }
+    }
+    sinkIndices.forEach(function(uniqueId) {
+        let sink = {
+            name: formData[`name_${uniqueId}`] ? formData[`name_${uniqueId}`][0] : '',
+            addon_process_trigger: formData[`addon_process_trigger_${uniqueId}`] ? formData[`addon_process_trigger_${uniqueId}`][0] : ''
+        };
+
+        config.sinks.push(sink);
+    });
+
+    return config;
 }
 
 

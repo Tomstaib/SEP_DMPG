@@ -180,11 +180,15 @@ def save_arrival_table(arrival_table_file, model_name, scenario_name, source_nam
     # Secure the filename to prevent directory traversal attacks
     filename = secure_filename(arrival_table_file.filename)
     filename_without_ext, ext = os.path.splitext(filename)
+    filename_without_ext_normalized = secure_filename(filename_without_ext)
+
+    # Normalize source_name to be comparable to filename_without_ext
+    normalized_source_name = secure_filename(source_name)
 
     # Check if source_name is already in the filename
-    if source_name not in filename_without_ext:
+    if not filename_without_ext_normalized.startswith(normalized_source_name):
         # Prepend source_name to the filename
-        filename_with_source = f"{source_name}_{filename}"
+        filename_with_source = f"{normalized_source_name}_{filename}"
     else:
         # Use the original filename
         filename_with_source = filename
@@ -215,11 +219,15 @@ def copy_arrival_table(existing_file_path, new_model_name, new_scenario_name, so
     # Get the filename from the existing file path
     filename = os.path.basename(existing_file_path)
     filename_without_ext, ext = os.path.splitext(filename)
+    filename_without_ext_normalized = secure_filename(filename_without_ext)
+
+    # Normalize source_name to be comparable to filename_without_ext
+    normalized_source_name = secure_filename(source_name)
 
     # Check if source_name is already in the filename
-    if source_name not in filename_without_ext:
+    if not filename_without_ext_normalized.startswith(normalized_source_name):
         # Prepend source_name to the filename
-        filename_with_source = f"{source_name}_{filename}"
+        filename_with_source = f"{normalized_source_name}_{filename}"
     else:
         # Use the original filename
         filename_with_source = filename

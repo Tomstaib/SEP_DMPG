@@ -256,11 +256,25 @@ def experimental_environment():
 
     if request.method == 'POST':
         try:
+            overwrite_confirmed = request.form.get('overwrite_confirmed', 'false') == 'true'
             # Retrieve original and new model/scenario names
             original_model_name = request.form.get('original_model_name', '').strip()
             original_scenario_name = request.form.get('original_scenario_name', '').strip()
             model_name = request.form.get('model_name', '').strip()
             scenario_name = request.form.get('scenario_name', '').strip()
+
+            # Define the configuration file path
+            config_directory = os.path.join('user', username, model_name, scenario_name)
+            config_filename = f"{model_name}_{scenario_name}.json"
+            config_file_path = os.path.join(config_directory, config_filename)
+
+            # Check if the configuration file already exists
+            if os.path.exists(config_file_path) and not overwrite_confirmed:
+                # Store form data in session
+                session['form_data'] = request.form.to_dict(flat=False)
+                flash('A configuration with this model and scenario name already exists.')
+                # Pass form_data to the template explicitly
+                return render_template('confirm_overwrite.html', form_data=session['form_data'])
 
             logging.info(f"Processing configuration for user: {username}, model: {model_name}, scenario: {scenario_name}")
 
@@ -307,6 +321,9 @@ def experimental_environment():
             save_config_file(config_json, os.path.join('user', username, model_name, scenario_name), f"{model_name}_{scenario_name}.json")
             flash('Configuration successfully generated')
 
+            # Clear form data from session after successful processing
+            session.pop('form_data', None)
+
             return redirect(url_for('experimental_environment'))
 
         except Exception as e:
@@ -314,8 +331,19 @@ def experimental_environment():
             flash(f'Error processing configuration: {e}')
             return redirect(url_for('experimental_environment'))
 
-    # Handle the GET request to load the page
-    return render_template('experimental_environment.html', configurations=configurations, config_data=config_data)
+    else:
+        # Check if there's form data in the session to restore
+        form_data = session.pop('form_data', None)
+        return render_template('experimental_environment.html', configurations=configurations, config_data=config_data,
+                               form_data=form_data)
+
+
+@app.route('/cancel_overwrite')
+@login_required
+def cancel_overwrite():
+    flash('Configuration generation canceled.')
+    return redirect(url_for('experimental_environment'))
+
 
 
 @app.route('/load_configuration', methods=['POST'])

@@ -345,12 +345,15 @@ def run_replications(model: Callable, minutes, num_replications, warm_up: Union[
     if multiprocessing:
         num_cores = min(os.cpu_count(), num_replications)
         print(f"Running on {num_cores} cores")
-        with concurrent.futures.ProcessPoolExecutor(max_workers=num_cores) as executor:
-            future_results = [executor.submit(replication, model, calculate_statistics, minutes, r)
-                              for r in range(num_replications)]
-            for r, future in enumerate(concurrent.futures.as_completed(future_results)):
-                process_results(*future.result())
-                print_stats(r, num_replications, start, tenth_percentage)
+        try:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=num_cores) as executor:
+                future_results = [executor.submit(replication, model, calculate_statistics, minutes, r)
+                                  for r in range(num_replications)]
+                for r, future in enumerate(concurrent.futures.as_completed(future_results)):
+                    process_results(*future.result())
+                    print_stats(r, num_replications, start, tenth_percentage)
+        except Exception as e:
+            print(f"An Exception occurred: {e}")
     else:
         for r in range(num_replications):
             process_results(*replication(model, calculate_statistics, minutes, r))
