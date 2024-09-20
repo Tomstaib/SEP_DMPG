@@ -48,8 +48,6 @@ class ModelScenario(Base):
     model = relationship('Model', back_populates='model_scenarios')
     scenario = relationship('Scenario', back_populates='model_scenarios')
 
-    __table_args__ = (UniqueConstraint('model_id', 'scenario_id', name='_model_scenario_uc'),)
-
 
 class Source(Base):
     __tablename__ = 'Source'
@@ -147,10 +145,10 @@ class Simulation(Base):
 
 def create_tables():
     db_user = 'sep'
-    db_host = 'imt-sep-001.lin.hs-osnabrueck.de'
-    db_port = '55432'
+    db_host = 'localhost'
+    db_port = '5432'
     db_name = 'distributed_computing'
-    db_password = 'oishooX2iefeiNai'
+    db_password = 'sep'
 
     db_url = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
     engine = create_engine(db_url)
