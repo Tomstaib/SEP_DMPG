@@ -344,7 +344,7 @@ def run_replications(model: Callable, minutes, num_replications, warm_up: Union[
 
     if multiprocessing:
         num_cores = min(os.cpu_count(), num_replications)
-        print(f"Running on {num_cores} cores")
+        # print(f"Running on {num_cores} cores")
         try:
             with concurrent.futures.ProcessPoolExecutor(max_workers=num_cores) as executor:
                 future_results = [executor.submit(replication, model, calculate_statistics, minutes, r)

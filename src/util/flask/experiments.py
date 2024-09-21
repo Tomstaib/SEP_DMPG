@@ -26,10 +26,6 @@ def save_runtime_prediction(data):
     with open(file_name, 'w') as json_file:
         json.dump(data, json_file, indent=4)
 
-
-import json
-import logging
-
 import json
 
 def generate_simulation_configuration(form_data, source_files):
@@ -46,6 +42,7 @@ def generate_simulation_configuration(form_data, source_files):
         if key.startswith('name_source_'):
             unique_id = key.replace('name_', '')  # Extract 'source_X' identifier
             source = {
+                'id': unique_id,  # Include the unique ID
                 'name': form_data.get(f'name_{unique_id}'),
                 'distribution': {
                     'type': form_data.get(f'dist_type_{unique_id}'),
@@ -72,7 +69,7 @@ def generate_simulation_configuration(form_data, source_files):
                     params['low'] = form_data.get(f'low_{unique_id}')
                     params['high'] = form_data.get(f'high_{unique_id}')
                 elif dist_type == 'expovariate':
-                    params['lambd'] = form_data.get(f'lambd_{unique_id}')
+                    params['lambda'] = form_data.get(f'lambda_{unique_id}')
                 elif dist_type == 'normalvariate':
                     params['mu'] = form_data.get(f'mu_{unique_id}')
                     params['sigma'] = form_data.get(f'sigma_{unique_id}')
@@ -95,46 +92,82 @@ def generate_simulation_configuration(form_data, source_files):
 
             config['sources'].append(source)
 
-    # Process servers
-    for key in form_data:
-        if key.startswith('name_server_'):
-            unique_id = key.replace('name_', '')  # Extract 'server_X' identifier
-            server = {
-                'name': form_data.get(f'name_{unique_id}'),
-                'distribution': {
-                    'type': form_data.get(f'dist_type_{unique_id}'),
-                    'params': {}
-                },
-                'queue_order': form_data.get(f'queue_order_{unique_id}', 'FIFO'),
-                'breakdown': {},
-                'connections': []
-            }
+        # Process servers
+        for key in form_data:
+            if key.startswith('name_server_'):
+                unique_id = key.replace('name_', '')  # Extract 'server_X' identifier
+                server = {
+                    'id': unique_id,  # Include the unique ID
+                    'name': form_data.get(f'name_{unique_id}'),
+                    'distribution': {
+                        'type': form_data.get(f'dist_type_{unique_id}'),
+                        'params': {}
+                    },
+                    'queue_order': form_data.get(f'queue_order_{unique_id}', 'FIFO'),
+                    'breakdown': {},
+                    'connections': []
+                }
 
-            # Get distribution parameters
-            dist_type = server['distribution']['type']
-            if dist_type:
-                params = {}
-                if dist_type == 'triangular':
-                    params['low'] = form_data.get(f'low_{unique_id}')
-                    params['mode'] = form_data.get(f'mode_{unique_id}')
-                    params['high'] = form_data.get(f'high_{unique_id}')
-                elif dist_type == 'uniform':
-                    params['low'] = form_data.get(f'low_{unique_id}')
-                    params['high'] = form_data.get(f'high_{unique_id}')
-                elif dist_type == 'expovariate':
-                    params['lambd'] = form_data.get(f'lambd_{unique_id}')
-                elif dist_type == 'normalvariate':
-                    params['mu'] = form_data.get(f'mu_{unique_id}')
-                    params['sigma'] = form_data.get(f'sigma_{unique_id}')
-                server['distribution']['params'] = params
+                # Get distribution parameters for processing time
+                dist_type = server['distribution']['type']
+                if dist_type:
+                    params = {}
+                    if dist_type == 'triangular':
+                        params['low'] = form_data.get(f'low_{unique_id}')
+                        params['mode'] = form_data.get(f'mode_{unique_id}')
+                        params['high'] = form_data.get(f'high_{unique_id}')
+                    elif dist_type == 'uniform':
+                        params['low'] = form_data.get(f'low_{unique_id}')
+                        params['high'] = form_data.get(f'high_{unique_id}')
+                    elif dist_type == 'expovariate':
+                        params['lambda'] = form_data.get(f'lambda_{unique_id}')
+                    elif dist_type == 'normalvariate':
+                        params['mu'] = form_data.get(f'mu_{unique_id}')
+                        params['sigma'] = form_data.get(f'sigma_{unique_id}')
+                    server['distribution']['params'] = params
 
-            # Get breakdown parameters
-            time_between_breakdown = form_data.get(f'time_between_machine_breakdown_{unique_id}')
-            if time_between_breakdown:
-                server['breakdown']['time_between_machine_breakdown'] = time_between_breakdown
-                breakdown_duration = form_data.get(f'machine_breakdown_duration_{unique_id}')
-                if breakdown_duration:
-                    server['breakdown']['machine_breakdown_duration'] = breakdown_duration
+                # Get breakdown parameters
+                breakdown_dist_type = form_data.get(f'breakdown_dist_type_{unique_id}')
+                if breakdown_dist_type:
+                    breakdown_params = {}
+                    if breakdown_dist_type == 'triangular':
+                        breakdown_params['low'] = form_data.get(f'breakdown_low_{unique_id}')
+                        breakdown_params['mode'] = form_data.get(f'breakdown_mode_{unique_id}')
+                        breakdown_params['high'] = form_data.get(f'breakdown_high_{unique_id}')
+                    elif breakdown_dist_type == 'uniform':
+                        breakdown_params['low'] = form_data.get(f'breakdown_low_{unique_id}')
+                        breakdown_params['high'] = form_data.get(f'breakdown_high_{unique_id}')
+                    elif breakdown_dist_type == 'expovariate':
+                        breakdown_params['lambda'] = form_data.get(f'breakdown_lambda_{unique_id}')
+                    elif breakdown_dist_type == 'normalvariate':
+                        breakdown_params['mu'] = form_data.get(f'breakdown_mu_{unique_id}')
+                        breakdown_params['sigma'] = form_data.get(f'breakdown_sigma_{unique_id}')
+
+                    server['breakdown']['time_between_machine_breakdown'] = {
+                        'type': breakdown_dist_type,
+                        'params': breakdown_params
+                    }
+
+                breakdown_duration_dist_type = form_data.get(f'breakdown_duration_dist_type_{unique_id}')
+                if breakdown_duration_dist_type:
+                    breakdown_duration_params = {}
+                    if breakdown_duration_dist_type == 'triangular':
+                        breakdown_duration_params['low'] = form_data.get(f'breakdown_duration_low_{unique_id}')
+                        breakdown_duration_params['mode'] = form_data.get(f'breakdown_duration_mode_{unique_id}')
+                        breakdown_duration_params['high'] = form_data.get(f'breakdown_duration_high_{unique_id}')
+                    elif breakdown_duration_dist_type == 'uniform':
+                        breakdown_duration_params['low'] = form_data.get(f'breakdown_duration_low_{unique_id}')
+                        breakdown_duration_params['high'] = form_data.get(f'breakdown_duration_high_{unique_id}')
+                    elif breakdown_duration_dist_type == 'expovariate':
+                        breakdown_duration_params['lambda'] = form_data.get(f'breakdown_duration_lambda_{unique_id}')
+                    elif breakdown_duration_dist_type == 'normalvariate':
+                        breakdown_duration_params['mu'] = form_data.get(f'breakdown_duration_mu_{unique_id}')
+                        breakdown_duration_params['sigma'] = form_data.get(f'breakdown_duration_sigma_{unique_id}')
+
+                    server['breakdown']['machine_breakdown_duration'] = {
+                        'type': breakdown_duration_dist_type,
+                        'params': breakdown_duration_params
+                    }
 
             # Get connections
             connection_index = 1
@@ -158,6 +191,7 @@ def generate_simulation_configuration(form_data, source_files):
         if key.startswith('name_sink_'):
             unique_id = key.replace('name_', '')  # Extract 'sink_X' identifier
             sink = {
+                'id': unique_id,  # Include the unique ID
                 'name': form_data.get(f'name_{unique_id}'),
                 'addon_process_trigger': form_data.get(f'addon_process_trigger_{unique_id}', ''),
             }

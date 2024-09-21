@@ -135,6 +135,7 @@ function addComponent(type, data = null, handleConnections = true) {
     // Fields specific to 'server' component
     if (type === 'server') {
         componentHtml += `
+            <!-- Processing Time Distribution Fields -->
             <label for="dist_type_${uniqueId}">Processing Time Distribution Type:</label>
             <select id="dist_type_${uniqueId}" name="dist_type_${uniqueId}" onchange="updateDistributionParams('${uniqueId}')">
                 <option value="">Select Distribution</option>
@@ -144,7 +145,7 @@ function addComponent(type, data = null, handleConnections = true) {
                 <option value="normalvariate">Normal</option>
             </select><br><br>
 
-            <!-- Container for distribution-specific parameters -->
+            <!-- Container for Processing Time Distribution Parameters -->
             <div id="dist_params_${uniqueId}" class="dist-params-container"></div>
 
             <label for="queue_order_${uniqueId}">Queue Order:</label>
@@ -153,15 +154,36 @@ function addComponent(type, data = null, handleConnections = true) {
                 <option value="LIFO">LIFO</option>
             </select><br><br>
 
-            <label for="time_between_machine_breakdown_${uniqueId}">Time Between Machine Breakdown (optional):</label>
-            <input type="number" id="time_between_machine_breakdown_${uniqueId}" name="time_between_machine_breakdown_${uniqueId}" step="0.01" placeholder="Optional" oninput="toggleBreakdownDuration('${uniqueId}')"><br><br>
+            <!-- Time Between Machine Breakdown Distribution Fields -->
+            <label for="breakdown_dist_type_${uniqueId}">Time Between Machine Breakdown Distribution Type (optional):</label>
+            <select id="breakdown_dist_type_${uniqueId}" name="breakdown_dist_type_${uniqueId}" onchange="handleBreakdownSelection('${uniqueId}')">
+                <option value="">Select Distribution</option>
+                <option value="triangular">Triangular</option>
+                <option value="uniform">Uniform</option>
+                <option value="expovariate">Exponential</option>
+                <option value="normalvariate">Normal</option>
+            </select><br><br>
 
-            <!-- Hidden by default, will appear when time_between_machine_breakdown is filled -->
+            <!-- Container for Time Between Machine Breakdown Distribution Parameters -->
+            <div id="breakdown_dist_params_${uniqueId}" class="dist-params-container"></div>
+
+            <!-- Machine Breakdown Duration Distribution Fields (Initially Hidden) -->
             <div id="breakdown_duration_container_${uniqueId}" style="display: none;">
-                <label for="machine_breakdown_duration_${uniqueId}">Duration of Machine Breakdown:</label>
-                <input type="number" id="machine_breakdown_duration_${uniqueId}" name="machine_breakdown_duration_${uniqueId}" step="0.01" placeholder="Optional"><br><br>
-            </div>`;
+                <label for="breakdown_duration_dist_type_${uniqueId}">Machine Breakdown Duration Distribution Type (optional):</label>
+                <select id="breakdown_duration_dist_type_${uniqueId}" name="breakdown_duration_dist_type_${uniqueId}" onchange="updateDistributionParams('${uniqueId}', 'breakdown_duration_')">
+                    <option value="">Select Distribution</option>
+                    <option value="triangular">Triangular</option>
+                    <option value="uniform">Uniform</option>
+                    <option value="expovariate">Exponential</option>
+                    <option value="normalvariate">Normal</option>
+                </select><br><br>
+
+                <!-- Container for Machine Breakdown Duration Distribution Parameters -->
+                <div id="breakdown_duration_dist_params_${uniqueId}" class="dist-params-container"></div>
+            </div>
+        `;
     }
+
 
     if (type === 'sink') {
         componentHtml += `
@@ -255,6 +277,21 @@ function addComponent(type, data = null, handleConnections = true) {
 
     return uniqueId;
 }
+
+function handleBreakdownSelection(uniqueId) {
+    const breakdownDistType = document.getElementById(`breakdown_dist_type_${uniqueId}`).value;
+    const breakdownDurationContainer = document.getElementById(`breakdown_duration_container_${uniqueId}`);
+
+    if (breakdownDistType) {
+        // Show the duration container if a breakdown distribution is selected
+        breakdownDurationContainer.style.display = 'block';
+        updateDistributionParams(uniqueId, 'breakdown_');
+    } else {
+        // Hide the duration container if no breakdown distribution is selected
+        breakdownDurationContainer.style.display = 'none';
+    }
+}
+
 
 // Function to handle dynamically adding new dropdowns for connections
 function addConnectionDropdown(uniqueId, dropdownNumber, componentToExclude) {
@@ -404,9 +441,12 @@ function getCurrentConnections(uniqueId) {
     }
 
     // Function to update the distribution-specific parameters based on the selection
-    function updateDistributionParams(uniqueId) {
-        const distType = document.getElementById(`dist_type_${uniqueId}`).value;
-        const distParamsContainer = document.getElementById(`dist_params_${uniqueId}`);
+    function updateDistributionParams(uniqueId, prefix = '') {
+        const distTypeElementId = `${prefix}dist_type_${uniqueId}`;
+        const distParamsContainerId = `${prefix}dist_params_${uniqueId}`;
+
+        const distType = document.getElementById(distTypeElementId).value;
+        const distParamsContainer = document.getElementById(distParamsContainerId);
         distParamsContainer.innerHTML = ''; // Clear previous inputs
 
         let paramsHtml = '';
@@ -414,42 +454,40 @@ function getCurrentConnections(uniqueId) {
         // Add the correct inputs based on the selected distribution
         if (distType === 'triangular') {
             paramsHtml = `
-                <label for="low_${uniqueId}">Low:</label>
-                <input type="number" id="low_${uniqueId}" name="low_${uniqueId}" step="0.01" min="0" required><br><br>
+                <label for="${prefix}low_${uniqueId}">Low:</label>
+                <input type="number" id="${prefix}low_${uniqueId}" name="${prefix}low_${uniqueId}" step="0.01" min="0" required><br><br>
 
-                <label for="mode_${uniqueId}">Mode:</label>
-                <input type="number" id="mode_${uniqueId}" name="mode_${uniqueId}" step="0.01" required><br><br>
+                <label for="${prefix}mode_${uniqueId}">Mode:</label>
+                <input type="number" id="${prefix}mode_${uniqueId}" name="${prefix}mode_${uniqueId}" step="0.01" required><br><br>
 
-                <label for="high_${uniqueId}">High:</label>
-                <input type="number" id="high_${uniqueId}" name="high_${uniqueId}" step="0.01" min="0" required><br><br>
+                <label for="${prefix}high_${uniqueId}">High:</label>
+                <input type="number" id="${prefix}high_${uniqueId}" name="${prefix}high_${uniqueId}" step="0.01" min="0" required><br><br>
             `;
         } else if (distType === 'uniform') {
             paramsHtml = `
-                <label for="low_${uniqueId}">Low:</label>
-                <input type="number" id="low_${uniqueId}" name="low_${uniqueId}" step="0.01" min="0" required><br><br>
+                <label for="${prefix}low_${uniqueId}">Low:</label>
+                <input type="number" id="${prefix}low_${uniqueId}" name="${prefix}low_${uniqueId}" step="0.01" min="0" required><br><br>
 
-                <label for="high_${uniqueId}">High:</label>
-                <input type="number" id="high_${uniqueId}" name="high_${uniqueId}" step="0.01" min="0" required><br><br>
+                <label for="${prefix}high_${uniqueId}">High:</label>
+                <input type="number" id="${prefix}high_${uniqueId}" name="${prefix}high_${uniqueId}" step="0.01" min="0" required><br><br>
             `;
         } else if (distType === 'expovariate') {
             paramsHtml = `
-                <label for="lambda_${uniqueId}">Lambda (Rate):</label>
-                <input type="number" id="lambda_${uniqueId}" name="lambda_${uniqueId}" step="0.01" min="0" required><br><br>
+                <label for="${prefix}lambda_${uniqueId}">Lambda (Rate):</label>
+                <input type="number" id="${prefix}lambda_${uniqueId}" name="${prefix}lambda_${uniqueId}" step="0.01" min="0" required><br><br>
             `;
         } else if (distType === 'normalvariate') {
             paramsHtml = `
-                <label for="mu_${uniqueId}">Mean (μ):</label>
-                <input type="number" id="mu_${uniqueId}" name="mu_${uniqueId}" step="0.01" required><br><br>
+                <label for="${prefix}mu_${uniqueId}">Mean (μ):</label>
+                <input type="number" id="${prefix}mu_${uniqueId}" name="${prefix}mu_${uniqueId}" step="0.01" required><br><br>
 
-                <label for="sigma_${uniqueId}">Standard Deviation (σ):</label>
-                <input type="number" id="sigma_${uniqueId}" name="sigma_${uniqueId}" step="0.01" required><br><br>
+                <label for="${prefix}sigma_${uniqueId}">Standard Deviation (σ):</label>
+                <input type="number" id="${prefix}sigma_${uniqueId}" name="${prefix}sigma_${uniqueId}" step="0.01" required><br><br>
             `;
         }
 
-    // Insert the parameters into the container
-    distParamsContainer.innerHTML = paramsHtml;
-
-
+        // Insert the parameters into the container
+        distParamsContainer.innerHTML = paramsHtml;
     }
 
     // Event listeners for each button
@@ -564,11 +602,85 @@ function initializeForm() {
         // Update all connection dropdown options now that all components are added
         updateConnectionOptions();
 
-        // Now set up the connections for each component
+        // Now pre-fill each component's data
         componentDataList.forEach(function(item) {
             const uniqueId = item.uniqueId;
             const data = item.data;
+            const type = uniqueId.split('_')[0]; // 'source', 'server', or 'sink'
 
+            // Pre-fill common fields
+            document.getElementById(`name_${uniqueId}`).value = data.name || '';
+
+            // Set distribution type and parameters
+            if (data.distribution) {
+                document.getElementById(`dist_type_${uniqueId}`).value = data.distribution.type || '';
+                updateDistributionParams(uniqueId); // Load appropriate fields
+
+                // Set distribution parameters
+                const params = data.distribution.params || {};
+                for (const [key, value] of Object.entries(params)) {
+                    const paramField = document.getElementById(`${key}_${uniqueId}`);
+                    if (paramField) {
+                        paramField.value = value;
+                    }
+                }
+            }
+
+            // Handle arrival_table for sources
+            if (type === 'source' && data.arrival_table) {
+                // The hidden input and message are already added in componentHtml
+                // You may need to set the arrival table info if necessary
+            }
+
+            // Handle breakdown parameters for servers
+            if (type === 'server' && data.breakdown) {
+                const breakdown = data.breakdown;
+
+                // Time Between Machine Breakdown Distribution
+                if (breakdown.time_between_machine_breakdown) {
+                    const breakdownDist = breakdown.time_between_machine_breakdown;
+                    document.getElementById(`breakdown_dist_type_${uniqueId}`).value = breakdownDist.type || '';
+                    handleBreakdownSelection(uniqueId); // Show/hide breakdown duration container based on selection
+
+                    // Set distribution parameters
+                    const params = breakdownDist.params || {};
+                    for (const [key, value] of Object.entries(params)) {
+                        const paramField = document.getElementById(`breakdown_${key}_${uniqueId}`);
+                        if (paramField) {
+                            paramField.value = value;
+                        }
+                    }
+                }
+
+                // Machine Breakdown Duration Distribution
+                if (breakdown.machine_breakdown_duration) {
+                    const breakdownDurationDist = breakdown.machine_breakdown_duration;
+                    document.getElementById(`breakdown_duration_dist_type_${uniqueId}`).value = breakdownDurationDist.type || '';
+                    updateDistributionParams(uniqueId, 'breakdown_duration_'); // Load appropriate fields
+
+                    // Set distribution parameters
+                    const params = breakdownDurationDist.params || {};
+                    for (const [key, value] of Object.entries(params)) {
+                        const paramField = document.getElementById(`breakdown_duration_${key}_${uniqueId}`);
+                        if (paramField) {
+                            paramField.value = value;
+                        }
+                    }
+                }
+            }
+
+
+            // Set queue order for servers
+            if (type === 'server' && data.queue_order) {
+                document.getElementById(`queue_order_${uniqueId}`).value = data.queue_order;
+            }
+
+            // Handle addon_process_trigger for sinks
+            if (type === 'sink' && data.addon_process_trigger) {
+                document.getElementById(`addon_process_trigger_${uniqueId}`).value = data.addon_process_trigger;
+            }
+
+            // Now handle connections if any
             if (data.connections) {
                 data.connections.forEach(function(connection, index) {
                     const dropdownNumber = index + 1;
@@ -617,6 +729,7 @@ function initializeForm() {
         });
     }
 }
+
 
 function formDataToConfigData(formData) {
     let config = {
