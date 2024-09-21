@@ -126,7 +126,7 @@ def commit_session(session):
         logging.exception("Session rollback failed")
         return None
 
-# Creating the database schema from orm.py
+# Creating the database scheme from orm.py
 def main():
     """Main function to connect to the database and create the database scheme"""
     # Attempt to connect to the database
