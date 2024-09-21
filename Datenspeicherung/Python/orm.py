@@ -4,7 +4,6 @@ from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
-
 class HSUser(Base):
     __tablename__ = 'HSUser'
     user_id = Column(Integer, primary_key=True, nullable=False)
@@ -19,7 +18,7 @@ class Model(Base):
     model_name = Column(String(255), nullable=False)
     user_id = Column(Integer, ForeignKey('HSUser.user_id'), nullable=False)
     hsuser = relationship('HSUser', back_populates='models')
-    model_scenarios = relationship('ModelScenario', back_populates='model', cascade="all, delete-orphan")
+    scenarios = relationship('Scenario', back_populates='model', cascade="all, delete-orphan")
 
 
 class Scenario(Base):
@@ -33,20 +32,14 @@ class Scenario(Base):
     number_created = Column(Integer)
     number_destroyed = Column(Integer)
     seed = Column(Integer)
+    model_id = Column(Integer, ForeignKey('Model.model_id'), nullable=False)
+    model = relationship('Model', back_populates='scenarios')
     sources = relationship('Source', back_populates='scenario', cascade="all, delete-orphan")
     sinks = relationship('Sink', back_populates='scenario', cascade="all, delete-orphan")
     servers = relationship('Server', back_populates='scenario', cascade="all, delete-orphan")
     connections = relationship('Connection', back_populates='scenario', cascade="all, delete-orphan")
     entities = relationship('Entity', back_populates='scenario', cascade="all, delete-orphan")
-    model_scenarios = relationship('ModelScenario', back_populates='scenario', cascade="all, delete-orphan")
-
-
-class ModelScenario(Base):
-    __tablename__ = 'Model_Scenario'
-    model_id = Column(Integer, ForeignKey('Model.model_id'), primary_key=True, nullable=False)
-    scenario_id = Column(Integer, ForeignKey('Scenario.scenario_id'), primary_key=True, nullable=False)
-    model = relationship('Model', back_populates='model_scenarios')
-    scenario = relationship('Scenario', back_populates='model_scenarios')
+    simulations = relationship('Simulation', back_populates='scenario', cascade="all, delete-orphan")
 
 
 class Source(Base):
@@ -123,7 +116,8 @@ class Entity(Base):
 
 class PivotTable(Base):
     __tablename__ = 'Pivot_Table'
-    simulation_id = Column(Integer, ForeignKey('Scenario.scenario_id'), primary_key=True, nullable=False)
+    pivot_table_id = Column(Integer, primary_key=True, nullable=False)
+    simulation_id = Column(Integer, ForeignKey('Simulation.simulation_id'), nullable=False)
     type = Column(String(255))
     name = Column(String(255))
     stat = Column(String(255))
@@ -145,8 +139,8 @@ class Simulation(Base):
 
 def create_tables():
     db_user = 'sep'
-    db_host = 'localhost'
-    db_port = '5432'
+    db_host = 'imt-sep-001.lin.hs-osnabrueck.de'
+    db_port = '55432'
     db_name = 'distributed_computing'
     db_password = 'sep'
 
