@@ -1,0 +1,7 @@
+Type,Name,Stat,Value
+Entity,Entity,AvgTimeInSystem,91.5059
+Entity,Entity,MaxTimeInSystem,507.5301
+Entity,Entity,MinTimeInSystem,14.3909
+Entity,Entity,NumberCreated,90.0
+Entity,Entity,NumberDestroyed,74.0
+Entity,Entity,NumberInSystem,90.0

@@ -329,9 +329,9 @@ class CompositeTree(metaclass=Singleton):
             num_compute_nodes_to_use: int = input_positive_number(
                 "Please enter the number of ComputeNodes to use for the simulation")
 
-            replicatons_per_node: int = round(num_replications / num_compute_nodes_to_use)
+            replications_per_node: int = round(num_replications / num_compute_nodes_to_use)
 
-            if not cls.confirm_input(f"This would result in {replicatons_per_node} replications per Compute Node"
+            if not cls.confirm_input(f"This would result in {replications_per_node} replications per Compute Node"
                                      f"\nDo you want to start the simulation this way? [y/n]: "):
                 cls.start_simulation()
 
@@ -347,7 +347,7 @@ class CompositeTree(metaclass=Singleton):
                     return
 
             print(f"Starting the simulation with {num_compute_nodes_to_use} ComputeNodes.")
-            cls._run_simulation(cls.__root, num_compute_nodes_to_use, replicatons_per_node)
+            cls._run_simulation(cls.__root, num_compute_nodes_to_use, replications_per_node)
 
         except Exception as e:
             print(f"Error starting simulation: {str(e)}")

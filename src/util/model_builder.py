@@ -1,10 +1,12 @@
 import json
+import os
 import random
 
 from core.server import Server
 from core.sink import Sink
 from core.source import Source
 from util.simulations import run_simulation
+from util.visualization import visualize_system
 
 
 def build_model_from_config(config_path):
@@ -15,27 +17,31 @@ def build_model_from_config(config_path):
 
         components = {}  # Dictionary to hold all components by unique ID
 
+        flask_base_path = os.path.abspath(os.path.join(os.path.dirname(config_path), '../flask'))
+
         # Function to get component unique ID
         def get_component_id(component_config):
             return component_config.get('id', component_config['name'])
 
         # Create sources
         for source_config in config.get('sources', []):
-            unique_id = get_component_id(source_config)
             name = source_config['name']
-            distribution = source_config.get('distribution', {})
+            component_id = source_config['id']
+            distribution = source_config['distribution']
             arrival_table_path = source_config.get('arrival_table')
 
-            # Determine interarrival time distribution
-            interarrival_time_dist = get_distribution(distribution) if distribution else None
+            # Only prepend the base path if the path is not absolute and does not already contain a valid reference
+            if arrival_table_path and not os.path.isabs(arrival_table_path) and not arrival_table_path.startswith(
+                    "user"):
+                arrival_table_path = os.path.join(flask_base_path, arrival_table_path)
 
-            source = Source(
-                env,
-                name,
-                creation_time_distribution_with_parameters=interarrival_time_dist,
-                arrival_table_path=arrival_table_path
-            )
-            components[unique_id] = source
+            # Determine interarrival time distribution
+            interarrival_time_dist = get_distribution(distribution) if distribution[
+                                                                           'type'] != 'arrival_table' else None
+
+            source = Source(env, name, creation_time_distribution_with_parameters=interarrival_time_dist,
+                            arrival_table_path=arrival_table_path)
+            components[component_id] = source
 
         # Create servers
         for server_config in config.get('servers', []):
@@ -76,6 +82,7 @@ def build_model_from_config(config_path):
         # Set up connections
         for component_config in config.get('sources', []) + config.get('servers', []):
             component_id = get_component_id(component_config)
+            # print(component_id)
             component = components[component_id]
             for connection in component_config.get('connections', []):
                 target_id = connection['target']
@@ -107,7 +114,7 @@ def build_model_from_config(config_path):
 
 
 def get_distribution(distribution_config):
-    if not distribution_config:
+    if not distribution_config or not distribution_config.get('type'):
         return None  # No distribution specified
 
     dist_type = distribution_config.get('type')
@@ -134,22 +141,11 @@ def get_distribution(distribution_config):
 
 
 def main():
-    config_path = r"E:\projects\SEP_DMPG\src\util\flask\user\thoadelt\TestModell\TestScenario3\TestModell_TestScenario3.json"
+    config_path = r"E:\projects\SEP_DMPG\src\util\flask\user\thoadelt\TestModellPCB\TestScenarioArrivalTable\TestModellPCB_TestScenarioArrivalTable.json"
     model_function = build_model_from_config(config_path)
-    run_simulation(model=model_function, minutes=900)
+    run_simulation(model=model_function, minutes=900, store_pivot_in_file=r"E:\projects\SEP_DMPG\src\util\builder_result.csv")
+    # visualize_system()
 
 
 if __name__ == '__main__':
     main()
-r"""Traceback (most recent call last):
-  File "E:\projects\SEP_DMPG\src\util\model_builder.py", line 110, in <module>
-    main()
-  File "E:\projects\SEP_DMPG\src\util\model_builder.py", line 106, in main
-    run_simulation(model=model_function, minutes=900)
-  File "E:\projects\SEP_DMPG\src\util\simulations.py", line 44, in run_simulation
-    model(env)
-  File "E:\projects\SEP_DMPG\src\util\model_builder.py", line 66, in model_function
-    component.connect(target_component, probability, process_duration)
-  File "E:\projects\SEP_DMPG\src\core\routing_object.py", line 32, in connect
-    self.connections[next_server.name] = Connection(self.env, self, next_server, next_server.name, process_duration, probability)
-AttributeError: 'NoneType' object has no attribute 'name'"""
