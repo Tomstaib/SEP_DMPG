@@ -1,0 +1,39 @@
+{
+    "model_name": "TestModell",
+    "scenario_name": "TestScenario",
+    "sources": [
+        {
+            "name": "Source1",
+            "distribution": {
+                "type": "",
+                "params": {}
+            },
+            "connections": [
+                {
+                    "target": "server_1",
+                    "probability": "",
+                    "process_duration": ""
+                }
+            ],
+            "arrival_table": null
+        }
+    ],
+    "servers": [
+        {
+            "name": "Server1",
+            "distribution": {
+                "type": "",
+                "params": {}
+            },
+            "queue_order": "FIFO",
+            "breakdown": {},
+            "connections": []
+        }
+    ],
+    "sinks": [
+        {
+            "name": "Sink1",
+            "addon_process_trigger": ""
+        }
+    ]
+}

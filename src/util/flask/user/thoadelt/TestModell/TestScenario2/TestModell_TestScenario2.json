@@ -1,0 +1,47 @@
+{
+    "model_name": "TestModell",
+    "scenario_name": "TestScenario2",
+    "sources": [
+        {
+            "name": "Source1",
+            "distribution": {
+                "type": "triangular",
+                "params": {
+                    "low": "1",
+                    "mode": "2",
+                    "high": "3"
+                }
+            },
+            "connections": [
+                {
+                    "target": "server_1",
+                    "probability": "",
+                    "process_duration": ""
+                }
+            ],
+            "arrival_table": null
+        }
+    ],
+    "servers": [
+        {
+            "name": "Server1",
+            "distribution": {
+                "type": "triangular",
+                "params": {
+                    "low": "1",
+                    "mode": "2",
+                    "high": "3"
+                }
+            },
+            "queue_order": "FIFO",
+            "breakdown": {},
+            "connections": []
+        }
+    ],
+    "sinks": [
+        {
+            "name": "Sink1",
+            "addon_process_trigger": ""
+        }
+    ]
+}
