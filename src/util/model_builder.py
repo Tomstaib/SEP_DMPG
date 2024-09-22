@@ -1,15 +1,18 @@
 import json
 import os
 import random
+from typing import LiteralString
 
-from core.server import Server
-from core.sink import Sink
-from core.source import Source
+from src.core.server import Server
+from src.core.sink import Sink
+from src.core.source import Source
 from util.simulations import run_simulation
-from util.visualization import visualize_system
 
 
-def build_model_from_config(config_path):
+# config_path = r"E:\projects\SEP_DMPG\src\util\flask\user\thoadelt\TestModellPCB\TestScenarioArrivalTable\TestModellPCB_TestScenarioArrivalTable.json"
+
+
+"""def build_model_from_config(config_path):
     def model_function(env):
         # Load the configuration file
         with open(config_path, 'r') as f:
@@ -102,11 +105,138 @@ def build_model_from_config(config_path):
                 else:
                     process_duration = None
 
+                print(target_component, probability, process_duration)
                 component.connect(
                     target_component,
                     probability=probability,
                     process_duration=process_duration
                 )
+
+        return components
+
+    return model_function"""
+
+
+def load_config(config_path: LiteralString | str | bytes):
+    """Load configuration from the specified file path."""
+    with open(config_path, 'r') as f:
+        return json.load(f)
+
+
+def get_component_id(component_config) -> str:
+    """Get the unique ID for a component."""
+    return component_config.get('id', component_config['name'])
+
+
+def resolve_arrival_table_path(flask_base_path, arrival_table_path) -> LiteralString | str | bytes:
+    """Resolve the absolute path for the arrival table if needed."""
+    if arrival_table_path and not os.path.isabs(arrival_table_path) and not arrival_table_path.startswith("user"):
+        return os.path.join(flask_base_path, arrival_table_path)
+    return arrival_table_path
+
+
+def create_source(env, source_config, flask_base_path) -> (str, Source):
+    """Create a Source component from the source configuration."""
+    name: str = source_config['name']
+    component_id: str = get_component_id(source_config)
+    distribution = source_config['distribution']
+    arrival_table_path: LiteralString | str | bytes = resolve_arrival_table_path(flask_base_path, source_config.get('arrival_table'))
+
+    interarrival_time_dist = get_distribution(distribution) if distribution['type'] != 'arrival_table' else None
+
+    source: Source = Source(env, name, creation_time_distribution_with_parameters=interarrival_time_dist,
+                    arrival_table_path=arrival_table_path)
+
+    return component_id, source
+
+
+def create_server(env, server_config) -> (str, Server):
+    """Create a Server component from the server configuration."""
+    unique_id = get_component_id(server_config)
+    name = server_config['name']
+    distribution = server_config.get('distribution', {})
+    processing_time_dist = get_distribution(distribution) if distribution else None
+
+    # Breakdown parameters
+    breakdown_config = server_config.get('breakdown', {})
+    breakdown_time_dist = get_distribution(
+        breakdown_config.get('time_between_machine_breakdown')) if breakdown_config.get(
+        'time_between_machine_breakdown') else None
+    breakdown_duration_dist = get_distribution(
+        breakdown_config.get('machine_breakdown_duration')) if breakdown_config.get(
+        'machine_breakdown_duration') else None
+
+    queue_order = server_config.get('queue_order', 'FIFO')
+
+    server: Server = Server(
+        env,
+        name,
+        processing_time_distribution_with_parameters=processing_time_dist,
+        time_between_machine_breakdowns=breakdown_time_dist,
+        machine_breakdown_duration=breakdown_duration_dist,
+        queue_order=queue_order
+    )
+
+    return unique_id, server
+
+
+def create_sink(env, sink_config) -> (str, Sink):
+    """Create a Sink component from the sink configuration."""
+    unique_id = get_component_id(sink_config)
+    name = sink_config['name']
+    addon_process_trigger = sink_config.get('addon_process_trigger', None)
+
+    sink = Sink(env, name, addon_process_trigger=addon_process_trigger)
+
+    return unique_id, sink
+
+
+def setup_connections(components, component_config) -> None:
+    """Set up connections for the given component."""
+    component_id: str = get_component_id(component_config)
+    component: Source | Server = components[component_id]
+
+    for connection in component_config.get('connections', []):
+        target_id = connection['target']
+        target_component = components.get(target_id)
+
+        if not target_component:
+            raise ValueError(f"Target component '{target_id}' not found for connection.")
+
+        probability = float(connection.get('probability')) if connection.get('probability') else None
+        process_duration = float(connection.get('process_duration')) if connection.get('process_duration') else None
+
+        component.connect(
+            target_component,
+            probability=probability,
+            process_duration=process_duration
+        )
+
+
+def build_model_from_config(config_path):
+    def model_function(env):
+        config = load_config(config_path)
+        components: dict = {}  # Dictionary to hold all components by unique ID
+        flask_base_path = os.path.abspath(os.path.join(os.path.dirname(config_path), '../flask'))
+
+        # Create and store sources
+        for source_config in config.get('sources', []):
+            component_id, source = create_source(env, source_config, flask_base_path)
+            components[component_id] = source
+
+        # Create and store servers
+        for server_config in config.get('servers', []):
+            component_id, server = create_server(env, server_config)
+            components[component_id] = server
+
+        # Create and store sinks
+        for sink_config in config.get('sinks', []):
+            component_id, sink = create_sink(env, sink_config)
+            components[component_id] = sink
+
+        # Set up connections
+        for component_config in config.get('sources', []) + config.get('servers', []):
+            setup_connections(components, component_config)
 
         return components
 
@@ -144,7 +274,6 @@ def main():
     config_path = r"E:\projects\SEP_DMPG\src\util\flask\user\thoadelt\TestModellPCB\TestScenarioArrivalTable\TestModellPCB_TestScenarioArrivalTable.json"
     model_function = build_model_from_config(config_path)
     run_simulation(model=model_function, minutes=900, store_pivot_in_file=r"E:\projects\SEP_DMPG\src\util\builder_result.csv")
-    # visualize_system()
 
 
 if __name__ == '__main__':
