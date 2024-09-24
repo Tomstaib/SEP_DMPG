@@ -1,29 +1,28 @@
 from sqlalchemy import Column, ForeignKey, Integer, String, Float, TIMESTAMP, create_engine, UniqueConstraint
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
 
 class HSUser(Base):
     __tablename__ = 'HSUser'
-    user_id = Column(Integer, primary_key=True, nullable=False)
-    user_name = Column(String(255), nullable=False)
-    number_started_simulations = Column(Integer)
+    user_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_name = Column(String(255))
     models = relationship('Model', back_populates='hsuser', cascade="all, delete-orphan")
 
+    __table_args__ = (UniqueConstraint('user_name', name='unique_user_name'),) # Unique username in database
 
 class Model(Base):
     __tablename__ = 'Model'
-    model_id = Column(Integer, primary_key=True, nullable=False)
+    model_id = Column(Integer, primary_key=True, autoincrement=True)
     model_name = Column(String(255), nullable=False)
-    user_id = Column(Integer, ForeignKey('HSUser.user_id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('HSUser.user_id', ondelete="CASCADE"))
     hsuser = relationship('HSUser', back_populates='models')
     scenarios = relationship('Scenario', back_populates='model', cascade="all, delete-orphan")
 
 
 class Scenario(Base):
     __tablename__ = 'Scenario'
-    scenario_id = Column(Integer, primary_key=True, nullable=False)
+    scenario_id = Column(Integer, primary_key=True, nullable=False, autoincrement=True)
     scenario_name = Column(String(255))
     number_in_system = Column(Integer)
     avg_time_in_system = Column(Float)
@@ -31,8 +30,9 @@ class Scenario(Base):
     min_time_in_system = Column(Float)
     number_created = Column(Integer)
     number_destroyed = Column(Integer)
+    minutes = Column(Float)
     seed = Column(Integer)
-    model_id = Column(Integer, ForeignKey('Model.model_id'), nullable=False)
+    model_id = Column(Integer, ForeignKey('Model.model_id', ondelete="CASCADE"))
     model = relationship('Model', back_populates='scenarios')
     sources = relationship('Source', back_populates='scenario', cascade="all, delete-orphan")
     sinks = relationship('Sink', back_populates='scenario', cascade="all, delete-orphan")
@@ -44,8 +44,8 @@ class Scenario(Base):
 
 class Source(Base):
     __tablename__ = 'Source'
-    source_id = Column(Integer, primary_key=True, nullable=False)
-    scenario_id = Column(Integer, ForeignKey('Scenario.scenario_id'), nullable=False)
+    source_id = Column(Integer, primary_key=True, autoincrement=True)
+    scenario_id = Column(Integer, ForeignKey('Scenario.scenario_id', ondelete="CASCADE"))
     source_name = Column(String(255))
     number_created = Column(Integer)
     number_exited = Column(Integer)
@@ -56,8 +56,8 @@ class Source(Base):
 
 class Server(Base):
     __tablename__ = 'Server'
-    server_id = Column(Integer, primary_key=True, nullable=False)
-    scenario_id = Column(Integer, ForeignKey('Scenario.scenario_id'), nullable=False)
+    server_id = Column(Integer, primary_key=True, autoincrement=True)
+    scenario_id = Column(Integer, ForeignKey('Scenario.scenario_id', ondelete="CASCADE"))
     server_name = Column(String(255))
     scheduled_utilization = Column(Float)
     units_utilized = Column(Integer)
@@ -79,8 +79,8 @@ class Server(Base):
 
 class Sink(Base):
     __tablename__ = 'Sink'
-    sink_id = Column(Integer, primary_key=True, nullable=False)
-    scenario_id = Column(Integer, ForeignKey('Scenario.scenario_id'), nullable=False)
+    sink_id = Column(Integer, primary_key=True, autoincrement=True)
+    scenario_id = Column(Integer, ForeignKey('Scenario.scenario_id', ondelete="CASCADE"))
     sink_name = Column(String(255))
     entities_processed = Column(Integer)
     total_time_in_system = Column(Float)
@@ -93,8 +93,8 @@ class Sink(Base):
 
 class Connection(Base):
     __tablename__ = 'Connection'
-    connection_id = Column(Integer, primary_key=True, nullable=False)
-    scenario_id = Column(Integer, ForeignKey('Scenario.scenario_id'), nullable=False)
+    connection_id = Column(Integer, primary_key=True, autoincrement=True)
+    scenario_id = Column(Integer, ForeignKey('Scenario.scenario_id', ondelete="CASCADE"))
     connection_name = Column(String(255))
     entities_processed = Column(Integer)
     number_entered = Column(Integer)
@@ -106,8 +106,8 @@ class Connection(Base):
 
 class Entity(Base):
     __tablename__ = 'Entity'
-    entity_id = Column(Integer, primary_key=True, nullable=False)
-    scenario_id = Column(Integer, ForeignKey('Scenario.scenario_id'), nullable=False)
+    entity_id = Column(Integer, primary_key=True, autoincrement=True)
+    scenario_id = Column(Integer, ForeignKey('Scenario.scenario_id', ondelete="CASCADE"))
     entity_name = Column(String(255))
     creation_time = Column(Float)
 
@@ -116,8 +116,8 @@ class Entity(Base):
 
 class PivotTable(Base):
     __tablename__ = 'Pivot_Table'
-    pivot_table_id = Column(Integer, primary_key=True, nullable=False)
-    simulation_id = Column(Integer, ForeignKey('Simulation.simulation_id'), nullable=False)
+    pivot_table_id = Column(Integer, primary_key=True, autoincrement=True)
+    simulation_id = Column(Integer, ForeignKey('Simulation.simulation_id', ondelete="CASCADE"))
     type = Column(String(255))
     name = Column(String(255))
     stat = Column(String(255))
@@ -129,10 +129,11 @@ class PivotTable(Base):
 
 class Simulation(Base):
     __tablename__ = 'Simulation'
-    simulation_id = Column(Integer, primary_key=True, nullable=False)
+    simulation_id = Column(Integer, primary_key=True, autoincrement=True)
     local_start_time = Column(TIMESTAMP)
     local_end_time = Column(TIMESTAMP)
-    scenario_id = Column(Integer, ForeignKey('Scenario.scenario_id'), nullable=False)
+    num_replications = Column(Integer)
+    scenario_id = Column(Integer, ForeignKey('Scenario.scenario_id', ondelete="CASCADE"))
 
     scenario = relationship('Scenario', back_populates='simulations')
 
@@ -142,7 +143,7 @@ def create_tables():
     db_host = 'imt-sep-001.lin.hs-osnabrueck.de'
     db_port = '55432'
     db_name = 'distributed_computing'
-    db_password = 'sep'
+    db_password = 'oishooX2iefeiNai'
 
     db_url = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
     engine = create_engine(db_url)
