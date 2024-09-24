@@ -925,6 +925,27 @@ function formDataToConfigData(formData) {
     </select>
     <button type="submit">Load Configuration</button>
 </form>
+<h2>Delete Scenario</h2>
+<form action="{{ url_for('delete_scenario') }}" method="POST" id="deleteScenario">
+    <label for="scenario_delete">Select Scenario to Delete:</label>
+    <select id="scenario_delete" name="scenario_delete">
+        {% for config in configurations %}
+        <option value="user/{{ session.username }}/{{ config.model_name }}/{{ config.scenario_name }}">
+            {{ config.model_name }} - {{ config.scenario_name }}
+        </option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="delete-btn" style="background-color: red; color: white;">Delete Scenario Folder</button>
+</form>
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <ul class="flashes">
+        {% for category, message in messages %}
+            <li class="{{ category }}">{{ message }}</li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+{% endwith %}
 
 
 {% endblock %}

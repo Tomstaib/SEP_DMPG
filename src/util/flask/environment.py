@@ -9,10 +9,14 @@ from tkinter import Tk
 from tkinter.filedialog import askdirectory
 from getpass import getpass
 from paramiko import SSHClient
+from scp import SCPClient
 from flask import session
 import stat
 
 from ssh_setup import setup_ssh_connection, close_ssh_connection
+
+
+
 
 
 # Function to transfer a folder using SFTP
@@ -283,6 +287,7 @@ def prepare_env() -> None:
     finally:
         close_ssh_connection(ssh_client)
         print("SSH connection closed.")
+
 
 
 

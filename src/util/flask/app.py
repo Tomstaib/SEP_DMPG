@@ -1,4 +1,5 @@
 import logging
+import shutil
 from functools import wraps
 from flask import Flask, request, redirect, url_for, flash, render_template, session, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
@@ -480,6 +481,23 @@ def load_configuration():
         logging.error(f"Error loading configuration: {e}")
         flash('Error loading configuration.')
         return redirect(url_for('experimental_environment'))
+
+
+@app.route('/delete_scenario', methods=['POST'])
+def delete_scenario():
+    scenario_folder = request.form.get('scenario_delete')
+
+    # Check if the file exists and delete it
+    if scenario_folder and os.path.exists(scenario_folder):
+        try:
+            shutil.rmtree(scenario_folder)
+            flash(f"Configuration {scenario_folder} deleted successfully.", 'success')
+        except Exception as e:
+            flash(f"An error occurred while deleting the configuration: {str(e)}", 'error')
+    else:
+        flash(f"Selected configuration file {(scenario_folder)} does not exist.", 'error')
+
+    return redirect(url_for('experimental_environment'))
 
 
 @app.route('/receive_runtime_prediction', methods=['POST'])
