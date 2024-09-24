@@ -1,16 +1,12 @@
+import argparse
 import json
 import os
 import random
-from typing import LiteralString
 
 from src.core.server import Server
 from src.core.sink import Sink
 from src.core.source import Source
-from util.simulations import run_simulation
-
-
-# config_path = r"E:\projects\SEP_DMPG\src\util\flask\user\thoadelt\TestModellPCB\TestScenarioArrivalTable\TestModellPCB_TestScenarioArrivalTable.json"
-
+from src.util.simulations import run_simulation, run_replications
 
 """def build_model_from_config(config_path):
     def model_function(env):
@@ -117,7 +113,7 @@ from util.simulations import run_simulation
     return model_function"""
 
 
-def load_config(config_path: LiteralString | str | bytes):
+def load_config(config_path: str | bytes):  # LiteralString as typehint because of os.path.join
     """Load configuration from the specified file path."""
     with open(config_path, 'r') as f:
         return json.load(f)
@@ -128,7 +124,7 @@ def get_component_id(component_config) -> str:
     return component_config.get('id', component_config['name'])
 
 
-def resolve_arrival_table_path(flask_base_path, arrival_table_path) -> LiteralString | str | bytes:
+def resolve_arrival_table_path(flask_base_path, arrival_table_path) -> str | bytes:  # LiteralString as typehint because of os.path.join
     """Resolve the absolute path for the arrival table if needed."""
     if arrival_table_path and not os.path.isabs(arrival_table_path) and not arrival_table_path.startswith("user"):
         return os.path.join(flask_base_path, arrival_table_path)
@@ -140,7 +136,7 @@ def create_source(env, source_config, flask_base_path) -> (str, Source):
     name: str = source_config['name']
     component_id: str = get_component_id(source_config)
     distribution = source_config['distribution']
-    arrival_table_path: LiteralString | str | bytes = resolve_arrival_table_path(flask_base_path, source_config.get('arrival_table'))
+    arrival_table_path: str | bytes = resolve_arrival_table_path(flask_base_path, source_config.get('arrival_table'))  # LiteralString as typehint because of os.
 
     interarrival_time_dist = get_distribution(distribution) if distribution['type'] != 'arrival_table' else None
 
@@ -213,34 +209,35 @@ def setup_connections(components, component_config) -> None:
         )
 
 
-def build_model_from_config(config_path):
-    def model_function(env):
-        config = load_config(config_path)
-        components: dict = {}  # Dictionary to hold all components by unique ID
-        flask_base_path = os.path.abspath(os.path.join(os.path.dirname(config_path), '../flask'))
+# def build_model_from_config(config_path):
+def model_function(env):
+    config = load_config(get_config_path())
+    components: dict = {}  # Dictionary to hold all components by unique ID
+    flask_base_path = os.path.abspath(os.path.join(os.path.dirname(get_config_path()), '../flask'))
 
-        # Create and store sources
-        for source_config in config.get('sources', []):
-            component_id, source = create_source(env, source_config, flask_base_path)
-            components[component_id] = source
+    # Create and store sources
+    for source_config in config.get('sources', []):
+        component_id, source = create_source(env, source_config, flask_base_path)
+        components[component_id] = source
 
-        # Create and store servers
-        for server_config in config.get('servers', []):
-            component_id, server = create_server(env, server_config)
-            components[component_id] = server
+    # Create and store servers
+    for server_config in config.get('servers', []):
+        component_id, server = create_server(env, server_config)
+        components[component_id] = server
 
-        # Create and store sinks
-        for sink_config in config.get('sinks', []):
-            component_id, sink = create_sink(env, sink_config)
-            components[component_id] = sink
+    # Create and store sinks
+    for sink_config in config.get('sinks', []):
+        component_id, sink = create_sink(env, sink_config)
+        components[component_id] = sink
 
-        # Set up connections
-        for component_config in config.get('sources', []) + config.get('servers', []):
-            setup_connections(components, component_config)
+    # Set up connections
+    for component_config in config.get('sources', []) + config.get('servers', []):
+        setup_connections(components, component_config)
 
-        return components
+    return components
 
-    return model_function
+#    return model_function
+
 
 
 def get_distribution(distribution_config):
@@ -270,11 +267,31 @@ def get_distribution(distribution_config):
         raise ValueError(f"Unsupported distribution type: {dist_type}")
 
 
-def main():
-    config_path = r"E:\projects\SEP_DMPG\src\util\flask\user\thoadelt\TestModellPCB\TestScenarioArrivalTable\TestModellPCB_TestScenarioArrivalTable.json"
-    model_function = build_model_from_config(config_path)
-    run_simulation(model=model_function, minutes=900, store_pivot_in_file=r"E:\projects\SEP_DMPG\src\util\builder_result.csv")
+def get_config_path() -> str:
+    return os.getenv('CONFIG_PATH')
+
+
+def main(replications: int):
+    # config_path = r"E:\projects\SEP_DMPG\src\util\flask\user\thoadelt\TestModellPCB\TestScenarioArrivalTable\TestModellPCB_TestScenarioArrivalTable.json"
+    # model_function = build_model_from_config(config_path)
+    # run_simulation(model=model_function, minutes=minutes, store_pivot_in_file=r"E:\projects\SEP_DMPG\src\util\builder_result.csv")
+    config = load_config(get_config_path())
+    minutes: int = int(config.get('minutes'))
+    run_replications(model=model_function, minutes=minutes, num_replications=replications, multiprocessing=True)
 
 
 if __name__ == '__main__':
-    main()
+
+    parser = argparse.ArgumentParser(description="Run simulation with replications and minutes")
+
+    parser.add_argument('-r','--replications', type=int, default=10, help="Number of replications for the simulation")
+
+    # parser.add_argument('-t','--time_to_simulate', type=int, default=900, help="Duration of the simulation in minutes")
+
+    parser.add_argument('-c', '--config_path', type=str, required=False, default=r"E:\projects\SEP_DMPG\src\util\flask\user\thoadelt\TestModellPCB\TestScenarioArrivalTable\TestModellPCB_TestScenarioArrivalTable.json", help="The config_file you want to use")
+
+    args = parser.parse_args()
+
+    os.environ['CONFIG_PATH'] = args.config_path
+
+    main(args.replications)

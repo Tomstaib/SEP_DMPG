@@ -1,6 +1,6 @@
 import logging
 from functools import wraps
-from flask import Flask, request, redirect, url_for, flash, render_template, session, jsonify
+from flask import Flask, request, redirect, url_for, flash, render_template, session, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 
 from ssh_setup import setup_ssh_connection
@@ -229,7 +229,7 @@ def experimental_environment():
     data = experiments.load_runtime_prediction()
     return render_template('experimental_environment.html', data=data)"""
 
-@app.route('/experimental_environment', methods=['GET', 'POST'])
+"""@app.route('/experimental_environment', methods=['GET', 'POST'])
 @login_required
 def experimental_environment():
     username = session.get('username', '').strip()
@@ -335,7 +335,118 @@ def experimental_environment():
         # Check if there's form data in the session to restore
         form_data = session.pop('form_data', None)
         return render_template('experimental_environment.html', configurations=configurations, config_data=config_data,
+                               form_data=form_data)"""
+
+
+@app.route('/experimental_environment', methods=['GET', 'POST'])
+@login_required
+def experimental_environment():
+    username = session.get('username', '').strip()
+    user_directory = os.path.join(app.root_path, 'user', username)
+
+    # Check if the user directory exists
+    if not os.path.exists(user_directory):
+        logging.error(f"Directory {user_directory} does not exist.")
+        flash(f"User directory for {username} does not exist.")
+        return redirect(url_for('experimental_environment'))
+
+    configurations = []
+    config_data = session.pop('config_data', None)  # Retrieve and remove config_data from session
+
+    # Traverse the user's directory to find configuration files
+    for root, dirs, files in os.walk(user_directory):
+        for file in files:
+            if file.endswith('.json'):
+                config_path = os.path.join(root, file)
+                parts = os.path.relpath(config_path, user_directory).split(os.sep)
+                if len(parts) >= 2:
+                    model_name = parts[0]
+                    scenario_name = parts[1]
+                    configurations.append({
+                        'model_name': model_name,
+                        'scenario_name': scenario_name,
+                        'file_name': file,
+                        'file_path': config_path
+                    })
+
+    if request.method == 'POST':
+        try:
+            overwrite_confirmed = request.form.get('overwrite_confirmed', 'false') == 'true'
+            original_model_name = request.form.get('original_model_name', '').strip()
+            original_scenario_name = request.form.get('original_scenario_name', '').strip()
+            model_name = request.form.get('model_name', '').strip()
+            scenario_name = request.form.get('scenario_name', '').strip()
+
+            config_directory = os.path.join('user', username, model_name, scenario_name)
+            config_filename = f"{model_name}_{scenario_name}.json"
+            config_file_path = os.path.join(config_directory, config_filename)
+
+            if os.path.exists(config_file_path) and not overwrite_confirmed:
+                session['form_data'] = request.form.to_dict(flat=False)
+                flash('A configuration with this model and scenario name already exists.')
+                return render_template('confirm_overwrite.html', form_data=session['form_data'])
+
+            logging.info(f"Processing configuration for user: {username}, model: {model_name}, scenario: {scenario_name}")
+
+            # Dictionary to store file paths for arrival tables
+            source_files = {}
+
+            for key in request.form:
+                if key.startswith('name_source_'):
+                    unique_id = key.replace('name_', '')  # Extract 'source_X' identifier
+                    source_name = request.form[key].strip()
+                    file_key = f'arrival_table_file_{unique_id}'
+                    arrival_table_file = request.files.get(file_key)
+                    existing_arrival_table = request.form.get(f'existing_arrival_table_{unique_id}')
+
+                    if arrival_table_file and arrival_table_file.filename.endswith('.csv'):
+                        file_path = experiments.save_arrival_table(arrival_table_file, model_name, scenario_name, source_name, username)
+                        source_files[unique_id] = file_path
+                        logging.info(f"New arrival table for {source_name} uploaded: {file_path}")
+                    elif existing_arrival_table:
+                        if model_name != original_model_name or scenario_name != original_scenario_name:
+                            new_file_path = experiments.copy_arrival_table(existing_arrival_table, model_name, scenario_name, source_name, username)
+                            source_files[unique_id] = new_file_path
+                            logging.info(f"Arrival table for {source_name} copied to new location: {new_file_path}")
+                        else:
+                            source_files[unique_id] = existing_arrival_table
+                            logging.info(f"Using existing arrival table for {source_name}: {existing_arrival_table}")
+                    else:
+                        logging.warning(f"No arrival table provided for {source_name}")
+
+            # Generate the configuration file using form data and the arrival table paths
+            config_json = experiments.generate_simulation_configuration(request.form, source_files)
+            logging.info(f"Configuration successfully generated.")
+            flash('Trying to save')
+            save_config_file(config_json, os.path.join('user', username, model_name, scenario_name), f"{model_name}_{scenario_name}.json")
+            flash('Configuration successfully generated')
+
+            session.pop('form_data', None)
+            return redirect(url_for('experimental_environment'))
+
+        except Exception as e:
+            logging.error(f"Error processing configuration: {e}")
+            flash(f'Error processing configuration: {e}')
+            return redirect(url_for('experimental_environment'))
+
+    else:
+        form_data = session.pop('form_data', None)
+        return render_template('experimental_environment.html', configurations=configurations, config_data=config_data,
                                form_data=form_data)
+
+
+@app.route('/download/<path:filename>')
+@login_required
+def download_file(filename):
+    username = session.get('username', '').strip()
+    user_directory = os.path.join(app.root_path, 'user', username)
+
+    # Use Flask's send_from_directory to send the requested file
+    try:
+        return send_from_directory(user_directory, filename, as_attachment=True)
+    except FileNotFoundError:
+        flash(f"File {filename} not found.")
+        return redirect(url_for('experimental_environment'))
 
 
 @app.route('/cancel_overwrite')

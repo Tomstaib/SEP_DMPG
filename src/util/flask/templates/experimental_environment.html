@@ -53,9 +53,14 @@
         <label for="scenario_name">Scenario Name:</label>
         <input type="text" id="scenario_name" name="scenario_name" required value="{{ form_data['scenario_name'][0] if form_data and 'scenario_name' in form_data else '' }}"><br><br>
 
+        <!-- Simulation Minutes -->
+        <label for="simulation_minutes">Simulation minutes:</label>
+        <input type="number" id="simulation_minutes" name="simulation_minutes" required min="1" value="{{ form_data['simulation_minutes'][0] if form_data and 'simulation_minutes' in form_data else 1 }}"><br><br>
+
         <!-- Hidden fields for original names -->
         <input type="hidden" name="original_model_name" id="original_model_name">
         <input type="hidden" name="original_scenario_name" id="original_scenario_name">
+        <input type="hidden" name="original_simulation_minutes" id="original_simulation_minutes">
 
         <!-- Source Section -->
         <h3>Source Configuration</h3>
@@ -571,10 +576,12 @@ function initializeForm() {
         // Pre-fill the form with dataToUse
         document.getElementById('model_name').value = dataToUse.model_name || '';
         document.getElementById('scenario_name').value = dataToUse.scenario_name || '';
+        document.getElementById('simulation_minutes').value = dataToUse.simulation_minutes || 1;
 
         // Set original model_name and scenario_name
         document.getElementById('original_model_name').value = dataToUse.model_name || '';
         document.getElementById('original_scenario_name').value = dataToUse.scenario_name || '';
+        document.getElementById('original_simulation_minutes').value = dataToUse.original_simulation_minutes || 1;
 
         // Keep track of component unique IDs and their data
         const componentDataList = [];

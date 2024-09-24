@@ -461,6 +461,7 @@ def create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_
     flattened_stats.extend(flatten_stats(aggregate_server_stats, 'Server', server_stat_names))
     flattened_stats.extend(flatten_stats(aggregate_sink_stats, 'Sink', sink_stat_names))
     flattened_stats.extend(flatten_stats(aggregate_source_stats, 'Source', source_stat_names))
+
     # Creating a combined DataFrame from flattened stats
     df_combined = pd.DataFrame(flattened_stats)
 
