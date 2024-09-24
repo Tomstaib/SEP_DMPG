@@ -10,7 +10,7 @@ import concurrent.futures
 import logging
 import database_connection
 
-from orm import PivotTable, Simulation, Scenario, Model
+from orm import PivotTable, Simulation, Scenario, Model, HSUser
 from src.core.entity import EntityManager
 from src.core.server import Server
 from src.core.sink import Sink
@@ -21,8 +21,7 @@ from src.util.helper import round_value
 global seconds_previous_computations
 
 
-def run_simulation(model: Callable, minutes: Union[int, float], store_pivot_in_file: str = None,
-                   store_pivot_in_database: bool = False):
+def run_simulation(model: Callable, minutes: Union[int, float], store_pivot_in_file: str = None):
     random.seed(RANDOM_SEED)
     env = simpy.Environment()
     model(env)
@@ -68,10 +67,6 @@ def run_simulation(model: Callable, minutes: Union[int, float], store_pivot_in_f
     # Optionally save to CSV
     if store_pivot_in_file:
         pivot_table.to_csv(store_pivot_in_file)
-
-    if store_pivot_in_database:
-        save_pivot_to_database(pivot_table)
-        logging.info("Pivot table saved to database")
 
     return pivot_table
 
@@ -179,12 +174,13 @@ def get_percentage_and_computingtimes(computing_time_start, i, num_replications)
             f"[time per iteration] {str(timedelta(seconds=seconds_computed_iteration)):<15}")
 
 
-def run_replications(model_name, scenario_name, model: Callable, minutes, num_replications, multiprocessing=False,
+def run_replications(model_name, scenario_name, user_name, model: Callable, minutes, num_replications,
+                     multiprocessing=False,
                      save_pivot_to_database: bool = False):
     global seconds_previous_computations
     seconds_previous_computations = 0
     start = time.time()
-    local_start_time = datetime.now() # For Database
+    local_start_time = datetime.now()  # For database
 
     engine = database_connection.connect_to_db()
 
@@ -235,13 +231,14 @@ def run_replications(model_name, scenario_name, model: Callable, minutes, num_re
             process_results(*replication(model, calculate_statistics, minutes, r))
             print_stats(r, num_replications, start, tenth_percentage)
 
-    local_end_time = datetime.now() # For Database
+    local_end_time = datetime.now()  # For database
 
     if save_pivot_to_database:
         combined_pivot = create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_stats,
                                       entity_stat_names,
                                       server_stat_names, sink_stat_names, source_stat_names, engine)
-        save_to_database(combined_pivot, engine, local_start_time, local_end_time, model_name, scenario_name)
+        save_to_database(combined_pivot, engine, local_start_time, local_end_time, model_name, scenario_name, minutes,
+                         num_replications, user_name)
 
     return create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_stats, entity_stat_names,
                         server_stat_names, sink_stat_names, source_stat_names, engine)
@@ -324,53 +321,52 @@ def create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_
     return pivot_table_combined
 
 
-def save_to_database(pivot_df, engine, local_start_time, local_end_time, model_name, scenario_name):
+def save_to_database(combined_pivot, engine, local_start_time, local_end_time, model_name, scenario_name, minutes,
+                     num_replications, user_name):
     session = database_connection.create_session(engine)
-    simulation_id = database_connection.get_next_simulation_id(session)
-    scenario_id = database_connection.get_next_scenario_id(session)
-    pivot_table_id = database_connection.get_next_pivot_table_id(session)
-    model_id = database_connection.get_next_model_id(session)
+    try:
+        # Check if user exist, if not create
+        user_id = database_connection.get_or_create_user(session, user_name)
 
-    model_entry = Model(
-        model_id=model_id,
-        model_name=model_name
-    )
+        pivot_table_id = database_connection.get_next_pivot_table_id(session)
 
-    session.add(model_entry)
-    database_connection.commit_session(session)
+        # Create Model
+        new_model = Model(model_name=model_name, user_id=user_id)
+        session.add(new_model)
+        session.flush()
 
-    scenario_entry = Scenario(
-        scenario_id=scenario_id,
-        scenario_name=scenario_name
-    )
+        # Create Scenario
+        new_scenario = Scenario(scenario_name=scenario_name, minutes=minutes, model_id=new_model.model_id)
+        session.add(new_scenario)
+        session.flush()
 
-    session.add(scenario_entry)
-    database_connection.commit_session(session)
+        # Create Simulation
+        new_simulation = Simulation(local_start_time=local_start_time, local_end_time=local_end_time,
+                                    num_replications=num_replications, scenario_id=new_scenario.scenario_id)
+        session.add(new_simulation)
+        session.flush()
 
-    simulation_entry = Simulation(
-        simulation_id=simulation_id,
-        local_start_time=local_start_time,
-        local_end_time=local_end_time,
-        scenario_id=scenario_id
-    )
+        # PivotTable entries added to the session
+        pivot_entries = []
+        for index, row in combined_pivot.iterrows():
+            pivot_entry = PivotTable(
+                pivot_table_id=pivot_table_id,
+                simulation_id=new_simulation.simulation_id,  # 'SimulationsID'
+                type=index[0],  # 'Type'
+                name=index[1],  # 'Name'
+                stat=index[2],  # 'Stat'
+                average=row['Average'],  # 'Average'
+                minimum=row['Minimum'],  # 'Minimum'
+                maximum=row['Maximum'],  # 'Maximum'
+                half_width=row['Half-Width']  # 'Half-Width'
+            )
+            pivot_entries.append(pivot_entry)
+            pivot_table_id += 1  # Increment after each row
 
-    session.add(simulation_entry)
-    database_connection.commit_session(session)
-
-    for index, row in pivot_df.iterrows():
-        pivot_entry = PivotTable(
-            pivot_table_id=pivot_table_id,
-            simulation_id=simulation_id,  # 'SimulationsID'
-            type=index[0],  # 'Type'
-            name=index[1],  # 'Name'
-            stat=index[2],  # 'Stat'
-            average=row['Average'],  # 'Average'
-            minimum=row['Minimum'],  # 'Minimum'
-            maximum=row['Maximum'],  # 'Maximum'
-            half_width=row['Half-Width']  # 'Half-Width'
-        )
-        pivot_table_id += 1  # Increase, because every record needs a unique key
-
-        session.add(pivot_entry)
-
-    database_connection.commit_session(session)
+        # All PivotTable entries added
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
