@@ -4,13 +4,13 @@ import os
 from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker, Session
 import orm
-from sqlalchemy.exc import OperationalError, SQLAlchemyError
+from sqlalchemy.exc import OperationalError, SQLAlchemyError, NoResultFound
 
 DB_USER = 'sep'
 DB_HOST = 'imt-sep-001.lin.hs-osnabrueck.de'
 DB_PORT = '55432'
 DB_NAME = 'distributed_computing'
-DB_PASSWORD = 'sep'
+DB_PASSWORD = 'oishooX2iefeiNai'
 
 # Set up basic logging configuration
 logging.basicConfig(level=logging.INFO)
@@ -20,35 +20,6 @@ def validate_db_config():
     """Validate that all necessary database configuration variables are set."""
     if not all([DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME]):
         raise ValueError("Database configuration is incomplete. Please check all required fields.")
-
-
-def get_next_simulation_id(session: Session) -> int:
-    """Return the next simulation id"""
-    try:
-        highest_id = session.query(func.max(orm.Simulation.simulation_id)).scalar()
-    except Exception as e:
-        print(f"Failed to reach next simulation ID: {e}")
-        return 1
-
-    """If there are no simulation ids yet, return the highest simulation id"""
-    if highest_id is None:
-        print("SimulationsID is None")
-        return 1
-    return highest_id + 1
-
-
-def get_next_scenario_id(session: Session) -> int:
-    """Return the next scenario id"""
-    try:
-        highest_id = session.query(func.max(orm.Scenario.scenario_id)).scalar()
-    except Exception as e:
-        print(f"Failed to reach next szenario ID: {e}")
-        return 1
-
-    """If there are no simulation ids yet, return the highest scenario id"""
-    if highest_id is None:
-        return 1
-    return highest_id + 1
 
 
 def get_next_pivot_table_id(session: Session) -> int:
@@ -65,18 +36,17 @@ def get_next_pivot_table_id(session: Session) -> int:
     return highest_id + 1
 
 
-def get_next_model_id(session: Session) -> int:
-    """Return the next model id"""
+def get_or_create_user(session, user_name) -> int:
+    # Search vor a user, if not found it will be created
     try:
-        highest_id = session.query(func.max(orm.Model.model_id)).scalar()
-    except Exception as e:
-        print(f"Failed to reach next model ID: {e}")
-        return 1
-
-    """If there are no simulation ids yet, return the highest model id"""
-    if highest_id is None:
-        return 1
-    return highest_id + 1
+        user = session.query(orm.HSUser).filter(orm.HSUser.user_name == user_name).one()
+        return user.user_id
+    except NoResultFound:
+        # No user found
+        new_user = orm.HSUser(user_name=user_name)
+        session.add(new_user)
+        commit_session(session)
+        return new_user.user_id
 
 
 def connect_to_db():
@@ -91,7 +61,7 @@ def connect_to_db():
 
         # Test the connection
         connection = engine.connect()
-        logging.info("Connection successful")
+        logging.info("Connection to Database successful")
         connection.close()
         return engine
     except ValueError as ve:
@@ -126,6 +96,7 @@ def commit_session(session):
         logging.exception("Session rollback failed")
         return None
 
+
 # Creating the database scheme from orm.py
 def main():
     """Main function to connect to the database and create the database scheme"""
@@ -135,6 +106,7 @@ def main():
         try:
             # Create the tables if the connection was successful
             orm.create_tables()
+            logging.info("Tables created")
         except SQLAlchemyError as se:
             logging.exception("Failed to create tables")
             return  # Optional: Return or exit on critical error
