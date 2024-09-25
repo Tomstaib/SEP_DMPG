@@ -1,6 +1,7 @@
 import json
 import os
 import argparse
+import posixpath
 import sys
 from pathlib import Path
 from typing import Tuple, Optional
@@ -14,6 +15,7 @@ from flask import session
 import stat
 
 from ssh_setup import setup_ssh_connection, close_ssh_connection
+from src.util.model_builder import load_config
 
 
 
@@ -24,15 +26,6 @@ def transfer_folder(ssh_client: SSHClient, local_folder_path: str, remote_folder
     def is_valid(path: str) -> bool:
         base_name = os.path.basename(path)
         return not base_name.startswith('.') and base_name != '__pycache__'
-
-    def ensure_remote_directory(sftp, remote_path: str):
-        """Ensure the remote directory exists, creating it if necessary."""
-        try:
-            sftp.stat(remote_path)
-        except IOError:
-            print(f"Creating remote directory: {remote_path}")
-            sftp.mkdir(remote_path)
-            sftp.chmod(remote_path, stat.S_IRWXU)
 
     def transfer_file(sftp, local_file_path, remote_file_path):
         """Transfer a file using SFTP."""
@@ -77,6 +70,16 @@ def transfer_folder(ssh_client: SSHClient, local_folder_path: str, remote_folder
             transfer_file(sftp, local_file_path, remote_file_path)
 
     sftp.close()
+
+
+def ensure_remote_directory(sftp, remote_path: str):
+    """Ensure the remote directory exists, creating it if necessary."""
+    try:
+        sftp.stat(remote_path)
+    except IOError:
+        print(f"Creating remote directory: {remote_path}")
+        sftp.mkdir(remote_path)
+        sftp.chmod(remote_path, stat.S_IRWXU)
 
 
 # Function to read the version number from a JSON file
@@ -289,5 +292,72 @@ def prepare_env() -> None:
         print("SSH connection closed.")
 
 
+def transfer_experiments(ssh_client: paramiko.SSHClient, local_model_path: str, username: str) -> None:
+    try:
+        sftp = ssh_client.open_sftp()
+    except Exception as e:
+        print(f"Error opening SFTP session: {str(e)}")
+        return
+
+    remote_folder: str = f'/cluster/user/{username}/DMPG_experiments'
+
+    try:
+        # Ensure the root folder exists
+        ensure_remote_directory(sftp, remote_folder)
+
+        # Recursively upload files and directories
+        upload_directory(sftp, local_model_path, remote_folder)
+
+    except Exception as e:
+        print(f"Error during transfer: {str(e)}")
+    finally:
+        sftp.close()
 
 
+def upload_directory(sftp, local_dir: str, remote_dir: str) -> None:
+    """
+    Recursively upload a directory and its contents to the remote directory.
+
+    :param sftp: The active SFTP session
+    :param local_dir: The local directory to upload
+    :param remote_dir: The remote directory to upload to
+    """
+    for item in os.listdir(local_dir):
+        local_path = os.path.join(local_dir, item)
+        remote_path = posixpath.join(remote_dir, item)
+
+        if os.path.isfile(local_path):
+            # Upload the file
+            try:
+                print(f"Uploading file {local_path} to {remote_path}")
+                if local_path.endswith('.json'):
+                    manipulate_arrival_table_path(local_path, remote_path)
+                sftp.put(local_path, remote_path)
+            except Exception as e:
+                print(f"Failed to upload {local_path}: {str(e)}")
+
+        elif os.path.isdir(local_path):
+            # Ensure remote directory exists
+            ensure_remote_directory(sftp, remote_path)
+            # Recursively upload the contents of the directory
+            upload_directory(sftp, local_path, remote_path)
+
+
+def manipulate_arrival_table_path(json_path: str, remote_path: str) -> None:
+    config_data = load_config(json_path)
+
+    for source in config_data.get('sources', []):
+        arrival_table = source.get('arrival_table', "")
+        if arrival_table:
+            # Split the path from 'arrival_tables' onwards
+            relative_path = arrival_table.split('arrival_tables', 1)[-1].lstrip("\\/")
+
+            remote_path_without_json = posixpath.dirname(remote_path)
+
+            # Join the relative path to the remote base path
+            new_remote_path = posixpath.join(remote_path_without_json, 'arrival_tables', relative_path)
+
+            source['arrival_table'] = new_remote_path
+
+    with open(json_path, 'w') as file:
+        json.dump(config_data, file, indent=4)

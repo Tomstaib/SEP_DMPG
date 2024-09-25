@@ -286,9 +286,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-r','--replications', type=int, default=10, help="Number of replications for the simulation")
 
-    # parser.add_argument('-t','--time_to_simulate', type=int, default=900, help="Duration of the simulation in minutes")
-
-    parser.add_argument('-c', '--config_path', type=str, required=False, default=r"E:\projects\SEP_DMPG\src\util\flask\user\thoadelt\TestModellPCB\TestScenarioArrivalTable\TestModellPCB_TestScenarioArrivalTable.json", help="The config_file you want to use")
+    parser.add_argument('-c', '--config_path', type=str, required=True, help="The config_file you want to use")
 
     args = parser.parse_args()
 

@@ -436,26 +436,11 @@ def experimental_environment():
                                form_data=form_data)
 
 
-@app.route('/download/<path:filename>')
-@login_required
-def download_file(filename):
-    username = session.get('username', '').strip()
-    user_directory = os.path.join(app.root_path, 'user', username)
-
-    # Use Flask's send_from_directory to send the requested file
-    try:
-        return send_from_directory(user_directory, filename, as_attachment=True)
-    except FileNotFoundError:
-        flash(f"File {filename} not found.")
-        return redirect(url_for('experimental_environment'))
-
-
 @app.route('/cancel_overwrite')
 @login_required
 def cancel_overwrite():
     flash('Configuration generation canceled.')
     return redirect(url_for('experimental_environment'))
-
 
 
 @app.route('/load_configuration', methods=['POST'])

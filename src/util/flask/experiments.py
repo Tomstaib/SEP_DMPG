@@ -194,8 +194,6 @@ def process_connections(form_data, unique_id):
     return connections
 
 
-
-
 def save_config_file(config_json, path, filename):
     os.makedirs(path, exist_ok=True)
 
