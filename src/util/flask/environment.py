@@ -14,7 +14,7 @@ from scp import SCPClient
 from flask import session
 import stat
 
-from ssh_setup import setup_ssh_connection, close_ssh_connection
+from src.util.flask.ssh_setup import setup_ssh_connection, close_ssh_connection
 from src.util.model_builder import load_config
 
 

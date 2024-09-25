@@ -19,6 +19,7 @@ from src.core.sink import Sink
 from src.core.source import Source
 from src.util.global_imports import RANDOM_SEED, Stats, set_duration_warm_up
 from src.util.helper import round_value
+from src.util.runtime_prediction import send_progress_to_server
 
 global seconds_previous_computations
 
@@ -377,6 +378,9 @@ def print_stats(i, num_replications, start, tenth_percentage) -> None:
     if tenth_percentage == 0 or (i + 1) % tenth_percentage == 0:
         ct = get_percentage_and_computingtimes(start, i, num_replications)
         logging.info(f"{ct[0]} replication {i + 1}/{num_replications}\t{ct[1]}\t{ct[2]}\t{ct[3]}\t{ct[4]}")
+        # if 10% of the calculation is finished, the current results will be sent to the server
+        if (i + 1) == tenth_percentage:
+            send_progress_to_server(ct, i, 1, num_replications)
 
 
 def create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_stats, entity_stat_names,

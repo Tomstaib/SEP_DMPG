@@ -2,10 +2,11 @@ import logging
 import shutil
 from functools import wraps
 from flask import Flask, request, redirect, url_for, flash, render_template, session, jsonify, send_from_directory
+from paramiko.client import SSHClient
 from werkzeug.utils import secure_filename
 
-from ssh_setup import setup_ssh_connection
-from environment import prepare_env
+from src.util.flask.ssh_setup import setup_ssh_connection
+from src.util.flask.environment import prepare_env, execute_command
 import os
 import json
 import paramiko
@@ -337,6 +338,21 @@ def experimental_environment():
         form_data = session.pop('form_data', None)
         return render_template('experimental_environment.html', configurations=configurations, config_data=config_data,
                                form_data=form_data)"""
+
+
+def send_and_delete_db(ssh_client: SSHClient):
+    try:
+        sftp = ssh_client.open_sftp()
+        sftp.put(os.path.join(app.root_path, "generate_db_key.py"), "~/")
+        execute_command(ssh_client, f"source /cluster/user/$USER/venvs/DMPG/bin/activate")
+        execute_command(ssh_client, "python3 ~/generate_db_key.py")
+        execute_command(ssh_client, "deactivate")
+        execute_command(ssh_client, "rm ~/generate_db_key.py")
+        sftp.close()
+        ssh_client.close()
+    except Exception as e:
+        print(e)
+
 
 
 @app.route('/experimental_environment', methods=['GET', 'POST'])

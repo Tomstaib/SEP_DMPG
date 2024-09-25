@@ -5,14 +5,6 @@ from sqlalchemy import create_engine, Column, Integer, String, Sequence
 from sqlalchemy.orm import declarative_base, sessionmaker
 from generate_ssh_key import KEY_PATH, PASSPHRASE, REMOTE_HOST, REMOTE_USER
 
-# SSH/SFTP Connection Parameters
-"""ssh_host = 'imt-sep-001.lin.hs-osnabrueck.de'
-ssh_port = 22
-ssh_username = 'sep'
-ssh_password = 'oishooX2iefeiNai'
-local_file_path = '/home/thoadelt/MachineLearning/__init__.py'
-remote_file_path = './'"""
-
 # Database Connection Parameters
 db_user = 'sep'
 db_password = 'oishooX2iefeiNai'

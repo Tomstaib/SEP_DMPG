@@ -8,6 +8,9 @@ DB_USER = 'sep'
 DB_HOST = 'imt-sep-001.lin.hs-osnabrueck.de'
 DB_PORT = '55432'
 DB_NAME = 'distributed_computing'
+DB_PASSWORD = "oishooX2iefeiNai"
+
+db_url_template: str = f'{DB_HOST}:{DB_PORT}:{DB_NAME}:{DB_USER}:{DB_PASSWORD}'
 
 
 def input_password(prompt: str = "Input the password") -> str or None:
@@ -26,7 +29,7 @@ def input_password(prompt: str = "Input the password") -> str or None:
         return
 
 
-def create_pgpass_file(template: str):
+def create_pgpass_file(template: str = db_url_template):
     # Determine the path for .pgpass based on the operating system
     if os.name == 'nt':  # Windows
         pgpass_path = os.path.join(os.getenv('APPDATA'), 'postgresql', 'pgpass.conf')
@@ -62,13 +65,9 @@ def connect_to_db():
         return None
 
 
-
 def main():
-    db_password: str = input_password(f'Password for the database: ')
-    if not db_password:
+    if not DB_PASSWORD:
         raise ValueError("Error getting the Password")
-
-    db_url_template: str = f'{DB_HOST}:{DB_PORT}:{DB_NAME}:{DB_USER}:{db_password}'
 
     create_pgpass_file(db_url_template)
 
