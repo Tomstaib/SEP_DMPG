@@ -1,0 +1,53 @@
+<!-- sidebar.html -->
+<div id="sidebar" class="sidebar">
+    <button class="toggle-btn" onclick="toggleSidebar()">&#9776;</button>
+    <div class="top-section">
+        <a href="{{ url_for('dashboard') }}">
+            <img src="{{ url_for('static', filename='images/dashboard.png') }}" alt="Dashboard Icon">
+            <span>Dashboard</span>
+        </a>
+        <a href="{{ url_for('experimental_environment') }}">
+            <img src="{{ url_for('static', filename='images/experimental_environment.png') }}" alt="Experiment Environment Icon">
+            <span>Experiment Environment</span>
+        </a>
+        <a href="{{ url_for('submit_job') }}">
+            <img src="{{ url_for('static', filename='images/new_job.png') }}" alt="New Job Icon">
+            <span>Submit Job</span>
+        </a>
+        <a href="{{ url_for('visualization') }}">
+            <img src="{{ url_for('static', filename='images/visualization.png') }}" alt="Visualization Icon">
+            <span>Visualization</span>
+        </a>
+        <a href="https://131.173.65.76:3000/d/edyvm8igqbg1sb/datenbank-dashboard?orgId=1&var-username={{ session['username'] }}" target="_blank">
+            <img src="{{ url_for('static', filename='images/visualization.png') }}" alt="External Visualization Icon">
+            <span>Visualization (External)</span>
+        </a>
+	<a href="{{ url_for('show_runtime_prediction') }}">
+            <img src="{{ url_for('static', filename='images/stoppuhr.png') }}" alt="Runtime Prediction Icon">
+            <span>Runtime Prediction</span>
+        </a>
+    </div>
+    <div class="bottom-section">
+        <a href="{{ url_for('contact') }}">
+            <img src="{{ url_for('static', filename='images/contact.png') }}" alt="Contact Icon">
+            <span>Contact</span>
+        </a>
+        <a href="{{ url_for('settings') }}">
+            <img src="{{ url_for('static', filename='images/settings.png') }}" alt="Settings Icon">
+            <span>Settings</span>
+        </a>
+    </div>
+</div>
+
+<script>
+    function toggleSidebar() {
+        var sidebar = document.getElementById("sidebar");
+        var topbar = document.getElementById("topbar");
+        var mainContent = document.getElementById("main-content");
+
+        sidebar.classList.toggle("collapsed");
+        topbar.classList.toggle("collapsed");
+        mainContent.classList.toggle("collapsed");
+    }
+</script>
+

@@ -1,0 +1,38 @@
+<!-- runtime_prediction.html -->
+{% extends 'base.html' %}
+
+{% block title %}Runtime Prediction{% endblock %}
+
+{% block content %}
+    <h1>Runtime Prediction for {{ user }}</h1>
+
+    <!-- Informational Text -->
+    <div class="alert alert-info">
+        <p>This page provides a runtime prediction for jobs that have been submitted. Once the job reaches 10% completion, the system calculates and displays an estimated total runtime, remaining time, and other relevant metrics.</p>
+
+        <p><strong>Percentage Completed:</strong> Shows the percentage of the job that has been completed. The prediction is updated as the job progresses.</p>
+        
+        <p><strong>Time Calculations:</strong> This section provides details about the computed time so far, the remaining time, and the total runtime prediction based on the current progress.</p>
+        
+        <p>Users can refresh the page to get the latest updates on their job's runtime prediction.</p>
+    </div>
+
+    {% if data %}
+    <ul>
+        <li><strong>Percentage Completed:</strong> {{ data.percentage }}</li>
+        <li><strong>Computed Time:</strong> {{ data.time_computed }}</li>
+        <li><strong>Remaining Time:</strong> {{ data.time_to_complete }}</li>
+        <li><strong>Total Time Prediction:</strong> {{ data.time_prediction }}</li>
+        <li><strong>Time per Iteration:</strong> {{ data.time_per_iteration }}</li>
+        <li><strong>Current Iteration:</strong> {{ data.current_iteration }} of {{ data.total_iterations }}</li>
+        <li><strong>Last Update:</strong> {{ data.timestamp }}</li>
+    </ul>
+    {% else %}
+    <p>No data available yet.</p>
+    {% endif %}
+    
+    <!-- Button to Refresh Page -->
+    <button onclick="location.reload()">Refresh Page</button>
+
+{% endblock %}
+

@@ -1,0 +1,1070 @@
+{% extends 'base.html' %}
+
+{% block title %}Experimentierumgebung{% endblock %}
+
+{% block content %}
+<style>
+    /* Main content styling */
+    /*#main-content {
+        height: 100vh;
+        overflow-y: auto; /* Enable scrolling in the main content */
+        padding: 20px;
+        box-sizing: border-box;
+    }*/
+
+    button {
+        margin-top: 10px;
+    }
+
+    /* Ensure form inputs and selects fit the content area */
+    form input, form select {
+        width: 100%;
+        max-width: 300px;
+        margin-bottom: 10px;
+    }
+    .item-container {
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+
+    .remove-btn {
+        background-color: red;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        cursor: pointer;
+        margin-top: 50px; /* Space between the last input and the button */
+        display: block; /* Makes the button appear directly below the inputs */
+        width: 10%; /* Full width for better UX */
+        text-align: center;
+    }
+</style>
+
+    <h1>Generate Simulation Configuration</h1>
+
+    <div class="alert alert-info">
+        <p>This page allows users to create and configure simulation setups by providing details such as model name, scenario name, and simulation duration. Users can configure the sources, servers, and sinks with specific distribution types and optional machine breakdown configurations.</p>
+        
+        <p><strong>Source Configuration:</strong> Users can add multiple sources with configurable creation time distributions and optional file uploads for arrival tables.</p>
+        
+        <p><strong>Server Configuration:</strong> Servers can be added, each with its own processing time distribution and optional breakdown configurations. Queue order can also be set.</p>
+        
+        <p><strong>Sink Configuration:</strong> Users can configure sinks. The addon process trigger is currently not implemented because it would reference a python function.</p>
+
+        <p>Existing configurations can be loaded from saved files, and scenario folders can be deleted from the system when no longer needed.</p>
+    </div>
+
+    <form action="{{ url_for('experimental_environment') }}" method="POST" enctype="multipart/form-data" id="experimentForm">
+
+        <!-- Model Name -->
+        <label for="model_name">Model Name:</label>
+        <input type="text" id="model_name" name="model_name" required value="{{ form_data['model_name'][0] if form_data and 'model_name' in form_data else '' }}"><br><br>
+
+        <!-- Scenario Name -->
+        <label for="scenario_name">Scenario Name:</label>
+        <input type="text" id="scenario_name" name="scenario_name" required value="{{ form_data['scenario_name'][0] if form_data and 'scenario_name' in form_data else '' }}"><br><br>
+
+        <!-- Simulation Minutes -->
+        <label for="minutes">Simulation minutes:</label>
+        <input type="number" id="minutes" name="minutes" required min="1" value="{{ form_data['minutes'][0] if form_data and 'minutes' in form_data else 1 }}"><br><br>
+
+        <!-- Hidden fields for original names -->
+        <input type="hidden" name="original_model_name" id="original_model_name">
+        <input type="hidden" name="original_scenario_name" id="original_scenario_name">
+        <input type="hidden" name="original_minutes" id="original_minutes">
+
+        <!-- Source Section -->
+        <h3>Source Configuration</h3>
+        <div id="source-container"></div>
+        <button type="button" id="add-source-btn">Add Source</button><br><br>
+
+        <!-- Server Section -->
+        <h3>Server Configuration</h3>
+        <div id="server-container"></div>
+        <button type="button" id="add-server-btn">Add Server</button><br><br>
+
+        <!-- Sink Section -->
+        <h3>Sink Configuration</h3>
+        <div id="sink-container"></div>
+        <button type="button" id="add-sink-btn">Add Sink</button><br><br>
+
+        <!-- Overwrite button -->
+        <input type="hidden" name="overwrite_confirmed" id="overwrite_confirmed" value="false">
+
+        <input type="submit" value="Generate Configuration">
+    </form>
+<script>
+    var configData = {{ config_data|tojson|default('null', true) }};
+    var formData = {{ form_data|tojson|default('null', true) }};
+</script>
+
+<script>
+    let componentCounts = {
+        source: 0,
+        server: 0,
+        sink: 0,
+    };
+
+    let connections = [];
+
+    // General function to add a new component
+function addComponent(type, data = null, handleConnections = true, uniqueId = null) {
+    let count; // Declare 'count' at the function scope
+
+    if (!uniqueId) {
+        componentCounts[type]++;
+        count = componentCounts[type];
+        uniqueId = `${type}_${count}`;
+    } else {
+        // Update componentCounts[type] if necessary
+        count = parseInt(uniqueId.split('_')[1]);
+        if (count >= componentCounts[type]) {
+            componentCounts[type] = count;
+        }
+    }
+
+    const container = document.getElementById(`${type}-container`);
+
+    let componentHtml = `
+        <div id="${uniqueId}" class="item-container">
+        <h4>${capitalize(type)} ${count}</h4>`;
+
+    // Add fields common to all components
+    componentHtml += `
+        <label for="name_${uniqueId}">${capitalize(type)} Name:</label>
+        <input type="text" id="name_${uniqueId}" name="name_${uniqueId}" required><br><br>`;
+
+    if (type === 'source') {
+        componentHtml += `
+            <label for="dist_type_${uniqueId}">Creation Time Distribution Type:</label>
+            <select id="dist_type_${uniqueId}" name="dist_type_${uniqueId}" onchange="updateDistributionParams('${uniqueId}')">
+                <option value="">Select Distribution</option>
+                <option value="triangular">Triangular</option>
+                <option value="uniform">Uniform</option>
+                <option value="expovariate">Exponential</option>
+                <option value="normalvariate">Normal</option>
+            </select><br><br>
+
+            <!-- Container for distribution-specific parameters -->
+            <div id="dist_params_${uniqueId}" class="dist-params-container"></div>
+
+            <label for="arrival_table_${uniqueId}">Upload Arrival Table (CSV):</label>
+            <input type="file" id="arrival_table_${uniqueId}" name="arrival_table_file_${uniqueId}" accept=".csv"><br><br>`;
+
+        // If there is an existing arrival table, add a hidden input and display a message
+        if (data && data.arrival_table) {
+            componentHtml += `
+                <input type="hidden" id="existing_arrival_table_${uniqueId}" name="existing_arrival_table_${uniqueId}" value="${data.arrival_table}">
+                <p>Existing Arrival Table: ${data.arrival_table} (If you're seeing a cluster path, you have to upload the arrival table again)</p>
+                <p>You can upload a new file to replace the existing arrival table.</p>`;
+        }
+    }
+
+    if (type === 'server') {
+        componentHtml += `
+            <!-- Processing Time Distribution Fields -->
+            <label for="dist_type_${uniqueId}">Processing Time Distribution Type:</label>
+            <select id="dist_type_${uniqueId}" name="dist_type_${uniqueId}" onchange="updateDistributionParams('${uniqueId}')">
+                <option value="">Select Distribution</option>
+                <option value="triangular">Triangular</option>
+                <option value="uniform">Uniform</option>
+                <option value="expovariate">Exponential</option>
+                <option value="normalvariate">Normal</option>
+            </select><br><br>
+
+            <!-- Container for Processing Time Distribution Parameters -->
+            <div id="dist_params_${uniqueId}" class="dist-params-container"></div>
+
+            <label for="queue_order_${uniqueId}">Queue Order:</label>
+            <select id="queue_order_${uniqueId}" name="queue_order_${uniqueId}">
+                <option value="FIFO">FIFO</option>
+                <option value="LIFO">LIFO</option>
+            </select><br><br>
+
+            <!-- Time Between Machine Breakdown Distribution Fields -->
+            <label for="breakdown_dist_type_${uniqueId}">Time Between Machine Breakdown Distribution Type (optional):</label>
+            <select id="breakdown_dist_type_${uniqueId}" name="breakdown_dist_type_${uniqueId}" onchange="handleBreakdownSelection('${uniqueId}')">
+                <option value="">Select Distribution</option>
+                <option value="triangular">Triangular</option>
+                <option value="uniform">Uniform</option>
+                <option value="expovariate">Exponential</option>
+                <option value="normalvariate">Normal</option>
+            </select><br><br>
+
+            <!-- Container for Time Between Machine Breakdown Distribution Parameters -->
+            <div id="breakdown_dist_params_${uniqueId}" class="dist-params-container"></div>
+
+            <!-- Machine Breakdown Duration Distribution Fields (Initially Hidden) -->
+            <div id="breakdown_duration_container_${uniqueId}" style="display: none;">
+                <label for="breakdown_duration_dist_type_${uniqueId}">Machine Breakdown Duration Distribution Type (optional):</label>
+                <select id="breakdown_duration_dist_type_${uniqueId}" name="breakdown_duration_dist_type_${uniqueId}" onchange="updateDistributionParams('${uniqueId}', 'breakdown_duration_')">
+                    <option value="">Select Distribution</option>
+                    <option value="triangular">Triangular</option>
+                    <option value="uniform">Uniform</option>
+                    <option value="expovariate">Exponential</option>
+                    <option value="normalvariate">Normal</option>
+                </select><br><br>
+
+                <!-- Container for Machine Breakdown Duration Distribution Parameters -->
+                <div id="breakdown_duration_dist_params_${uniqueId}" class="dist-params-container"></div>
+            </div>
+        `;
+    }
+
+    if (type === 'sink') {
+        componentHtml += `
+            <label for="addon_process_trigger_${uniqueId}">Addon Process Trigger (Optional):</label>
+            <input type="text" id="addon_process_trigger_${uniqueId}" name="addon_process_trigger_${uniqueId}" placeholder="This isn't implemented"><br><br>`;
+    }
+
+    // Add a dropdown for selecting the target component for connections, only for 'source' and 'server'
+    if (type === 'source' || type === 'server') {
+        let connectionFieldsHtml = `<div id="connection_fields_${uniqueId}">`;
+
+        // Determine the number of connection dropdowns needed
+        let connectionsCount = data && data.connections ? data.connections.length : 1;
+
+        for (let i = 1; i <= connectionsCount; i++) {
+            connectionFieldsHtml += `
+                <label for="connection_${uniqueId}_${i}">Connect to:</label>
+                <select id="connection_${uniqueId}_${i}" name="connection_${uniqueId}_${i}" onchange="addConnectionDropdown('${uniqueId}', ${i}, '${uniqueId}')">
+                    <option value="">Select Target Component</option>
+                </select><br><br>
+
+                <!-- Container for connection-specific parameters -->
+                <div id="connection_params_${uniqueId}_${i}"></div>`;
+        }
+
+        connectionFieldsHtml += `</div>`;
+        componentHtml += connectionFieldsHtml;
+    }
+
+    componentHtml += `
+        <button type="button" class="remove-btn">Delete ${capitalize(type)}</button>
+    </div>`;
+
+    container.insertAdjacentHTML('beforeend', componentHtml);
+
+    // Use requestAnimationFrame to ensure the DOM is updated before accessing elements
+    requestAnimationFrame(() => {
+        // Update connection options after adding the new component
+        if (type === 'source' || type === 'server') {
+            updateConnectionOptions(`connection_${uniqueId}_1`, uniqueId);
+        }
+        updateConnectionOptions();
+
+        // Pre-fill fields if data is provided
+        if (data) {
+            const nameField = document.getElementById(`name_${uniqueId}`);
+            if (nameField) {
+                nameField.value = data.name || '';
+            }
+
+            // Set distribution type and parameters
+            if (data.distribution) {
+                const distTypeField = document.getElementById(`dist_type_${uniqueId}`);
+                if (distTypeField) {
+                    distTypeField.value = data.distribution.type || '';
+                    updateDistributionParams(uniqueId); // Load appropriate fields
+
+                    // Set distribution parameters
+                    const params = data.distribution.params || {};
+                    for (const [key, value] of Object.entries(params)) {
+                        const paramField = document.getElementById(`${key}_${uniqueId}`);
+                        if (paramField) {
+                            paramField.value = value;
+                        }
+                    }
+                }
+            }
+
+            // Handle arrival_table for sources
+            if (type === 'source' && data.arrival_table) {
+                // The hidden input and message are already added in componentHtml
+            }
+
+            // Handle breakdown parameters for servers
+            if (type === 'server' && data.breakdown) {
+                const breakdown = data.breakdown;
+
+                // Time Between Machine Breakdown Distribution
+                if (breakdown.time_between_machine_breakdown) {
+                    const breakdownDist = breakdown.time_between_machine_breakdown;
+                    const breakdownDistTypeField = document.getElementById(`breakdown_dist_type_${uniqueId}`);
+                    if (breakdownDistTypeField) {
+                        breakdownDistTypeField.value = breakdownDist.type || '';
+                        handleBreakdownSelection(uniqueId); // Show/hide breakdown duration container
+
+                        // Set distribution parameters
+                        const params = breakdownDist.params || {};
+                        for (const [key, value] of Object.entries(params)) {
+                            const paramField = document.getElementById(`breakdown_${key}_${uniqueId}`);
+                            if (paramField) {
+                                paramField.value = value;
+                            }
+                        }
+                    }
+                }
+
+                // Machine Breakdown Duration Distribution
+                if (breakdown.machine_breakdown_duration) {
+                    const breakdownDurationDist = breakdown.machine_breakdown_duration;
+                    const breakdownDurationDistTypeField = document.getElementById(`breakdown_duration_dist_type_${uniqueId}`);
+                    if (breakdownDurationDistTypeField) {
+                        breakdownDurationDistTypeField.value = breakdownDurationDist.type || '';
+                        updateDistributionParams(uniqueId, 'breakdown_duration_'); // Load appropriate fields
+
+                        // Set distribution parameters
+                        const params = breakdownDurationDist.params || {};
+                        for (const [key, value] of Object.entries(params)) {
+                            const paramField = document.getElementById(`breakdown_duration_${key}_${uniqueId}`);
+                            if (paramField) {
+                                paramField.value = value;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Set queue order for servers
+            if (type === 'server' && data.queue_order) {
+                const queueOrderField = document.getElementById(`queue_order_${uniqueId}`);
+                if (queueOrderField) {
+                    queueOrderField.value = data.queue_order;
+                }
+            }
+
+            // Handle addon_process_trigger for sinks
+            if (type === 'sink' && data.addon_process_trigger) {
+                const addonProcessTriggerField = document.getElementById(`addon_process_trigger_${uniqueId}`);
+                if (addonProcessTriggerField) {
+                    addonProcessTriggerField.value = data.addon_process_trigger;
+                }
+            }
+
+            // Now handle connections if any
+            if (data.connections && handleConnections) {
+                data.connections.forEach(function(connection, index) {
+                    const dropdownNumber = index + 1;
+
+                    // Ensure the connection dropdown exists
+                    let connectionField = document.getElementById(`connection_${uniqueId}_${dropdownNumber}`);
+                    if (!connectionField) {
+                        // Create the connection dropdown if it doesn't exist
+                        const container = document.getElementById(`connection_fields_${uniqueId}`);
+                        let newDropdownHtml = `
+                            <label for="connection_${uniqueId}_${dropdownNumber}">Connect to:</label>
+                            <select id="connection_${uniqueId}_${dropdownNumber}" name="connection_${uniqueId}_${dropdownNumber}" onchange="addConnectionDropdown('${uniqueId}', ${dropdownNumber}, '${uniqueId}')">
+                                <option value="">Select Target Component</option>
+                            </select><br><br>
+
+                            <!-- Container for connection-specific parameters -->
+                            <div id="connection_params_${uniqueId}_${dropdownNumber}"></div>`;
+                        container.insertAdjacentHTML('beforeend', newDropdownHtml);
+
+                        // Update the options for this dropdown
+                        updateConnectionOptions(`connection_${uniqueId}_${dropdownNumber}`, uniqueId, getCurrentConnections(uniqueId));
+                        connectionField = document.getElementById(`connection_${uniqueId}_${dropdownNumber}`);
+                    }
+
+                    // Set the value of the connection dropdown
+                    if (connectionField) {
+                        connectionField.value = connection.target;
+                    }
+
+                    // Call addConnectionDropdown to handle parameters
+                    addConnectionDropdown(uniqueId, dropdownNumber, uniqueId);
+
+                    // Set connection parameters
+                    if (connection.probability !== null && connection.probability !== undefined) {
+                        const probabilityField = document.getElementById(`probability_${uniqueId}_${dropdownNumber}`);
+                        if (probabilityField) {
+                            probabilityField.value = connection.probability;
+                        }
+                    }
+                    if (connection.process_duration !== null && connection.process_duration !== undefined) {
+                        const processDurationField = document.getElementById(`process_duration_${uniqueId}_${dropdownNumber}`);
+                        if (processDurationField) {
+                            processDurationField.value = connection.process_duration;
+                        }
+                    }
+                });
+            }
+        }
+    });
+
+    return uniqueId;
+}
+  
+
+
+function handleBreakdownSelection(uniqueId) {
+    const breakdownDistType = document.getElementById(`breakdown_dist_type_${uniqueId}`).value;
+    const breakdownDurationContainer = document.getElementById(`breakdown_duration_container_${uniqueId}`);
+
+    if (breakdownDistType) {
+        // Show the duration container if a breakdown distribution is selected
+        breakdownDurationContainer.style.display = 'block';
+        updateDistributionParams(uniqueId, 'breakdown_');
+    } else {
+        // Hide the duration container if no breakdown distribution is selected
+        breakdownDurationContainer.style.display = 'none';
+    }
+}
+
+
+// Function to handle dynamically adding new dropdowns for connections
+function addConnectionDropdown(uniqueId, dropdownNumber, componentToExclude) {
+    const currentDropdown = document.getElementById(`connection_${uniqueId}_${dropdownNumber}`);
+    const selectedValue = currentDropdown.value;
+
+    // Remove existing connection parameters for this dropdown number
+    const paramsContainer = document.getElementById(`connection_params_${uniqueId}_${dropdownNumber}`);
+    if (paramsContainer) {
+        paramsContainer.remove();
+    }
+
+    // Only add a new dropdown if a selection has been made
+    if (selectedValue !== "") {
+        const container = document.getElementById(`connection_fields_${uniqueId}`);
+        const nextDropdownNumber = dropdownNumber + 1;
+
+        // Add fields for Probability and Process Duration
+        let connectionParamsHtml = `
+            <div id="connection_params_${uniqueId}_${dropdownNumber}">
+                <label for="probability_${uniqueId}_${dropdownNumber}">Probability (1-100):</label>
+                <input type="number" id="probability_${uniqueId}_${dropdownNumber}" name="probability_${uniqueId}_${dropdownNumber}" min="1" max="100" step="0.01" placeholder="Optional"><br><br>
+
+                <label for="process_duration_${uniqueId}_${dropdownNumber}">Process Duration (Positive Float):</label>
+                <input type="number" id="process_duration_${uniqueId}_${dropdownNumber}" name="process_duration_${uniqueId}_${dropdownNumber}" min="0" step="0.01" placeholder="Optional"><br><br>
+            </div>`;
+
+        container.insertAdjacentHTML('beforeend', connectionParamsHtml);
+
+        // Check if the next dropdown already exists; if not, create it
+        if (!document.getElementById(`connection_${uniqueId}_${nextDropdownNumber}`)) {
+            let newDropdownHtml = `
+                <label for="connection_${uniqueId}_${nextDropdownNumber}">Connect to:</label>
+                <select id="connection_${uniqueId}_${nextDropdownNumber}" name="connection_${uniqueId}_${nextDropdownNumber}" onchange="addConnectionDropdown('${uniqueId}', ${nextDropdownNumber}, '${uniqueId}')">
+                    <option value="">Select Target Component</option>
+                </select><br><br>
+
+                <!-- Container for connection-specific parameters -->
+                <div id="connection_params_${uniqueId}_${nextDropdownNumber}"></div>`;
+
+            container.insertAdjacentHTML('beforeend', newDropdownHtml);
+
+            // Update only the newly added dropdown
+            updateConnectionOptions(`connection_${uniqueId}_${nextDropdownNumber}`, uniqueId, getCurrentConnections(uniqueId));
+        }
+    }
+
+    // Update all dropdowns in this component to remove the selected value as an option
+    updateComponentDropdowns(uniqueId, uniqueId);
+}
+
+
+function updateComponentDropdowns(type, count, componentToExclude) {
+    const connectedComponents = getCurrentConnections(type, count);
+    let i = 1;
+    let dropdown;
+    while ((dropdown = document.getElementById(`${type}_connection_${count}_${i}`))) {
+        updateConnectionOptions(dropdown.id, componentToExclude, connectedComponents);
+        i++;
+    }
+}
+
+function updateConnectionOptions(dropdownIdToUpdate = null, componentToExclude = null, connectedComponents = []) {
+    const sources = document.querySelectorAll('.item-container[id^="source_"]');
+    const servers = document.querySelectorAll('.item-container[id^="server_"]');
+    const sinks = document.querySelectorAll('.item-container[id^="sink_"]');
+
+    const allTargetComponents = [...servers, ...sinks];
+    const allComponentsForServersAndSinks = [...sources, ...servers, ...sinks];
+
+    function updateDropdown(dropdown, componentToExclude, connectedComponents) {
+        if (!dropdown) return;
+
+        const previousSelection = dropdown.value;
+        dropdown.innerHTML = '<option value="">Select Target Component</option>';
+
+        allTargetComponents.forEach((targetComponent) => {
+            const targetId = targetComponent.id;
+
+            // Extract type and count for display purposes
+            const [targetType, targetCount] = targetId.split('_');
+
+            // Include the previous selection even if it's in connectedComponents
+            if (targetId !== componentToExclude && (!connectedComponents.includes(targetId) || targetId === previousSelection)) {
+                dropdown.innerHTML += `<option value="${targetId}">${capitalize(targetType)} ${targetCount}</option>`;
+            }
+        });
+
+        // Set the dropdown's value back to the previous selection if it still exists
+        if (previousSelection && dropdown.querySelector(`option[value="${previousSelection}"]`)) {
+            dropdown.value = previousSelection;
+        } else {
+            // If the previous selection is no longer valid, remove associated parameters
+            const paramsContainerId = dropdown.id.replace('connection', 'connection_params');
+            const paramsContainer = document.getElementById(paramsContainerId);
+            if (paramsContainer) {
+                paramsContainer.remove();
+            }
+        }
+    }
+
+    if (dropdownIdToUpdate) {
+        const dropdown = document.getElementById(dropdownIdToUpdate);
+        updateDropdown(dropdown, componentToExclude, connectedComponents);
+    } else {
+        allComponentsForServersAndSinks.forEach((component) => {
+            const uniqueId = component.id;
+            const componentToExclude = uniqueId;
+            const connectedComponents = getCurrentConnections(uniqueId);
+            const connectionFields = document.querySelectorAll(`#connection_fields_${uniqueId} select`);
+            connectionFields.forEach((dropdown) => {
+                updateDropdown(dropdown, componentToExclude, connectedComponents);
+            });
+        });
+    }
+}
+
+
+// Helper function to get all current connections for a component
+function getCurrentConnections(uniqueId) {
+    const connections = [];
+    let i = 1;
+    let dropdown;
+    while ((dropdown = document.getElementById(`connection_${uniqueId}_${i}`))) {
+        if (dropdown.value) {
+            connections.push(dropdown.value);
+        }
+        i++;
+    }
+    return connections;
+}
+
+
+
+    // Function to toggle the visibility of "Machine Breakdown Duration" based on input in "Time Between Machine Breakdown"
+    function toggleBreakdownDuration(count) {
+        const timeBetweenBreakdown = document.getElementById(`time_between_machine_breakdown_${count}`).value;
+        const breakdownDurationContainer = document.getElementById(`breakdown_duration_container_${count}`);
+
+        if (timeBetweenBreakdown) {
+            // Show the breakdown duration input if time between breakdown is filled
+            breakdownDurationContainer.style.display = 'block';
+        } else {
+            // Hide the breakdown duration input if time between breakdown is not filled
+            breakdownDurationContainer.style.display = 'none';
+        }
+    }
+
+    // Function to update the distribution-specific parameters based on the selection
+    function updateDistributionParams(uniqueId, prefix = '') {
+        const distTypeElementId = `${prefix}dist_type_${uniqueId}`;
+        const distParamsContainerId = `${prefix}dist_params_${uniqueId}`;
+
+        const distType = document.getElementById(distTypeElementId).value;
+        const distParamsContainer = document.getElementById(distParamsContainerId);
+        distParamsContainer.innerHTML = ''; // Clear previous inputs
+
+        let paramsHtml = '';
+
+        // Add the correct inputs based on the selected distribution
+        if (distType === 'triangular') {
+            paramsHtml = `
+                <label for="${prefix}low_${uniqueId}">Low:</label>
+                <input type="number" id="${prefix}low_${uniqueId}" name="${prefix}low_${uniqueId}" step="0.01" min="0" required><br><br>
+
+                <label for="${prefix}mode_${uniqueId}">Mode:</label>
+                <input type="number" id="${prefix}mode_${uniqueId}" name="${prefix}mode_${uniqueId}" step="0.01" required><br><br>
+
+                <label for="${prefix}high_${uniqueId}">High:</label>
+                <input type="number" id="${prefix}high_${uniqueId}" name="${prefix}high_${uniqueId}" step="0.01" min="0" required><br><br>
+            `;
+        } else if (distType === 'uniform') {
+            paramsHtml = `
+                <label for="${prefix}low_${uniqueId}">Low:</label>
+                <input type="number" id="${prefix}low_${uniqueId}" name="${prefix}low_${uniqueId}" step="0.01" min="0" required><br><br>
+
+                <label for="${prefix}high_${uniqueId}">High:</label>
+                <input type="number" id="${prefix}high_${uniqueId}" name="${prefix}high_${uniqueId}" step="0.01" min="0" required><br><br>
+            `;
+        } else if (distType === 'expovariate') {
+            paramsHtml = `
+                <label for="${prefix}lambda_${uniqueId}">Lambda (Rate):</label>
+                <input type="number" id="${prefix}lambda_${uniqueId}" name="${prefix}lambda_${uniqueId}" step="0.01" min="0" required><br><br>
+            `;
+        } else if (distType === 'normalvariate') {
+            paramsHtml = `
+                <label for="${prefix}mu_${uniqueId}">Mean (μ):</label>
+                <input type="number" id="${prefix}mu_${uniqueId}" name="${prefix}mu_${uniqueId}" step="0.01" required><br><br>
+
+                <label for="${prefix}sigma_${uniqueId}">Standard Deviation (σ):</label>
+                <input type="number" id="${prefix}sigma_${uniqueId}" name="${prefix}sigma_${uniqueId}" step="0.01" required><br><br>
+            `;
+        }
+
+        // Insert the parameters into the container
+        distParamsContainer.innerHTML = paramsHtml;
+    }
+
+    // Event listeners for each button
+    document.getElementById('add-source-btn').addEventListener('click', function() {
+        addComponent('source');
+    });
+
+    document.getElementById('add-server-btn').addEventListener('click', function() {
+        addComponent('server');
+    });
+
+    document.getElementById('add-sink-btn').addEventListener('click', function() {
+        addComponent('sink');
+    });
+
+    // Function to remove the parent container of the clicked delete button
+    function removeItem(event) {
+        const itemContainer = event.target.closest('.item-container');
+        const componentId = itemContainer.id;
+
+        // Remove any connections involving this component
+        connections = connections.filter(conn => conn.source !== componentId && conn.target !== componentId);
+        console.log("Updated connections after deletion:", connections);
+
+        itemContainer.remove();
+        updateConnectionOptions();
+    }
+
+    // Event delegation to handle the removal of dynamically added elements
+    document.addEventListener('click', function(event) {
+        if (event.target.classList.contains('remove-btn')) {
+            removeItem(event);
+        }
+    });
+
+    // Function to handle CSV file upload
+    function uploadCSV(event, count) {
+        const fileInput = event.target;
+        const file = fileInput.files[0];
+
+        if (file) {
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            const fileType = file.type;
+
+            // Check if the file has a CSV extension and correct MIME type
+            if (fileExtension === 'csv' && fileType === 'text/csv') {
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    // The file content is available in e.target.result
+                    console.log(`File content for Source ${count}:`, e.target.result);
+
+                    // You can process the CSV file data here, or pass it to the server
+                };
+
+                reader.readAsText(file);
+            } else {
+                alert("Please upload a valid CSV file.");
+                fileInput.value = ""; // Clear the invalid file input
+            }
+        }
+    }
+
+    // Helper function to capitalize the first letter of a string
+    function capitalize(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+function initializeForm() {
+    let dataToUse = null;
+
+    if (formData) {
+        // Use formData to reconstruct the form
+        dataToUse = formDataToConfigData(formData);
+    } else if (configData) {
+        // Use configData if formData is not available
+        dataToUse = configData;
+    }
+
+    if (dataToUse) {
+        // Pre-fill the form with dataToUse
+        document.getElementById('model_name').value = dataToUse.model_name || '';
+        document.getElementById('scenario_name').value = dataToUse.scenario_name || '';
+        document.getElementById('minutes').value = dataToUse.minutes || 1;
+
+        // Set original model_name and scenario_name
+        document.getElementById('original_model_name').value = dataToUse.model_name || '';
+        document.getElementById('original_scenario_name').value = dataToUse.scenario_name || '';
+        document.getElementById('original_minutes').value = dataToUse.original_minutes || 1;
+
+        // Keep track of component unique IDs and their data
+        const componentDataList = [];
+
+        // Initialize components without handling connections
+        if (dataToUse.sources) {
+            dataToUse.sources.forEach(function(source) {
+                const uniqueId = source.id || `source_${componentCounts['source'] + 1}`;
+                const addedUniqueId = addComponent('source', source, false, uniqueId); // false to skip connections
+                componentDataList.push({ uniqueId: addedUniqueId, data: source });
+            });
+        }
+        if (dataToUse.servers) {
+            dataToUse.servers.forEach(function(server) {
+                const uniqueId = server.id || `server_${componentCounts['server'] + 1}`;
+                const addedUniqueId = addComponent('server', server, false, uniqueId);
+                componentDataList.push({ uniqueId: addedUniqueId, data: server });
+            });
+        }
+        if (dataToUse.sinks) {
+            dataToUse.sinks.forEach(function(sink) {
+                const uniqueId = sink.id || `sink_${componentCounts['sink'] + 1}`;
+                const addedUniqueId = addComponent('sink', sink, false, uniqueId);
+                componentDataList.push({ uniqueId: addedUniqueId, data: sink });
+            });
+        }
+
+        // Update all connection dropdown options now that all components are added
+        updateConnectionOptions();
+
+        // Now pre-fill each component's data
+        componentDataList.forEach(function(item) {
+            const uniqueId = item.uniqueId;
+            const data = item.data;
+            const type = uniqueId.split('_')[0]; // 'source', 'server', or 'sink'
+
+            // Pre-fill common fields
+            document.getElementById(`name_${uniqueId}`).value = data.name || '';
+
+            // Set distribution type and parameters
+            if (data.distribution) {
+                document.getElementById(`dist_type_${uniqueId}`).value = data.distribution.type || '';
+                updateDistributionParams(uniqueId); // Load appropriate fields
+
+                // Set distribution parameters
+                const params = data.distribution.params || {};
+                for (const [key, value] of Object.entries(params)) {
+                    const paramField = document.getElementById(`${key}_${uniqueId}`);
+                    if (paramField) {
+                        paramField.value = value;
+                    }
+                }
+            }
+
+            // Handle arrival_table for sources
+            if (type === 'source' && data.arrival_table) {
+                // The hidden input and message are already added in componentHtml
+                // You may need to set the arrival table info if necessary
+            }
+
+            // Handle breakdown parameters for servers
+            if (type === 'server' && data.breakdown) {
+                const breakdown = data.breakdown;
+
+                // Time Between Machine Breakdown Distribution
+                if (breakdown.time_between_machine_breakdown) {
+                    const breakdownDist = breakdown.time_between_machine_breakdown;
+                    document.getElementById(`breakdown_dist_type_${uniqueId}`).value = breakdownDist.type || '';
+                    handleBreakdownSelection(uniqueId); // Show/hide breakdown duration container based on selection
+
+                    // Set distribution parameters
+                    const params = breakdownDist.params || {};
+                    for (const [key, value] of Object.entries(params)) {
+                        const paramField = document.getElementById(`breakdown_${key}_${uniqueId}`);
+                        if (paramField) {
+                            paramField.value = value;
+                        }
+                    }
+                }
+
+                // Machine Breakdown Duration Distribution
+                if (breakdown.machine_breakdown_duration) {
+                    const breakdownDurationDist = breakdown.machine_breakdown_duration;
+                    document.getElementById(`breakdown_duration_dist_type_${uniqueId}`).value = breakdownDurationDist.type || '';
+                    updateDistributionParams(uniqueId, 'breakdown_duration_'); // Load appropriate fields
+
+                    // Set distribution parameters
+                    const params = breakdownDurationDist.params || {};
+                    for (const [key, value] of Object.entries(params)) {
+                        const paramField = document.getElementById(`breakdown_duration_${key}_${uniqueId}`);
+                        if (paramField) {
+                            paramField.value = value;
+                        }
+                    }
+                }
+            }
+
+
+            // Set queue order for servers
+            if (type === 'server' && data.queue_order) {
+                document.getElementById(`queue_order_${uniqueId}`).value = data.queue_order;
+            }
+
+            // Handle addon_process_trigger for sinks
+            if (type === 'sink' && data.addon_process_trigger) {
+                document.getElementById(`addon_process_trigger_${uniqueId}`).value = data.addon_process_trigger;
+            }
+
+            // Now handle connections if any
+            if (data.connections) {
+                data.connections.forEach(function(connection, index) {
+                    const dropdownNumber = index + 1;
+        
+                    // Ensure the connection dropdown exists
+                    let connectionField = document.getElementById(`connection_${uniqueId}_${dropdownNumber}`);
+                    if (!connectionField) {
+                        // Create the connection dropdown if it doesn't exist
+                        const container = document.getElementById(`connection_fields_${uniqueId}`);
+                        let newDropdownHtml = `
+                            <label for="connection_${uniqueId}_${dropdownNumber}">Connect to:</label>
+                            <select id="connection_${uniqueId}_${dropdownNumber}" name="connection_${uniqueId}_${dropdownNumber}" onchange="addConnectionDropdown('${uniqueId}', ${dropdownNumber}, '${uniqueId}')">
+                                <option value="">Select Target Component</option>
+                            </select><br><br>
+        
+                            <!-- Container for connection-specific parameters -->
+                            <div id="connection_params_${uniqueId}_${dropdownNumber}"></div>`;
+                        container.insertAdjacentHTML('beforeend', newDropdownHtml);
+        
+                        // Update the options for this dropdown
+                        updateConnectionOptions(`connection_${uniqueId}_${dropdownNumber}`, uniqueId, getCurrentConnections(uniqueId));
+                        connectionField = document.getElementById(`connection_${uniqueId}_${dropdownNumber}`);
+                    }
+        
+                    // Set the value of the connection dropdown
+                    connectionField.value = connection.target;
+        
+                    // Call addConnectionDropdown to handle parameters
+                    addConnectionDropdown(uniqueId, dropdownNumber, uniqueId);
+        
+                    // Set connection parameters
+                    if (connection.probability !== null && connection.probability !== undefined) {
+                        const probabilityField = document.getElementById(`probability_${uniqueId}_${dropdownNumber}`);
+                        if (probabilityField) {
+                            probabilityField.value = connection.probability;
+                        }
+                    }
+                    if (connection.process_duration !== null && connection.process_duration !== undefined) {
+                        const processDurationField = document.getElementById(`process_duration_${uniqueId}_${dropdownNumber}`);
+                        if (processDurationField) {
+                            processDurationField.value = connection.process_duration;
+                        }
+                    }
+                });
+            }
+        });
+    }
+}
+
+
+function formDataToConfigData(formData) {
+    let config = {
+        model_name: formData['model_name'] ? formData['model_name'][0] : '',
+        scenario_name: formData['scenario_name'] ? formData['scenario_name'][0] : '',
+        sources: [],
+        servers: [],
+        sinks: []
+    };
+
+    // Process sources
+    let sourceIndices = new Set();
+    for (let key in formData) {
+        if (key.startsWith('name_source_')) {
+            let uniqueId = key.replace('name_', '');
+            sourceIndices.add(uniqueId);
+        }
+    }
+    sourceIndices.forEach(function(uniqueId) {
+        let source = {
+            name: formData[`name_${uniqueId}`] ? formData[`name_${uniqueId}`][0] : '',
+            distribution: {
+                type: formData[`dist_type_${uniqueId}`] ? formData[`dist_type_${uniqueId}`][0] : '',
+                params: {}
+            },
+            arrival_table: null,
+            connections: []
+        };
+
+        // Set distribution parameters
+        let distType = source.distribution.type;
+        if (distType) {
+            let params = {};
+            if (distType === 'triangular') {
+                params['low'] = formData[`low_${uniqueId}`] ? formData[`low_${uniqueId}`][0] : '';
+                params['mode'] = formData[`mode_${uniqueId}`] ? formData[`mode_${uniqueId}`][0] : '';
+                params['high'] = formData[`high_${uniqueId}`] ? formData[`high_${uniqueId}`][0] : '';
+            } else if (distType === 'uniform') {
+                params['low'] = formData[`low_${uniqueId}`] ? formData[`low_${uniqueId}`][0] : '';
+                params['high'] = formData[`high_${uniqueId}`] ? formData[`high_${uniqueId}`][0] : '';
+            } else if (distType === 'expovariate') {
+                params['lambd'] = formData[`lambd_${uniqueId}`] ? formData[`lambd_${uniqueId}`][0] : '';
+            } else if (distType === 'normalvariate') {
+                params['mu'] = formData[`mu_${uniqueId}`] ? formData[`mu_${uniqueId}`][0] : '';
+                params['sigma'] = formData[`sigma_${uniqueId}`] ? formData[`sigma_${uniqueId}`][0] : '';
+            }
+            source.distribution.params = params;
+        }
+
+        // Arrival table (we cannot pre-populate file inputs, but we can note that one was uploaded)
+        if (formData[`existing_arrival_table_${uniqueId}`]) {
+            source.arrival_table = formData[`existing_arrival_table_${uniqueId}`][0];
+        }
+
+        // Handle connections
+        let connections = [];
+        let index = 1;
+        while (true) {
+            let connectionKey = `connection_${uniqueId}_${index}`;
+            if (!formData[connectionKey]) {
+                break;
+            }
+            let target = formData[connectionKey][0];
+            if (!target) {
+                break;
+            }
+            let connection = {
+                target: target,
+                probability: formData[`probability_${uniqueId}_${index}`] ? formData[`probability_${uniqueId}_${index}`][0] : null,
+                process_duration: formData[`process_duration_${uniqueId}_${index}`] ? formData[`process_duration_${uniqueId}_${index}`][0] : null
+            };
+            connections.push(connection);
+            index++;
+        }
+        source.connections = connections;
+
+        config.sources.push(source);
+    });
+
+    // Process servers
+    let serverIndices = new Set();
+    for (let key in formData) {
+        if (key.startsWith('name_server_')) {
+            let uniqueId = key.replace('name_', '');
+            serverIndices.add(uniqueId);
+        }
+    }
+    serverIndices.forEach(function(uniqueId) {
+        let server = {
+            name: formData[`name_${uniqueId}`] ? formData[`name_${uniqueId}`][0] : '',
+            distribution: {
+                type: formData[`dist_type_${uniqueId}`] ? formData[`dist_type_${uniqueId}`][0] : '',
+                params: {}
+            },
+            queue_order: formData[`queue_order_${uniqueId}`] ? formData[`queue_order_${uniqueId}`][0] : 'FIFO',
+            breakdown: {},
+            connections: []
+        };
+
+        // Set distribution parameters
+        let distType = server.distribution.type;
+        if (distType) {
+            let params = {};
+            if (distType === 'triangular') {
+                params['low'] = formData[`low_${uniqueId}`] ? formData[`low_${uniqueId}`][0] : '';
+                params['mode'] = formData[`mode_${uniqueId}`] ? formData[`mode_${uniqueId}`][0] : '';
+                params['high'] = formData[`high_${uniqueId}`] ? formData[`high_${uniqueId}`][0] : '';
+            } else if (distType === 'uniform') {
+                params['low'] = formData[`low_${uniqueId}`] ? formData[`low_${uniqueId}`][0] : '';
+                params['high'] = formData[`high_${uniqueId}`] ? formData[`high_${uniqueId}`][0] : '';
+            } else if (distType === 'expovariate') {
+                params['lambd'] = formData[`lambd_${uniqueId}`] ? formData[`lambd_${uniqueId}`][0] : '';
+            } else if (distType === 'normalvariate') {
+                params['mu'] = formData[`mu_${uniqueId}`] ? formData[`mu_${uniqueId}`][0] : '';
+                params['sigma'] = formData[`sigma_${uniqueId}`] ? formData[`sigma_${uniqueId}`][0] : '';
+            }
+            server.distribution.params = params;
+        }
+
+        // Breakdown parameters
+        let timeBetweenBreakdown = formData[`time_between_machine_breakdown_${uniqueId}`] ? formData[`time_between_machine_breakdown_${uniqueId}`][0] : '';
+        if (timeBetweenBreakdown) {
+            server.breakdown['time_between_machine_breakdown'] = timeBetweenBreakdown;
+            let breakdownDuration = formData[`machine_breakdown_duration_${uniqueId}`] ? formData[`machine_breakdown_duration_${uniqueId}`][0] : '';
+            if (breakdownDuration) {
+                server.breakdown['machine_breakdown_duration'] = breakdownDuration;
+            }
+        }
+
+        // Handle connections
+        let connections = [];
+        let index = 1;
+        while (true) {
+            let connectionKey = `connection_${uniqueId}_${index}`;
+            if (!formData[connectionKey]) {
+                break;
+            }
+            let target = formData[connectionKey][0];
+            if (!target) {
+                break;
+            }
+            let connection = {
+                target: target,
+                probability: formData[`probability_${uniqueId}_${index}`] ? formData[`probability_${uniqueId}_${index}`][0] : null,
+                process_duration: formData[`process_duration_${uniqueId}_${index}`] ? formData[`process_duration_${uniqueId}_${index}`][0] : null
+            };
+            connections.push(connection);
+            index++;
+        }
+        server.connections = connections;
+
+        config.servers.push(server);
+    });
+
+    // Process sinks
+    let sinkIndices = new Set();
+    for (let key in formData) {
+        if (key.startsWith('name_sink_')) {
+            let uniqueId = key.replace('name_', '');
+            sinkIndices.add(uniqueId);
+        }
+    }
+    sinkIndices.forEach(function(uniqueId) {
+        let sink = {
+            name: formData[`name_${uniqueId}`] ? formData[`name_${uniqueId}`][0] : '',
+            addon_process_trigger: formData[`addon_process_trigger_${uniqueId}`] ? formData[`addon_process_trigger_${uniqueId}`][0] : ''
+        };
+
+        config.sinks.push(sink);
+    });
+
+    return config;
+}
+
+
+
+    window.onload = initializeForm;
+</script>
+<h2>Load Existing Configuration</h2>
+<form action="{{ url_for('load_configuration') }}" method="POST">
+    <label for="config_file">Select Configuration:</label>
+    <select id="config_file" name="config_file">
+        {% for config in configurations %}
+        <option value="{{ config.file_path }}">{{ config.model_name }} - {{ config.scenario_name }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit">Load Configuration</button>
+</form>
+<h2>Delete Scenario</h2>
+<form action="{{ url_for('delete_scenario') }}" method="POST" id="deleteScenario">
+    <label for="scenario_delete">Select Scenario to Delete:</label>
+    <select id="scenario_delete" name="scenario_delete">
+        {% for config in configurations %}
+        <option value="user/{{ session.username }}/{{ config.model_name }}/{{ config.scenario_name }}">
+            {{ config.model_name }} - {{ config.scenario_name }}
+        </option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="delete-btn" style="background-color: red; color: white;">Delete Scenario Folder</button>
+</form>
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <ul class="flashes">
+        {% for category, message in messages %}
+            <li class="{{ category }}">{{ message }}</li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+{% endwith %}
+
+{% endblock %}
+

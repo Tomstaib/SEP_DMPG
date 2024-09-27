@@ -1,0 +1,19 @@
+{
+    "model_name": "Test",
+    "scenario_name": "Test2",
+    "simulation_minutes": 0,
+    "sources": [
+        {
+            "id": "source_1",
+            "name": "0",
+            "distribution": {
+                "type": "",
+                "params": {}
+            },
+            "connections": [],
+            "arrival_table": null
+        }
+    ],
+    "servers": [],
+    "sinks": []
+}

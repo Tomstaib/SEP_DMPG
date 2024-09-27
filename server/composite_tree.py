@@ -2,9 +2,8 @@ from __future__ import annotations
 import os
 import time
 from graphviz import Digraph
-from models.model_pcb import setup_model_pcb
-from util.nodes_for_composite import ManagementNode, Node, input_positive_number, ComputeNode
-from util.singleton import Singleton
+from nodes_for_composite import ManagementNode, Node, input_positive_number, ComputeNode
+from singleton import Singleton
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -84,8 +83,46 @@ class CompositeTree(metaclass=Singleton):
             print(f"Error: {str(e)}")
 
     @classmethod
+    def create_custom_composite_tree_with_params(cls, num_children_per_parent: int,
+                                                 depth_of_tree: int) -> ManagementNode:
+        """
+        Create a custom composite tree with the provided number of children per parent and tree depth.
+        Returns the root of the created tree.
+        """
+        try:
+            # Lösche den vorherigen Baum
+            cls.destroy_composite_tree()
+
+            # Setze die Wurzel des Baums
+            current_level_nodes = [cls.__root]
+
+            for depth in range(depth_of_tree):
+                next_level_nodes = []
+                for parent_node in current_level_nodes:
+                    for _ in range(num_children_per_parent):
+                        if depth == depth_of_tree - 1:
+                            # Letzte Ebene: ComputeNode
+                            child_node = ComputeNode()
+                        else:
+                            # Innerhalb der Tiefe: ManagementNode
+                            child_node = ManagementNode(parent=parent_node)
+                        parent_node.add(child_node)
+                        next_level_nodes.append(child_node)
+                current_level_nodes = next_level_nodes
+
+            print(
+                f"Composite tree with depth {depth_of_tree} and {num_children_per_parent} children per parent created.")
+
+            # Gebe die Wurzel des Baums zurück
+            return cls.__root
+
+        except Exception as e:
+            print(f"Error: {str(e)}")
+            return None  # Im Fehlerfall None zurückgeben
+
+    @classmethod
     def __start_file_monitoring(cls) -> None:
-        path_to_monitor = r"C:\Users\thoma\Documents\Git"  # Replace with the directory where job files are saved
+        path_to_monitor = r"C:\Users\Felix\Documents\GitHub\SEP_DMPG\src\util\flask\test"  # Replace with the directory where job files are saved
         event_handler = cls.NewJobFileHandler()
         cls.__observer = Observer()
         cls.__observer.schedule(event_handler, path_to_monitor, recursive=False)
@@ -143,16 +180,19 @@ class CompositeTree(metaclass=Singleton):
                 composite_tree_cls._process_job_file(file_path)
 
     @classmethod
-    def visualize_tree(cls):
-        """simply visualize the tree to verify the correct structure"""
+    def visualize_tree(cls, output_path='CompositeTree'):
+        """Visualize the tree and save it as a PNG file in the specified output path."""
         try:
+            # Erstelle den Baum mit Graphviz und speichere das Bild
             dot = Digraph(comment='CompositeTree')
             cls._add_nodes_to_graph(dot, cls.__root)
-            dot_path = 'CompositeTree.gv'
-            dot.render(dot_path, view=True)  # This will create and open the .gv file
-            print(f"Graphviz file created at: {os.path.abspath(dot_path)}")
+
+            # Speichere als PNG; Graphviz hängt automatisch die Dateierweiterung '.png' an
+            dot.render(output_path, format='png', cleanup=True)  # Speichere als PNG und lösche die .gv Datei
+
+            print(f"Baum wurde im Verzeichnis {os.path.abspath(output_path)} gespeichert.")
         except Exception as e:
-            print(f"Error generating graphviz file: {str(e)}")
+            print(f"Error generating tree visualization: {str(e)}")
 
     @staticmethod
     def _add_nodes_to_graph(dot: Digraph, node: Node):
@@ -309,12 +349,11 @@ class CompositeTree(metaclass=Singleton):
             return False
 
     @classmethod
-    def start_simulation(cls):
+    def start_simulation(cls, num_replications: int, num_compute_nodes: int, slurm_account: str,
+                         slurm_username: str, model_script: str, time_limit: int):
         """
         Starts the simulation from the root node.
-        Prompts the user for the number of ComputeNodes to use.
-        If the number is higher than the available non-running ComputeNodes,
-        asks if the user wants to create additional nodes.
+        Uses the provided number of ComputeNodes, replications, Slurm account details, and script for the simulation.
         """
         try:
             total_compute_nodes: int = cls.count_compute_nodes(cls.__root)
@@ -323,31 +362,23 @@ class CompositeTree(metaclass=Singleton):
             print(f"Total ComputeNodes: {total_compute_nodes}")
             print(f"ComputeNodes available for simulation (not running): {not_running_compute_nodes}")
 
-            num_replications: int = input_positive_number(
-                "Please enter the number of replications you wish to simulate")
+            # Falls die Anzahl der gewünschten Compute-Nodes größer als verfügbar ist, korrigiere sie
+            if num_compute_nodes > not_running_compute_nodes:
+                num_compute_nodes = not_running_compute_nodes
+                print(f"Adjusting compute nodes to available number: {num_compute_nodes}")
 
-            num_compute_nodes_to_use: int = input_positive_number(
-                "Please enter the number of ComputeNodes to use for the simulation")
+            if num_compute_nodes == 0:
+                print("Keine Compute-Nodes verfügbar für die Simulation.")
+                return
 
-            replications_per_node: int = round(num_replications / num_compute_nodes_to_use)
+            replications_per_node: int = round(num_replications / num_compute_nodes)
 
-            if not cls.confirm_input(f"This would result in {replications_per_node} replications per Compute Node"
-                                     f"\nDo you want to start the simulation this way? [y/n]: "):
-                cls.start_simulation()
+            print(
+                f"Simulation wird mit {num_compute_nodes} Compute-Nodes und {replications_per_node} Replikationen pro Node gestartet.")
 
-            if num_compute_nodes_to_use > not_running_compute_nodes:
-                additional_nodes_needed: int = num_compute_nodes_to_use - not_running_compute_nodes
-                print(f"You need {additional_nodes_needed} additional ComputeNodes.")
-
-                if cls.confirm_input(
-                        f"Do you want to create {additional_nodes_needed} additional ComputeNodes? [y/n]:"):
-                    cls._create_additional_compute_nodes(additional_nodes_needed)
-                else:
-                    print("Simulation aborted due to insufficient ComputeNodes.")
-                    return
-
-            print(f"Starting the simulation with {num_compute_nodes_to_use} ComputeNodes.")
-            cls._run_simulation(cls.__root, num_compute_nodes_to_use, replications_per_node)
+            # Simulation starten mit den übergebenen Parametern
+            cls._run_simulation(cls.__root, num_compute_nodes, replications_per_node, slurm_account, slurm_username,
+                                model_script, time_limit)
 
         except Exception as e:
             print(f"Error starting simulation: {str(e)}")
@@ -361,16 +392,17 @@ class CompositeTree(metaclass=Singleton):
         created_nodes = 0
 
         while created_nodes < num_nodes:
-            cls.add_node_interactively()
+            cls.add_node_interactively()  # TODO add a logic to always create ComputeNodes here
             created_nodes += 1
 
         print(f"Created {num_nodes} additional ComputeNodes.")
 
     @classmethod
-    def _run_simulation(cls, management_node: ManagementNode,
-                        num_compute_nodes_to_use: int, replicatons_per_node: int) -> None:
+    def _run_simulation(cls, management_node: ManagementNode, num_compute_nodes_to_use: int, replications_per_node: int,
+                        slurm_account: str, slurm_username: str, model_script: str, time_limit: int,
+                        time_to_simulate: int) -> None:
         """
-        Recursive method to start the simulation on the specified number of ComputeNodes.
+        Recursive method to start the simulation on the specified number of ComputeNodes with the given parameters.
         """
         count = 0
 
@@ -384,7 +416,17 @@ class CompositeTree(metaclass=Singleton):
                 return
 
             if isinstance(node, ComputeNode) and not node.is_running():
-                node.distribute_and_compute(model=setup_model_pcb, minutes=900, num_replications=replicatons_per_node)
+                # Simulation auf dem Knoten starten
+                node.distribute_and_compute(
+                    model='model_pcb.py',
+                    minutes=900,
+                    num_replications=replications_per_node,
+                    slurm_account=slurm_account,
+                    model_script=model_script,
+                    time_limit=time_limit,
+                    slurm_username=slurm_username,
+                    time_to_simulate=time_to_simulate  # Neuer Parameter wird hier übergeben
+                )
                 count += 1
 
             if isinstance(node, ManagementNode):
@@ -397,19 +439,11 @@ class CompositeTree(metaclass=Singleton):
 
 def main():
     start: float = time.time()
-    composite_tree1: CompositeTree = CompositeTree()
-    print(id(composite_tree1))
     composite_tree2: CompositeTree = CompositeTree()
     print(id(composite_tree2))
-    print(composite_tree1 is composite_tree2)
     composite_tree2.create_custom_composite_tree()
     print(globals())
     composite_tree2.start_simulation()
-    composite_tree2.visualize_tree()
-    composite_tree2.add_node_interactively()
-    composite_tree2.visualize_tree()
-    composite_tree2.remove_node_interactively()
-    composite_tree2.visualize_tree()
 
     # root: ManagementNode = create_composite_tree(NUM_REPLICATIONS)
     # root: ManagementNode = create_custom_composite_tree()

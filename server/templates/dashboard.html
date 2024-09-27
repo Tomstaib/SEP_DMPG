@@ -1,0 +1,29 @@
+<!-- dashboard.html -->
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+    <h1>Welcome to the Dashboard</h1>
+
+    <!-- Informational Text for the Dashboard -->
+    <div class="alert alert-info">
+        <p>This dashboard provides an overview of the key features available in the system, including tools for configuring and running simulations, visualizing data, and submitting jobs to be processed.</p>
+
+        <h3>Sections Covered in the Dashboard:</h3>
+
+        <ul>
+            <li><strong>Runtime Prediction:</strong> This section offers runtime predictions for jobs once they reach 10% completion. The system calculates metrics such as the computed time, remaining time, and total runtime prediction, helping users monitor job progress.</li>
+            
+            <li><strong>Visualization Dashboard:</strong> This section includes a live Grafana dashboard that provides real-time data monitoring, including graphs, performance metrics, and other key indicators relevant to your simulations and jobs.</li>
+
+            <li><strong>Experiment Environment:</strong> In this environment, users can set up simulation configurations by defining parameters for sources, servers, and sinks. This is where users can experiment with different setups before actually submitting jobs for execution. It's designed to let users configure all the necessary aspects of a simulation and test different scenarios.</li>
+            
+            <li><strong>Job Submission:</strong> After configuring the simulation in the experiment environment, users can submit jobs for processing. In the job submission section, users specify the number of compute nodes, replications, and select a pre-configured scenario. The job submission ensures that the simulation is executed on the available resources, with options for monitoring and managing job execution.</li>
+        </ul>
+
+        <p>Explore the various sections for detailed features and functionality.</p>
+    </div>
+
+{% endblock %}
+
