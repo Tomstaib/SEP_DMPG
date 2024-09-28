@@ -21,13 +21,7 @@ def get_cpu_info():
     cpu_info = {
         "Anzahl der physischen Kerne": psutil.cpu_count(logical=False),
     }
-
-    cpu_freq = psutil.cpu_freq()
-    if cpu_freq is not None:
-        cpu_info["Maximale CPU-Frequenz"] = f"{cpu_freq.max / 1000:.2f} GHz"
-    else:
-        cpu_info["Maximale CPU-Frequenz"] = "Nicht verfügbar"
-
+ 
     return cpu_info
 
 
