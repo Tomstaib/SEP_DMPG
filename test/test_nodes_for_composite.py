@@ -5,13 +5,13 @@ import os
 import sys
 from io import StringIO
 
-sys.path.append('/app/Verteilung/util')
+
 
 from unittest.mock import patch
 from unittest.mock import MagicMock
 
 # Für Dockercontainer zum initialisierren der lokalen Module
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../VerteilteBerechnungen')))
 
 from util.nodes_for_composite import Node, ManagementNode, ComputeNode, create_composite_tree, MINIMUM_OF_REPLICATIONS_FOR_COMPOSITE, NUM_REPLICATIONS, compute_tree_sizes, add_nodes, input_positive_number
 
@@ -66,6 +66,83 @@ class TestNode(unittest.TestCase):
 
         with self.assertRaises(Warning):
             node.set_parent(parent_node)  # Warning expected
+
+class TestNodeEquality(unittest.TestCase):
+    '''
+    Test the __eq__ method for the Node class.
+    '''
+    def setUp(self):
+        # Set up some example nodes
+        self.node1 = ConcreteNode()
+        self.node2 = ConcreteNode()
+        self.node3 = ConcreteNode()
+        self.node4 = ConcreteNode()
+
+        # Set parents and names
+        self.node1._parent = None
+        self.node1._name = "NodeA"
+        self.node2._parent = None
+        self.node2._name = "NodeA"
+
+        self.node3._parent = self.node1
+        self.node3._name = "NodeB"
+
+        self.node4._parent = self.node1
+        self.node4._name = "NodeB"
+
+    def test_equal_nodes(self):
+        # Test nodes with the same _parent and _name should be equal
+        self.assertEqual(self.node1, self.node2, "Nodes with the same parent and name should be equal")
+
+    def test_not_equal_parent(self):
+        # Test nodes with different parents should not be equal
+        self.node2._parent = self.node3  # Change parent
+        self.assertNotEqual(self.node1, self.node2, "Nodes with different parents should not be equal")
+
+    def test_not_equal_name(self):
+        # Test nodes with different names should not be equal
+        self.node2._name = "DifferentName"
+        self.assertNotEqual(self.node1, self.node2, "Nodes with different names should not be equal")
+
+    def test_not_equal_type(self):
+        # Test comparing Node with a non-Node object
+        self.assertNotEqual(self.node1, "non-node-object", "Node should not be equal to a non-Node object")
+
+    def test_equal_complex(self):
+        # Test nodes with same complex parent and name setup
+        self.assertEqual(self.node3, self.node4, "Nodes with the same parent and name in a hierarchy should be equal")
+
+class TestNodeRepr(unittest.TestCase):
+    '''
+    Test the __repr__ method for the Node class with the new implementation.
+    '''
+    def setUp(self):
+        # Set up some example nodes
+        self.node1 = ConcreteNode()
+        self.node2 = ConcreteNode()
+
+        # Set parents and names
+        self.node1._parent = None
+        self.node1._name = "NodeA"
+
+        self.node2._parent = self.node1
+        self.node2._name = "NodeB"
+
+    def test_repr_no_parent(self):
+        # Test __repr__ when there is no parent
+        expected_repr = "ConcreteNode(name=NodeA, parent=None)"
+        self.assertEqual(repr(self.node1), expected_repr, "The __repr__ output is incorrect when there is no parent")
+
+    def test_repr_with_parent(self):
+        # Test __repr__ when there is a parent node
+        # The expected_repr now includes the parent name and its memory address (id)
+        parent_id = id(self.node1)
+        expected_repr = f"ConcreteNode(name=NodeB, parent=NodeA (id={parent_id}))"
+        self.assertEqual(repr(self.node2), expected_repr, "The __repr__ output is incorrect when there is a parent")
+
+    def test_repr_class_name(self):
+        # Test that the class name is correctly included in the __repr__
+        self.assertIn("ConcreteNode", repr(self.node1), "The class name should be 'ConcreteNode' in the __repr__ output")
 
 class TestManagementNode(unittest.TestCase):
     '''
@@ -335,6 +412,38 @@ class TestInputPositivNumber(unittest.TestCase):
             output = fake_out.getvalue()
             self.assertIn("Error: Entered number must be greater than zero", output)
             self.assertIn("Error: invalid literal for int() with base 10", output)
+
+class TestDistributeAndCompute(unittest.TestCase):
+
+    def setUp(self):
+        # Set up a management node with two children
+        self.root = ManagementNode()  # Parent node
+        self.child1 = ComputeNode()   # Child node 1
+        self.child2 = ComputeNode()   # Child node 2
+
+        # Add children to the root node
+        self.root.add(self.child1)
+        self.root.add(self.child2)
+
+    @patch('VerteilteBerechnungen.util.simulations.run_simulation')
+    @patch('VerteilteBerechnungen.util.simulations.run_replications')
+    def test_distribute_and_compute_on_children(self, mock_run_replications, mock_run_simulation):
+        # Mock the distribute_and_compute method for the child nodes
+        self.child1.distribute_and_compute = MagicMock()
+        self.child2.distribute_and_compute = MagicMock()
+
+        # Mock the model object
+        model = MagicMock()
+
+        # Call distribute_and_compute on the root node
+        self.root.distribute_and_compute(model=model, minutes=10, num_replications=5)
+
+        # Ensure that distribute_and_compute was called for both child nodes
+        self.child1.distribute_and_compute.assert_called_once_with(model=model, minutes=10, num_replications=5)
+        self.child2.distribute_and_compute.assert_called_once_with(model=model, minutes=10, num_replications=5)
+
+
+
 
 if __name__ == "__main__":
     unittest.main()
