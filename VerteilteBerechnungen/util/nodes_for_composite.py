@@ -28,7 +28,7 @@ class Node(ABC):
 
     @abstractmethod
     def distribute_and_compute(self, model, minutes: int, num_replications: int) -> None:
-        pass
+        pass #pragma: no cover
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Node):
@@ -36,7 +36,11 @@ class Node(ABC):
         return (self._parent == other._parent) and (self._name == other._name)  
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(name={self._name}, parent={self._parent})"
+        if self._parent is not None:
+            parent_repr = f"{self._parent._name} (id={id(self._parent)})"
+        else:
+            parent_repr = None
+        return f"{self.__class__.__name__}(name={self._name}, parent={parent_repr})"
 
     def get_parent(self) -> ManagementNode | None:
         return self._parent
