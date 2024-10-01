@@ -1,7 +1,13 @@
+import logging
+import database_connection
+
 from sqlalchemy import Column, ForeignKey, Integer, String, Float, TIMESTAMP, create_engine, UniqueConstraint
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import declarative_base, relationship
 
+
 Base = declarative_base()
+
 
 class HSUser(Base):
     __tablename__ = 'HSUser'
@@ -9,7 +15,8 @@ class HSUser(Base):
     user_name = Column(String(255))
     models = relationship('Model', back_populates='hsuser', cascade="all, delete-orphan")
 
-    __table_args__ = (UniqueConstraint('user_name', name='unique_user_name'),) # Unique username in database
+    __table_args__ = (UniqueConstraint('user_name', name='unique_user_name'),)
+
 
 class Model(Base):
     __tablename__ = 'Model'
@@ -18,7 +25,7 @@ class Model(Base):
     user_id = Column(Integer, ForeignKey('HSUser.user_id', ondelete="CASCADE"))
     hsuser = relationship('HSUser', back_populates='models')
     scenarios = relationship('Scenario', back_populates='model', cascade="all, delete-orphan")
-
+    __table_args__ = (UniqueConstraint('model_name', 'user_id'),)
 
 class Scenario(Base):
     __tablename__ = 'Scenario'
@@ -40,7 +47,7 @@ class Scenario(Base):
     connections = relationship('Connection', back_populates='scenario', cascade="all, delete-orphan")
     entities = relationship('Entity', back_populates='scenario', cascade="all, delete-orphan")
     simulations = relationship('Simulation', back_populates='scenario', cascade="all, delete-orphan")
-
+    __table_args__ = (UniqueConstraint('scenario_name', 'model_id'),)
 
 class Source(Base):
     __tablename__ = 'Source'
@@ -143,11 +150,46 @@ def create_tables():
     db_host = 'imt-sep-001.lin.hs-osnabrueck.de'
     db_port = '55432'
     db_name = 'distributed_computing'
-    db_password = 'oishooX2iefeiNai'
 
-    db_url = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    db_url = f"postgresql+psycopg2://{db_user}@{db_host}:{db_port}/{db_name}"
     engine = create_engine(db_url)
     Base.metadata.create_all(engine)
 
 
-create_tables()
+def main():
+    """Main function to connect to the database and create the database scheme"""
+    # Attempt to connect to the database
+    engine = database_connection.connect_to_db()
+    if engine:
+        try:
+            # Create the tables if the connection was successful
+            create_tables()
+            logging.info("Tables created")
+        except SQLAlchemyError as se:
+            logging.exception("Failed to create tables")
+            return  # Optional: Return or exit on critical error
+
+        # Create a session
+        session = database_connection.create_session(engine)
+        if session:
+            try:
+                # Commit session
+                session.commit()
+                logging.info("Session committed successfully")
+            except SQLAlchemyError as se:
+                session.rollback()
+                logging.error(f"Failed to commit session: {se}")
+            except Exception as e:
+                session.rollback()
+                logging.exception("An unexpected error occurred during session commit")
+            finally:
+                session.close()
+        else:
+            # Case: No session available
+            logging.error("Failed to create session.")
+    else:
+        logging.error("Failed to connect to the database")
+
+# Ensure main() is called only when this script is executed directly
+if __name__ == "__main__":
+    main()
