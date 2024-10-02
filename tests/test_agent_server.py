@@ -8,7 +8,7 @@ import sys
 # Add the src directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-from util.agent_server import app, AGENTS_DIR, BASE_DIR
+from util.flask.agent_server import app, BASE_DIR
 
 
 class TestAgentServer(unittest.TestCase):
@@ -78,7 +78,7 @@ class TestAgentServer(unittest.TestCase):
                                     headers=headers)
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Data received successfully', response.data)
-        from util.agent_server import valid_api_keys
+        from util.flask.agent_server import valid_api_keys
         self.assertNotIn('test-api-key', valid_api_keys)
 
     def test_receive_data_invalid_key(self):

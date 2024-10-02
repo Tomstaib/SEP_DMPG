@@ -1,8 +1,20 @@
+import json
 import logging
 from typing import Tuple, Callable, Union
 
 
 ROUND_DECIMAL_PLACES = 4
+
+
+def load_config(config_path: str) -> dict:
+    """
+    Load configuration from the specified file path.
+
+    :param config_path: Path to the configuration file as a string or bytes.
+    :return: Parsed JSON content of the configuration file as a dictionary.
+    """
+    with open(config_path, 'r') as f:
+        return json.load(f)
 
 
 def get_value_from_distribution_with_parameters(dwp: Tuple[Callable[..., float]]):

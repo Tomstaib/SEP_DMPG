@@ -41,7 +41,7 @@ def setup_model_pcb_with_arrival_table(env):
 
 
 def main():
-    run_simulation(model=setup_model_pcb_with_arrival_table, minutes=900, store_pivot_in_file=r"E:\projects\SEP_DMPG\src\util\normal_result.csv")
+    run_simulation(model=setup_model_pcb_with_arrival_table, minutes=900)
     # visualize_system()
 
 

@@ -5,12 +5,12 @@
 {% block content %}
 <style>
     /* Main content styling */
-    #main-content {
+    /*#main-content {
         height: 100vh;
         overflow-y: auto; /* Enable scrolling in the main content */
         padding: 20px;
         box-sizing: border-box;
-    }
+    }*/
 
     button {
         margin-top: 10px;
@@ -34,7 +34,7 @@
         border: none;
         padding: 5px 10px;
         cursor: pointer;
-        margin-top: 10px; /* Space between the last input and the button */
+        margin-top: 50px; /* Space between the last input and the button */
         display: block; /* Makes the button appear directly below the inputs */
         width: 10%; /* Full width for better UX */
         text-align: center;
@@ -42,6 +42,18 @@
 </style>
 
     <h1>Generate Simulation Configuration</h1>
+
+    <div class="alert alert-info">
+        <p>This page allows users to create and configure simulation setups by providing details such as model name, scenario name, and simulation duration. Users can configure the sources, servers, and sinks with specific distribution types and optional machine breakdown configurations.</p>
+        
+        <p><strong>Source Configuration:</strong> Users can add multiple sources with configurable creation time distributions and optional file uploads for arrival tables.</p>
+        
+        <p><strong>Server Configuration:</strong> Servers can be added, each with its own processing time distribution and optional breakdown configurations. Queue order can also be set.</p>
+        
+        <p><strong>Sink Configuration:</strong> Users can configure sinks. The addon process trigger is currently not implemented because it would reference a python function.</p>
+
+        <p>Existing configurations can be loaded from saved files, and scenario folders can be deleted from the system when no longer needed.</p>
+    </div>
 
     <form action="{{ url_for('experimental_environment') }}" method="POST" enctype="multipart/form-data" id="experimentForm">
 
@@ -54,13 +66,13 @@
         <input type="text" id="scenario_name" name="scenario_name" required value="{{ form_data['scenario_name'][0] if form_data and 'scenario_name' in form_data else '' }}"><br><br>
 
         <!-- Simulation Minutes -->
-        <label for="simulation_minutes">Simulation minutes:</label>
-        <input type="number" id="simulation_minutes" name="simulation_minutes" required min="1" value="{{ form_data['simulation_minutes'][0] if form_data and 'simulation_minutes' in form_data else 1 }}"><br><br>
+        <label for="minutes">Simulation minutes:</label>
+        <input type="number" id="minutes" name="minutes" required min="1" value="{{ form_data['minutes'][0] if form_data and 'minutes' in form_data else 1 }}"><br><br>
 
         <!-- Hidden fields for original names -->
         <input type="hidden" name="original_model_name" id="original_model_name">
         <input type="hidden" name="original_scenario_name" id="original_scenario_name">
-        <input type="hidden" name="original_simulation_minutes" id="original_simulation_minutes">
+        <input type="hidden" name="original_minutes" id="original_minutes">
 
         <!-- Source Section -->
         <h3>Source Configuration</h3>
@@ -97,11 +109,22 @@
     let connections = [];
 
     // General function to add a new component
-function addComponent(type, data = null, handleConnections = true) {
-    componentCounts[type]++;
+function addComponent(type, data = null, handleConnections = true, uniqueId = null) {
+    let count; // Declare 'count' at the function scope
+
+    if (!uniqueId) {
+        componentCounts[type]++;
+        count = componentCounts[type];
+        uniqueId = `${type}_${count}`;
+    } else {
+        // Update componentCounts[type] if necessary
+        count = parseInt(uniqueId.split('_')[1]);
+        if (count >= componentCounts[type]) {
+            componentCounts[type] = count;
+        }
+    }
+
     const container = document.getElementById(`${type}-container`);
-    const count = componentCounts[type];
-    const uniqueId = `${type}_${count}`;
 
     let componentHtml = `
         <div id="${uniqueId}" class="item-container">
@@ -133,11 +156,11 @@ function addComponent(type, data = null, handleConnections = true) {
         if (data && data.arrival_table) {
             componentHtml += `
                 <input type="hidden" id="existing_arrival_table_${uniqueId}" name="existing_arrival_table_${uniqueId}" value="${data.arrival_table}">
-                <p>Existing Arrival Table: ${data.arrival_table}</p>
+                <p>Existing Arrival Table: ${data.arrival_table} (If you're seeing a cluster path, you have to upload the arrival table again)</p>
                 <p>You can upload a new file to replace the existing arrival table.</p>`;
         }
     }
-    // Fields specific to 'server' component
+
     if (type === 'server') {
         componentHtml += `
             <!-- Processing Time Distribution Fields -->
@@ -189,11 +212,10 @@ function addComponent(type, data = null, handleConnections = true) {
         `;
     }
 
-
     if (type === 'sink') {
         componentHtml += `
             <label for="addon_process_trigger_${uniqueId}">Addon Process Trigger (Optional):</label>
-            <input type="text" id="addon_process_trigger_${uniqueId}" name="addon_process_trigger_${uniqueId}" placeholder="Addon Process Trigger"><br><br>`;
+            <input type="text" id="addon_process_trigger_${uniqueId}" name="addon_process_trigger_${uniqueId}" placeholder="This isn't implemented"><br><br>`;
     }
 
     // Add a dropdown for selecting the target component for connections, only for 'source' and 'server'
@@ -224,64 +246,158 @@ function addComponent(type, data = null, handleConnections = true) {
 
     container.insertAdjacentHTML('beforeend', componentHtml);
 
-    console.log(`New component added: ${uniqueId}`);
-    console.log(`Expected select ID: connection_${uniqueId}_1`);
-
-    // Use requestAnimationFrame to ensure the DOM is updated before populating the dropdown
+    // Use requestAnimationFrame to ensure the DOM is updated before accessing elements
     requestAnimationFrame(() => {
+        // Update connection options after adding the new component
         if (type === 'source' || type === 'server') {
             updateConnectionOptions(`connection_${uniqueId}_1`, uniqueId);
         }
-        // Update all dropdowns to include the new component
         updateConnectionOptions();
-    });
 
-    // Pre-fill fields if data is provided
-    if (data) {
-        document.getElementById(`name_${uniqueId}`).value = data.name || '';
+        // Pre-fill fields if data is provided
+        if (data) {
+            const nameField = document.getElementById(`name_${uniqueId}`);
+            if (nameField) {
+                nameField.value = data.name || '';
+            }
 
-        // Set distribution type and parameters
-        if (data.distribution) {
-            document.getElementById(`dist_type_${uniqueId}`).value = data.distribution.type || '';
-            updateDistributionParams(uniqueId); // Load appropriate fields
+            // Set distribution type and parameters
+            if (data.distribution) {
+                const distTypeField = document.getElementById(`dist_type_${uniqueId}`);
+                if (distTypeField) {
+                    distTypeField.value = data.distribution.type || '';
+                    updateDistributionParams(uniqueId); // Load appropriate fields
 
-            // Set distribution parameters
-            const params = data.distribution.params || {};
-            for (const [key, value] of Object.entries(params)) {
-                const paramField = document.getElementById(`${key}_${uniqueId}`);
-                if (paramField) {
-                    paramField.value = value;
+                    // Set distribution parameters
+                    const params = data.distribution.params || {};
+                    for (const [key, value] of Object.entries(params)) {
+                        const paramField = document.getElementById(`${key}_${uniqueId}`);
+                        if (paramField) {
+                            paramField.value = value;
+                        }
+                    }
                 }
             }
-        }
 
-        // Handle arrival_table for sources
-        if (type === 'source' && data.arrival_table) {
-            // The hidden input and message are already added in componentHtml
-        }
-
-        // Handle breakdown parameters for servers
-        if (type === 'server' && data.breakdown) {
-            const breakdown = data.breakdown;
-            if (breakdown.time_between_machine_breakdown) {
-                document.getElementById(`time_between_machine_breakdown_${uniqueId}`).value = breakdown.time_between_machine_breakdown;
-                toggleBreakdownDuration(uniqueId);
+            // Handle arrival_table for sources
+            if (type === 'source' && data.arrival_table) {
+                // The hidden input and message are already added in componentHtml
             }
-            if (breakdown.machine_breakdown_duration) {
-                document.getElementById(`machine_breakdown_duration_${uniqueId}`).value = breakdown.machine_breakdown_duration;
+
+            // Handle breakdown parameters for servers
+            if (type === 'server' && data.breakdown) {
+                const breakdown = data.breakdown;
+
+                // Time Between Machine Breakdown Distribution
+                if (breakdown.time_between_machine_breakdown) {
+                    const breakdownDist = breakdown.time_between_machine_breakdown;
+                    const breakdownDistTypeField = document.getElementById(`breakdown_dist_type_${uniqueId}`);
+                    if (breakdownDistTypeField) {
+                        breakdownDistTypeField.value = breakdownDist.type || '';
+                        handleBreakdownSelection(uniqueId); // Show/hide breakdown duration container
+
+                        // Set distribution parameters
+                        const params = breakdownDist.params || {};
+                        for (const [key, value] of Object.entries(params)) {
+                            const paramField = document.getElementById(`breakdown_${key}_${uniqueId}`);
+                            if (paramField) {
+                                paramField.value = value;
+                            }
+                        }
+                    }
+                }
+
+                // Machine Breakdown Duration Distribution
+                if (breakdown.machine_breakdown_duration) {
+                    const breakdownDurationDist = breakdown.machine_breakdown_duration;
+                    const breakdownDurationDistTypeField = document.getElementById(`breakdown_duration_dist_type_${uniqueId}`);
+                    if (breakdownDurationDistTypeField) {
+                        breakdownDurationDistTypeField.value = breakdownDurationDist.type || '';
+                        updateDistributionParams(uniqueId, 'breakdown_duration_'); // Load appropriate fields
+
+                        // Set distribution parameters
+                        const params = breakdownDurationDist.params || {};
+                        for (const [key, value] of Object.entries(params)) {
+                            const paramField = document.getElementById(`breakdown_duration_${key}_${uniqueId}`);
+                            if (paramField) {
+                                paramField.value = value;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Set queue order for servers
+            if (type === 'server' && data.queue_order) {
+                const queueOrderField = document.getElementById(`queue_order_${uniqueId}`);
+                if (queueOrderField) {
+                    queueOrderField.value = data.queue_order;
+                }
+            }
+
+            // Handle addon_process_trigger for sinks
+            if (type === 'sink' && data.addon_process_trigger) {
+                const addonProcessTriggerField = document.getElementById(`addon_process_trigger_${uniqueId}`);
+                if (addonProcessTriggerField) {
+                    addonProcessTriggerField.value = data.addon_process_trigger;
+                }
+            }
+
+            // Now handle connections if any
+            if (data.connections && handleConnections) {
+                data.connections.forEach(function(connection, index) {
+                    const dropdownNumber = index + 1;
+
+                    // Ensure the connection dropdown exists
+                    let connectionField = document.getElementById(`connection_${uniqueId}_${dropdownNumber}`);
+                    if (!connectionField) {
+                        // Create the connection dropdown if it doesn't exist
+                        const container = document.getElementById(`connection_fields_${uniqueId}`);
+                        let newDropdownHtml = `
+                            <label for="connection_${uniqueId}_${dropdownNumber}">Connect to:</label>
+                            <select id="connection_${uniqueId}_${dropdownNumber}" name="connection_${uniqueId}_${dropdownNumber}" onchange="addConnectionDropdown('${uniqueId}', ${dropdownNumber}, '${uniqueId}')">
+                                <option value="">Select Target Component</option>
+                            </select><br><br>
+
+                            <!-- Container for connection-specific parameters -->
+                            <div id="connection_params_${uniqueId}_${dropdownNumber}"></div>`;
+                        container.insertAdjacentHTML('beforeend', newDropdownHtml);
+
+                        // Update the options for this dropdown
+                        updateConnectionOptions(`connection_${uniqueId}_${dropdownNumber}`, uniqueId, getCurrentConnections(uniqueId));
+                        connectionField = document.getElementById(`connection_${uniqueId}_${dropdownNumber}`);
+                    }
+
+                    // Set the value of the connection dropdown
+                    if (connectionField) {
+                        connectionField.value = connection.target;
+                    }
+
+                    // Call addConnectionDropdown to handle parameters
+                    addConnectionDropdown(uniqueId, dropdownNumber, uniqueId);
+
+                    // Set connection parameters
+                    if (connection.probability !== null && connection.probability !== undefined) {
+                        const probabilityField = document.getElementById(`probability_${uniqueId}_${dropdownNumber}`);
+                        if (probabilityField) {
+                            probabilityField.value = connection.probability;
+                        }
+                    }
+                    if (connection.process_duration !== null && connection.process_duration !== undefined) {
+                        const processDurationField = document.getElementById(`process_duration_${uniqueId}_${dropdownNumber}`);
+                        if (processDurationField) {
+                            processDurationField.value = connection.process_duration;
+                        }
+                    }
+                });
             }
         }
-
-        // Set queue order for servers
-        if (type === 'server' && data.queue_order) {
-            document.getElementById(`queue_order_${uniqueId}`).value = data.queue_order;
-        }
-
-        // Connections are handled separately in initializeForm when handleConnections is false
-    }
+    });
 
     return uniqueId;
 }
+  
+
 
 function handleBreakdownSelection(uniqueId) {
     const breakdownDistType = document.getElementById(`breakdown_dist_type_${uniqueId}`).value;
@@ -576,12 +692,12 @@ function initializeForm() {
         // Pre-fill the form with dataToUse
         document.getElementById('model_name').value = dataToUse.model_name || '';
         document.getElementById('scenario_name').value = dataToUse.scenario_name || '';
-        document.getElementById('simulation_minutes').value = dataToUse.simulation_minutes || 1;
+        document.getElementById('minutes').value = dataToUse.minutes || 1;
 
         // Set original model_name and scenario_name
         document.getElementById('original_model_name').value = dataToUse.model_name || '';
         document.getElementById('original_scenario_name').value = dataToUse.scenario_name || '';
-        document.getElementById('original_simulation_minutes').value = dataToUse.original_simulation_minutes || 1;
+        document.getElementById('original_minutes').value = dataToUse.original_minutes || 1;
 
         // Keep track of component unique IDs and their data
         const componentDataList = [];
@@ -589,20 +705,23 @@ function initializeForm() {
         // Initialize components without handling connections
         if (dataToUse.sources) {
             dataToUse.sources.forEach(function(source) {
-                const uniqueId = addComponent('source', source, false); // false to skip connections
-                componentDataList.push({ uniqueId, data: source });
+                const uniqueId = source.id || `source_${componentCounts['source'] + 1}`;
+                const addedUniqueId = addComponent('source', source, false, uniqueId); // false to skip connections
+                componentDataList.push({ uniqueId: addedUniqueId, data: source });
             });
         }
         if (dataToUse.servers) {
             dataToUse.servers.forEach(function(server) {
-                const uniqueId = addComponent('server', server, false);
-                componentDataList.push({ uniqueId, data: server });
+                const uniqueId = server.id || `server_${componentCounts['server'] + 1}`;
+                const addedUniqueId = addComponent('server', server, false, uniqueId);
+                componentDataList.push({ uniqueId: addedUniqueId, data: server });
             });
         }
         if (dataToUse.sinks) {
             dataToUse.sinks.forEach(function(sink) {
-                const uniqueId = addComponent('sink', sink, false);
-                componentDataList.push({ uniqueId, data: sink });
+                const uniqueId = sink.id || `sink_${componentCounts['sink'] + 1}`;
+                const addedUniqueId = addComponent('sink', sink, false, uniqueId);
+                componentDataList.push({ uniqueId: addedUniqueId, data: sink });
             });
         }
 
@@ -691,7 +810,7 @@ function initializeForm() {
             if (data.connections) {
                 data.connections.forEach(function(connection, index) {
                     const dropdownNumber = index + 1;
-
+        
                     // Ensure the connection dropdown exists
                     let connectionField = document.getElementById(`connection_${uniqueId}_${dropdownNumber}`);
                     if (!connectionField) {
@@ -702,22 +821,22 @@ function initializeForm() {
                             <select id="connection_${uniqueId}_${dropdownNumber}" name="connection_${uniqueId}_${dropdownNumber}" onchange="addConnectionDropdown('${uniqueId}', ${dropdownNumber}, '${uniqueId}')">
                                 <option value="">Select Target Component</option>
                             </select><br><br>
-
+        
                             <!-- Container for connection-specific parameters -->
                             <div id="connection_params_${uniqueId}_${dropdownNumber}"></div>`;
                         container.insertAdjacentHTML('beforeend', newDropdownHtml);
-
+        
                         // Update the options for this dropdown
                         updateConnectionOptions(`connection_${uniqueId}_${dropdownNumber}`, uniqueId, getCurrentConnections(uniqueId));
                         connectionField = document.getElementById(`connection_${uniqueId}_${dropdownNumber}`);
                     }
-
+        
                     // Set the value of the connection dropdown
                     connectionField.value = connection.target;
-
+        
                     // Call addConnectionDropdown to handle parameters
                     addConnectionDropdown(uniqueId, dropdownNumber, uniqueId);
-
+        
                     // Set connection parameters
                     if (connection.probability !== null && connection.probability !== undefined) {
                         const probabilityField = document.getElementById(`probability_${uniqueId}_${dropdownNumber}`);
@@ -947,5 +1066,5 @@ function formDataToConfigData(formData) {
     {% endif %}
 {% endwith %}
 
-
 {% endblock %}
+

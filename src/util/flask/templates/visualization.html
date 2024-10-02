@@ -1,10 +1,22 @@
 <!-- dashboard.html -->
 {% extends 'base.html' %}
 
-{% block title %}Visualisierung{% endblock %}
+{% block title %}Visualization{% endblock %}
 
 {% block content %}
-    <h1>Hier werden die Visualisierungen angezeigt</h1>
-    <!-- Weitere Inhalte -->
+    <h1>Visualization Dashboard</h1>
+
+    <!-- Informational Text -->
+    <div class="alert alert-info">
+        <p>This page provides an embedded visualization dashboard for monitoring and analyzing data. The embedded Grafana dashboard below enables users to view and interact with visual data representations such as graphs, metrics, and other performance indicators.</p>
+        
+        <p><strong>Grafana Dashboard:</strong> The dashboard is integrated within this page using an iframe, providing real-time access to dynamic data visualizations.</p>
+
+        <p>Adjust the view or explore different panels within the embedded dashboard to monitor the relevant metrics for your simulation or project.</p>
+    </div>
+
+    <!-- Embed Grafana Dashboard -->
+    <iframe src="{{ grafana_url }}" width="100%" height="600px"></iframe>
+
 {% endblock %}
 

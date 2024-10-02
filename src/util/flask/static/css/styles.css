@@ -4,7 +4,8 @@ body {
     margin: 0;
     display: flex;
     height: 100vh;
-    overflow: hidden;
+    overflow-y: auto; /* Ermöglicht Scrollen nur auf der gesamten Seite */
+    flex-direction: column; /* Sicherstellen, dass der Inhalt vertikal angeordnet wird */
 }
 
 /* Sidebar styling */
@@ -106,6 +107,8 @@ body {
     padding-top: 60px;
     transition: margin-left 0.3s;
     flex: 1;
+    /* Entferne overflow hier */
+    /* Höhe des Inhalts muss sich nicht beschränken */
 }
 
 #main-content.collapsed {
@@ -133,5 +136,162 @@ body {
 
 #main-content input[type="submit"]:hover {
     background-color: #c0392b;
+}
+
+/* Body styling in styles.css adds flex-direction */
+body {
+    flex-direction: column;
+}
+
+/* Styling for forms in main-content */
+.main-content form {
+    background-color: #f9f9f9;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    flex: 1;
+}
+
+/* Input field styling */
+.main-content form .form-group {
+    margin-bottom: 15px;
+}
+
+.main-content form .form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #2c3e50;
+}
+
+.main-content form .form-group input,
+.main-content form .form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.main-content form .form-group input:focus,
+.main-content form .form-group select:focus {
+    outline: none;
+    border-color: #2980b9;
+    box-shadow: 0 0 5px rgba(41, 128, 185, 0.5);
+}
+
+/* Button styling */
+.main-content form button[type="submit"] {
+    background-color: #2980b9;
+    color: #ffffff;
+    padding: 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    width: 100%;
+    text-align: center;
+}
+
+button {
+    margin-top: 15px;
+}
+
+.main-content form button[type="submit"]:hover {
+    background-color: #1f6f8b;
+}
+
+/* Secondary button styling */
+.main-content form .btn-secondary {
+    background-color: #95a5a6;
+    color: #ffffff;
+    padding: 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    width: 100%;
+    margin-top: 10px;
+    text-align: center;
+}
+
+.main-content form .btn-secondary:hover {
+    background-color: #7f8c8d;
+}
+
+/* Error or success message styling */
+.main-content .message {
+    padding: 10px;
+    margin-top: 15px;
+    border-radius: 4px;
+}
+
+.main-content .message.success {
+    background-color: #2ecc71;
+    color: white;
+}
+
+.main-content .message.error {
+    background-color: #e74c3c;
+    color: white;
+}
+
+/* Flash message styling */
+.flash-container {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+.flash-message {
+    padding: 15px;
+    border-radius: 5px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #ff0000;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    text-align: center;
+    position: relative;
+    width: 100%;
+}
+
+.flash-message.success {
+    background-color: #28a745;
+}
+
+.flash-message.error {
+    background-color: #dc3545;
+}
+
+.flash-message.warning {
+    background-color: #ffc107;
+}
+
+.flash-message.info {
+    background-color: #17a2b8;
+}
+
+.flash-message .close {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #ff0000;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+/* Stellt sicher, dass die Dropdown-Optionen nicht abgeschnitten werden */
+.form-control {
+    height: auto; /* Erlaubt dem Element, automatisch die passende Höhe zu haben */
+    padding: 10px; /* Fügt ein Padding hinzu, um sicherzustellen, dass der Text nicht am Rand klebt */
+    font-size: 16px; /* Stellt die Schriftgröße so ein, dass sie gut lesbar ist */
+}
+
+/* Spezifische Anpassung für Select-Elemente */
+select.form-control {
+    -webkit-appearance: none; /* Entfernt Standard-Browser-Styling für das Select-Element */
+    -moz-appearance: none;
+    appearance: none;
+    line-height: 1.5; /* Verbessert die Lesbarkeit und sorgt dafür, dass der Text nicht abgeschnitten wird */
 }
 
