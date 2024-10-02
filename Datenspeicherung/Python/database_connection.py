@@ -10,9 +10,9 @@ import pandas as pd
 from sqlalchemy import create_engine, func, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker, Session
-from src.database.orm import PivotTable, Simulation, Scenario, Model, HSUser
+from src.database.orm import PivotTable, Simulation, Scenario, Model, HSUser  # Turn into local import - regarding the docker-container 
 from sqlalchemy.exc import OperationalError, SQLAlchemyError, NoResultFound, IntegrityError
-from src.database.database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME
+from src.database.database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME   # Turn into local import - regarding the docker-container 
 
 # Set up basic logging configuration
 logging.basicConfig(level=logging.INFO)
