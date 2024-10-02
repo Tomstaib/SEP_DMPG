@@ -1,20 +1,18 @@
 import logging
-import sys
 import os
+from datetime import datetime
+
 import numpy as np
 import threading
-
 import time
+
+import pandas as pd
 from sqlalchemy import create_engine, func, text
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker, Session
-
-from src.util.orm import PivotTable, Simulation, Scenario, Model, HSUser
+from src.database.orm import PivotTable, Simulation, Scenario, Model, HSUser
 from sqlalchemy.exc import OperationalError, SQLAlchemyError, NoResultFound, IntegrityError
-
-DB_USER = 'sep'
-DB_HOST = 'imt-sep-001.lin.hs-osnabrueck.de'
-DB_PORT = '55432'
-DB_NAME = 'distributed_computing'
+from src.database.database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME
 
 # Set up basic logging configuration
 logging.basicConfig(level=logging.INFO)
@@ -141,14 +139,20 @@ def commit_session(session):
         return None
 
 
-def main(combined_pivot, local_start_time, local_end_time, minutes, num_replications):
-    '''
+def save_to_db(combined_pivot: pd.DataFrame, local_start_time: datetime, local_end_time: datetime,
+               minutes: int, num_replications: int):
+    """"
     This method interacts with the database to either retrieve or create a user, model, scenario,
     and simulation, ensuring that none are duplicated. It processes data from a pivot table and inserts
     each row as an entry associated with the newly created or retrieved simulation. All changes are
     committed to the database, with a rollback in case of any errors.
-    '''
 
+    :param combined_pivot: Pandas dataframe of the simulation parameters containing all data to be inserted into the database
+    :param local_start_time: Start time of the simulation
+    :param local_end_time: End time of the simulation
+    :param minutes: Number of minutes to simulate
+    :param num_replications: Number of replications
+    """
     engine = connect_to_db()
 
     path = os.getenv('CONFIG_PATH')
@@ -165,7 +169,7 @@ def main(combined_pivot, local_start_time, local_end_time, minutes, num_replicat
         session.execute(text("SELECT pg_advisory_lock(:lock_id)"), {"lock_id": lock_id})
         try:
 
-            def get_model_id(session: Session, model_name: str, user_id: int) -> int:
+            def get_model_id(session: Session, model_name: str, user_id: int) -> int | None:
                 """To return the model_id of a model is found, or None if not"""
                 try:
                     model = session.query(Model).filter_by(model_name=model_name, user_id=user_id).one()
@@ -173,7 +177,7 @@ def main(combined_pivot, local_start_time, local_end_time, minutes, num_replicat
                 except NoResultFound:
                     return None
 
-            def get_scenario_id(session: Session, scenario_name: str, model_id: int) -> int:
+            def get_scenario_id(session: Session, scenario_name: str, model_id: int) -> int | None:
                 """Return the scenario_id of a scenario if found, or None if not."""
                 try:
                     scenario = session.query(Scenario).filter_by(scenario_name=scenario_name, model_id=model_id).one()
@@ -181,7 +185,7 @@ def main(combined_pivot, local_start_time, local_end_time, minutes, num_replicat
                 except NoResultFound:
                     return None
 
-            def get_user_id(session: Session, user_name: str) -> int:
+            def get_user_id(session: Session, user_name: str) -> int | None:
                 """Return the scenario_id of a scenario if found, or None if not."""
                 try:
                     user = session.query(HSUser).filter_by(user_name=user_name).one()
@@ -256,7 +260,3 @@ def main(combined_pivot, local_start_time, local_end_time, minutes, num_replicat
         raise e
     finally:
         session.close()
-
-
-if __name__ == "__main__":
-    main()
