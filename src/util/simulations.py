@@ -12,7 +12,7 @@ import logging
 
 
 import src.util.global_imports as gi
-from database.database_connection import save_to_db
+from src.database.database_connection import save_to_db
 
 from src.core.entity import EntityManager
 from src.core.server import Server
@@ -20,7 +20,7 @@ from src.core.sink import Sink
 from src.core.source import Source
 from src.util.global_imports import RANDOM_SEED, set_duration_warm_up
 from src.util.helper import round_value
-from util.flask.runtime_prediction import send_progress_to_server
+from src.util.flask.runtime_prediction import send_progress_to_server
 
 global seconds_previous_computations
 

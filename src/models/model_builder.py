@@ -3,7 +3,7 @@ import os
 import random
 from typing import Callable
 import simpy
-from core.queue_type import QueueType
+from src.core.queue_type import QueueType
 from src.core.server import Server
 from src.core.sink import Sink
 from src.core.source import Source

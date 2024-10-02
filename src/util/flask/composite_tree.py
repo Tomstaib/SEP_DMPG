@@ -3,7 +3,7 @@ import os
 import time
 from graphviz import Digraph
 from nodes_for_composite import ManagementNode, Node, input_positive_number, ComputeNode
-from singleton import Singleton
+from src.util.singleton import Singleton
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 

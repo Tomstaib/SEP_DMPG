@@ -9,8 +9,8 @@ from environment import execute_command
 
 from ssh_setup import setup_ssh_connection
 
-MINIMUM_OF_REPLICATIONS_FOR_COMPOSITE: int = 1000  # just an example
-NUM_REPLICATIONS: int = 1000000  # example normally would get this from the website
+MINIMUM_OF_REPLICATIONS_FOR_COMPOSITE: int = 1000
+
 
 
 class Node(ABC):

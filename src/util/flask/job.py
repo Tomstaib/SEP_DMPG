@@ -4,7 +4,7 @@ import requests
 def submit_slurm_job(slurm_username, slurm_account, slurm_jwt, job_name, base_url, model_script, replications,
                      time_limit_minutes=10, partition="compute", cpus_per_task=4):
     """
-    Sendet einen SLURM-Job zur Ausführung auf dem Cluster.
+    Sends a slurm job to Slurm for computation via REST-API
 
     :param slurm_username: Der Benutzername für SLURM
     :param slurm_account: Das SLURM-Konto
