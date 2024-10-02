@@ -46,7 +46,7 @@ class Node(ABC):
             self._parent = parent
             return True
         else:
-            raise Warning(f"This node is already parented")
+            raise Warning("This node is already parented")
 
 
 class ManagementNode(Node):

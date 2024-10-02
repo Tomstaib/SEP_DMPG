@@ -284,7 +284,7 @@ def save_to_db(combined_pivot: pd.DataFrame, local_start_time: datetime, local_e
 
             # Create Simulation
             new_simulation: Simulation = Simulation(local_start_time=local_start_time, local_end_time=local_end_time,
-                                        num_replications=num_replications, scenario_id=scenario_id)
+                                                    num_replications=num_replications, scenario_id=scenario_id)
             logging.info("Simulation created")
             session.add(new_simulation)
             session.flush()
