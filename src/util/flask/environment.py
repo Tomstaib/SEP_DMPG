@@ -1,24 +1,13 @@
 import json
 import os
-import argparse
 import posixpath
-import sys
-from pathlib import Path
 from typing import Tuple, Optional
 import paramiko
-from tkinter import Tk
-from tkinter.filedialog import askdirectory
-from getpass import getpass
 from paramiko import SSHClient
-from scp import SCPClient
 from flask import session
 import stat
-
 from src.util.flask.ssh_setup import setup_ssh_connection, close_ssh_connection
-from src.util.model_builder import load_config
-
-
-
+from src.util.helper import load_config
 
 
 # Function to transfer a folder using SFTP

@@ -3,10 +3,13 @@
 /src/models/simulation_model_pro.pdf
 DMPG.iml
 /src/util/flask/user/*
+DMPG.egg-info
 
 .idea/**/misc.xml
 .idea/**/other.xml
 
+/src/database/database_params.py
+/src/util/flask/ssh_params.py
 
 # Created by https://www.toptal.com/developers/gitignore/api/intellij+iml,sonarqube,python,windows,macos,linux
 # Edit at https://www.toptal.com/developers/gitignore?templates=intellij+iml,sonarqube,python,windows,macos,linux

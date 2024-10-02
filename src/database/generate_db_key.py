@@ -3,12 +3,8 @@ import stat
 import sys
 from getpass import getpass
 from sqlalchemy import create_engine
+from src.database.database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME, DB_PASSWORD
 
-DB_USER = 'sep'
-DB_HOST = 'imt-sep-001.lin.hs-osnabrueck.de'
-DB_PORT = '55432'
-DB_NAME = 'distributed_computing'
-DB_PASSWORD = "oishooX2iefeiNai"
 
 db_url_template: str = f'{DB_HOST}:{DB_PORT}:{DB_NAME}:{DB_USER}:{DB_PASSWORD}'
 

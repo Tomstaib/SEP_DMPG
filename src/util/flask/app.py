@@ -1,10 +1,8 @@
 import logging
 import shutil
 from functools import wraps
-from flask import Flask, request, redirect, url_for, flash, render_template, session, jsonify, send_from_directory
+from flask import Flask, request, redirect, url_for, flash, render_template, session, jsonify
 from paramiko.client import SSHClient
-from werkzeug.utils import secure_filename
-
 from src.util.flask.ssh_setup import setup_ssh_connection
 from src.util.flask.environment import prepare_env, execute_command
 import os
@@ -14,7 +12,7 @@ import experiments
 from util.flask.experiments import save_config_file
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'
+app.secret_key = 'your_secret_key'  # placeholder. Replace with actual secret key
 SAVE_DIR = '/received_data'
 USER_DIR = '/user'
 

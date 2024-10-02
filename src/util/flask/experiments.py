@@ -2,12 +2,9 @@ import json
 import os
 import shutil
 import json
-
-from flask import flash
 from werkzeug.utils import secure_filename
 
-SAVE_DIR = r'E:\projects\SEP_DMPG\src\util\flask\received_data'
-MODEL_DIR = '/var/www/dmpg_api/user'
+SAVE_DIR = r'/var/www/dmpg_api/received_data'
 
 
 def load_runtime_prediction():
@@ -193,6 +190,8 @@ def process_connections(form_data, unique_id):
         connection_index += 1
     return connections
 
+from flask import flash
+
 
 def save_config_file(config_json, path, filename):
     os.makedirs(path, exist_ok=True)
@@ -221,8 +220,7 @@ def save_arrival_table(arrival_table_file, model_name, scenario_name, source_nam
         filename_with_source = filename
 
     # Define the path to save the arrival table
-    base_directory = os.path.join('user', username, model_name, scenario_name, 'arrival_tables')
-    flash(base_directory)
+    base_directory = os.path.join('/var/www/dmpg_api/user', username, model_name, scenario_name, 'arrival_tables')
     os.makedirs(base_directory, exist_ok=True)
     file_path = os.path.join(base_directory, filename_with_source)
 

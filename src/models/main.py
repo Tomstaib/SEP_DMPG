@@ -1,15 +1,10 @@
-from inspect import trace
-
 from models.model_pcb import setup_model_pcb
-from models.model_pcb_with_breakdowns import setup_model_pcb_with_breakdowns
 from models.model_pcb_with_arrival_table import setup_model_pcb_with_arrival_table
 from src.util.simulations import run_replications, run_simulation
-from src.util.visualization import histogram, boxplot, scatterplot, violinplot, visualize_system
 import logging
 import matplotlib.pyplot as plt
 from datetime import datetime
-import threading
-from src.util.monitoring import monitor_resources, randomized_main
+
 
 def main():
     # run_simulation(model=setup_model_pcb, minutes=900)
@@ -18,7 +13,7 @@ def main():
 
     run_simulation(model=setup_model_pcb_with_arrival_table, minutes=900)
     start_time = datetime.now()
-    run_replications(model=setup_model_pcb, minutes=5250000, num_replications=5, multiprocessing=False)
+    run_replications(model=setup_model_pcb, minutes=5250000, num_replications=100, multiprocessing=True)
     finish = datetime.now()
     time_elapsed = finish - start_time
     print(time_elapsed)

@@ -13,9 +13,3 @@ def monitor_resources(interval=30):
             time.sleep(interval)
     except KeyboardInterrupt:
         print("Monitoring stopped.")
-
-
-def randomized_main() -> (int,int):
-    random_minutes: int = random.randint(52500, 52500000)
-    random_replications: int = random.randint(10, 500)
-    return random_minutes, random_replications

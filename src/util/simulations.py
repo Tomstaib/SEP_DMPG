@@ -2,7 +2,7 @@ import gc
 import os
 import random
 import time
-from datetime import timedelta
+from datetime import timedelta, datetime
 from typing import Callable, Union, Tuple
 import simpy
 import pandas as pd
@@ -12,14 +12,15 @@ import logging
 
 
 import src.util.global_imports as gi
+from database.database_connection import save_to_db
 
 from src.core.entity import EntityManager
 from src.core.server import Server
 from src.core.sink import Sink
 from src.core.source import Source
-from src.util.global_imports import RANDOM_SEED, Stats, set_duration_warm_up
+from src.util.global_imports import RANDOM_SEED, set_duration_warm_up
 from src.util.helper import round_value
-from src.util.runtime_prediction import send_progress_to_server
+from util.flask.runtime_prediction import send_progress_to_server
 
 global seconds_previous_computations
 
@@ -256,7 +257,7 @@ def get_percentage_and_computingtimes(computing_time_start, i, num_replications)
 
 
 def run_replications(model: Callable, minutes, num_replications, warm_up: Union[int, float] = None,
-                     multiprocessing=False) -> tuple:
+                     multiprocessing = False, save_to_database = False) -> tuple:
     """
     Run multiple replications of a simulation and collect statistics.
 
@@ -272,6 +273,7 @@ def run_replications(model: Callable, minutes, num_replications, warm_up: Union[
     global seconds_previous_computations
     seconds_previous_computations = 0
     start = time.time()
+    local_start_time = datetime.now()
 
     # Define the names of the statistics for entities, servers, sinks, and sources
     entity_stat_names = ['AvgTimeInSystem', 'MaxTimeInSystem', 'MinTimeInSystem',
@@ -286,7 +288,7 @@ def run_replications(model: Callable, minutes, num_replications, warm_up: Union[
     all_sink_stats = {}
     all_source_stats = {}
 
-    # Stats.all_detailed_stats = []
+    gi.Stats.all_detailed_stats = []
 
     def process_results(entity_stats, server_stats, sink_stats, source_stats) -> None:
         """
@@ -360,10 +362,16 @@ def run_replications(model: Callable, minutes, num_replications, warm_up: Union[
             process_results(*replication(model, calculate_statistics, minutes, r))
             print_stats(r, num_replications, start, tenth_percentage)
 
-    # print(Stats.all_detailed_stats)
+    local_end_time = datetime.now()
 
-    return create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_stats, entity_stat_names,
-                        server_stat_names, sink_stat_names, source_stat_names)
+    combined_pivot = create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_stats,
+                                  entity_stat_names,
+                                  server_stat_names, sink_stat_names, source_stat_names)
+
+    if save_to_database:
+        save_to_db(combined_pivot, local_start_time, local_end_time, minutes, num_replications)
+
+    return combined_pivot
 
 
 def print_stats(i, num_replications, start, tenth_percentage) -> None:
