@@ -2,20 +2,26 @@ import os
 import stat
 import sys
 from getpass import getpass
-from sqlalchemy import create_engine
-import psycopg2
-from sqlalchemy.exc import OperationalError
+from src.database.database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME, DB_PASSWORD
+from src.database.database_connection import connect_to_db
 
-DB_USER = 'sep'
-DB_HOST = 'imt-sep-001.lin.hs-osnabrueck.de'
-DB_PORT = '55432'
-DB_NAME = 'distributed_computing'
 
-def input_password() -> str or None:
+DB_URL_TEMPLATE: str = f'{DB_HOST}:{DB_PORT}:{DB_NAME}:{DB_USER}:{DB_PASSWORD}'
+
+
+def input_password(prompt: str = "Input the password") -> str or None:
+    """
+    Input the password. This is only possible if the console input is possible.
+
+    :param prompt: The password prompt.
+
+    :return: The password provided by the user or None if input is not possible.
+    """
     try:
+        # Check if input can be received
         if sys.stdin.isatty():
             print("stdin is interactive, prompting for password")
-            remote_password: str = getpass(prompt=f'Password for the database: ')
+            remote_password: str = getpass(prompt=prompt)
             print("Password input received")
             return remote_password
         else:
@@ -23,71 +29,46 @@ def input_password() -> str or None:
             exit(1)
     except Exception as e:
         print(f"Error with getpass: {e}")
-        sys.exit(1)
+        return
 
-def create_pgpass_file(template):
-    downloads_dir = os.path.join(os.path.expanduser('~'), 'Downloads')
-    pgpass_path = os.path.join(downloads_dir, 'pgpass.conf')
 
-    # Überprüfe, ob das Verzeichnis existiert, bevor es erstellt wird
-    try:
-        os.makedirs(os.path.dirname(pgpass_path), exist_ok=True)
-    except PermissionError as e:
-        print(f"Error writing .pgpass file: {e}")
-        return  # Fehlerhaft, keine weiteren Schritte unternehmen
+def create_pgpass_file(template: str = DB_URL_TEMPLATE):
+    """
+    Create the .pgpass file needed for passwordless connection to the postgresql database.
 
-    try:
-        with open(pgpass_path, 'w') as f:
-            f.write(template)
-        print(f"Saving .pgpass file to: {pgpass_path}")
-    except Exception as e:
-        print(f"Error writing .pgpass file: {e}")
+    :param template: The template for the .pgpass file provided as a constant.
+    """
+    # Determine the path for .pgpass based on the operating system
+    if os.name == 'nt':  # Windows
+        pgpass_path: str = os.path.join(os.getenv('APPDATA'), 'postgresql', 'pgpass.conf')
+    else:  # Unix/Linux/Mac
+        pgpass_path: str = os.path.join(os.path.expanduser('~'), '.pgpass')
 
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(pgpass_path), exist_ok=True)
+
+    with open(pgpass_path, 'w') as pgpass_file:
+        pgpass_file.write(template)
+
+    # Set the file permissions to be readable and writable only by the user
     if os.name != 'nt':
-        try:
-            os.chmod(pgpass_path, stat.S_IRUSR | stat.S_IWUSR)
-        except Exception as e:
-            print(f"Error setting permissions: {e}")
+        os.chmod(pgpass_path, stat.S_IRUSR | stat.S_IWUSR)
 
-
-
-def connect_to_db():
-    # Create the database URL
-    db_url = f"postgresql+psycopg2://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    print(f"Connecting to database with URL: {db_url}")  # Debug-Ausgabe
-    # The password will be fetched from .pgpass automatically
-    engine = create_engine(db_url)
-    print(f"Engine object: {engine}")  # Debug-Ausgabe
-
-    # Test the connection
-    try:
-        connection = engine.connect()
-        print(f"Connection object: {connection}")  # Debug-Ausgabe
-        print("Connection successful")
-        return connection
-    except Exception as e:
-        print(f"Error: {e}")
-        return None
-
-
+    print(f".pgpass file created at: {pgpass_path}")
 
 
 def main():
-    db_password: str = input_password()
-    if not db_password:
+    if not DB_PASSWORD:
         raise ValueError("Error getting the Password")
 
-    db_url_template: str = f'{DB_HOST}:{DB_PORT}:{DB_NAME}:{DB_USER}:{db_password}'
-
-    create_pgpass_file(db_url_template)
+    create_pgpass_file(DB_URL_TEMPLATE)
 
     connection = connect_to_db()
 
     if connection:
         print("Connection successful")
         connection.close()
-    else:
-        print("Connection unsuccessful")
 
-if __name__ == '__main__': # pragma: no cover
+
+if __name__ == '__main__':
     main()
