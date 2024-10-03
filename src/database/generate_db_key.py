@@ -9,7 +9,7 @@ from src.database.database_connection import connect_to_db
 DB_URL_TEMPLATE: str = f'{DB_HOST}:{DB_PORT}:{DB_NAME}:{DB_USER}:{DB_PASSWORD}'
 
 
-def input_password(prompt: str = "Input the password") -> str or None:
+def input_password(prompt: str = "Input the password") -> str | None:
     """
     Input the password. This is only possible if the console input is possible.
 
