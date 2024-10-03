@@ -1,67 +1,72 @@
 import logging
 import os
 from datetime import datetime
-
-import numpy as np
-import threading
-import time
-
 import pandas as pd
-from sqlalchemy import create_engine, func, text
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker, Session
-from src.database.orm import PivotTable, Simulation, Scenario, Model, HSUser  # Turn into local import - regarding the docker-container 
+from src.database.orm import PivotTable, Simulation, Scenario, Model, HSUser
 from sqlalchemy.exc import OperationalError, SQLAlchemyError, NoResultFound, IntegrityError
-from src.database.database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME   # Turn into local import - regarding the docker-container 
-
-# Set up basic logging configuration
-logging.basicConfig(level=logging.INFO)
-
-lock = threading.Lock()
+from src.database.database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME
 
 
 def validate_db_config():
-    """Validate that all necessary database configuration variables are set."""
+    """
+    Validate that all necessary database configuration variables are set. If not raise a ValueError.
+    """
     if not all([DB_USER, DB_HOST, DB_PORT, DB_NAME]):
         raise ValueError("Database configuration is incomplete. Please check all required fields.")
 
 
 def get_or_create_user(session: Session, user_name: str) -> int:
-    """Returns the user_id of a user if found, or creates a new user if not found"""
-    time.sleep(np.random.randint(1, 11))
+    """
+    Returns the user_id of a user if found, or creates a new user if not found.
+
+    :param session: SQLAlchemy session in which the database is manipulated.
+    :param user_name: Username of the current user for the database scheme.
+
+    :return: The user_id of the current user.
+    """
 
     with session.no_autoflush:
-        user = session.query(HSUser).filter_by(user_name=user_name).one_or_none()
+        user: HSUser | None = session.query(HSUser).filter_by(user_name=user_name).one_or_none()
         if user:
             return user.user_id
         else:
             try:
-                new_user = HSUser(user_name=user_name)
+                new_user: HSUser = HSUser(user_name=user_name)
                 session.add(new_user)
                 session.flush()
                 return new_user.user_id
             except IntegrityError:
                 session.rollback()
 
-                user = session.query(HSUser).filter_by(user_name=user_name).one_or_none()
+                user: HSUser | None = session.query(HSUser).filter_by(user_name=user_name).one_or_none()
                 if user:
                     return user.user_id
                 else:
-                    raise
+                    raise SQLAlchemyError(f"User {user_name} could not be found.")
 
 
 def get_or_create_model(session: Session, model_name: str, user_id: int) -> Model:
-    """Returns the model_id of a model if found, or creates a new model if not found"""
+    """
+    Returns the model_id of a model if found, or creates a new model if not found.
+
+    :param session: SQLAlchemy session in which the database is manipulated.
+    :param model_name: Name of the model to be created or used.
+    :param user_id: User ID of the current user needed for referencing the correct model.
+
+    :return: The Model created or found.
+    """
     while True:
         try:
-            time.sleep(np.random.randint(1, 11))
-            model = session.query(Model).filter_by(model_name=model_name,
-                                                   user_id=user_id).with_for_update().one_or_none()
+            model: Model | None = session.query(Model).filter_by(model_name=model_name,
+                                                                 user_id=user_id).with_for_update().one_or_none()
 
             if model:
                 return model
             else:
-                new_model = Model(model_name=model_name, user_id=user_id)
+                new_model: Model = Model(model_name=model_name, user_id=user_id)
                 session.add(new_model)
             session.flush()
             return new_model
@@ -72,17 +77,27 @@ def get_or_create_model(session: Session, model_name: str, user_id: int) -> Mode
             model = session.query(Model).filter_by(model_name=model_name, user_id=user_id).one_or_none()
             if model:
                 return model
+            else:
+                raise SQLAlchemyError(f"Model {model_name} could not be found.")
 
 
 def get_or_create_scenario(session: Session, scenario_name: str, minutes: int, model_id: int) -> Scenario:
-    """Returns the scenario if it exists, otherwise creates a new one"""
-    time.sleep(np.random.randint(1, 11))
+    """
+    Returns the scenario if it exists, otherwise creates a new one.
+
+    :param session: SQLAlchemy session in which the database is manipulated.
+    :param scenario_name: Name of the scenario to be created.
+    :param minutes: Number of minutes of the simulation, needed for the scenario to be created.
+    :param model_id: ID of the model to be created.
+
+    :return: The Scenario created or found.
+    """
     with session.begin_nested():
-        scenario = session.query(Scenario).filter_by(scenario_name=scenario_name,
-                                                     model_id=model_id).with_for_update().one_or_none()
+        scenario: Scenario | None = session.query(Scenario).filter_by(scenario_name=scenario_name,
+                                                                      model_id=model_id).with_for_update().one_or_none()
 
         if scenario is None:
-            scenario = Scenario(scenario_name=scenario_name, minutes=minutes, model_id=model_id)
+            scenario: Scenario = Scenario(scenario_name=scenario_name, minutes=minutes, model_id=model_id)
             session.add(scenario)
             logging.info(f"Scenario '{scenario_name}' created for model {model_id}.")
         else:
@@ -91,15 +106,19 @@ def get_or_create_scenario(session: Session, scenario_name: str, minutes: int, m
         return scenario
 
 
-def connect_to_db():
-    """Attempt to connect to the database and return the engine if successful."""
+def connect_to_db() -> Engine | None:
+    """
+    Attempt to connect to the database and return the engine if successful.
+
+    :return: The Engine object if successful, otherwise None.
+    """
     try:
         # Validate configuration before attempting to connect
         validate_db_config()
 
         # Create the database URL
         db_url = f"postgresql+psycopg2://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-        engine = create_engine(db_url)
+        engine: Engine = create_engine(db_url)
 
         # Test the connection
         connection = engine.connect()
@@ -113,29 +132,86 @@ def connect_to_db():
         logging.error(f"Database connection failed: {oe}")
         return None
     except Exception as e:
-        logging.exception("An unexpected error occurred")
+        logging.exception(f"An unexpected error occurred {e}")
         return None
 
 
-def create_session(engine):
-    """Create a session for interacting with the database."""
+def create_session(engine: Engine) -> Session | None:
+    """
+    Create a session for interacting with the database.
+
+    :param engine: SQLAlchemy engine for the database.
+
+    :return: Session object if the engine was created successfully.
+    """
     try:
-        Session = sessionmaker(bind=engine)
-        session = Session()
+        sessionmaker(bind=engine)
+        session: Session = Session()
         return session
     except Exception as e:
-        logging.exception("Session creation failed")
+        logging.exception(f"Session creation failed {e}")
         return None
 
 
-def commit_session(session):
+def commit_session(session: Session) -> None:
+    """
+    Commit the session to the database.
+
+    :param session: SQLAlchemy session in which the database is manipulated.
+    """
     try:
         session.commit()
         logging.info("Session commit successful")
     except Exception as e:
-        logging.exception("Session commit failed")
+        logging.exception(f"Session commit failed {e}")
         session.rollback()
-        logging.exception("Session rollback failed")
+        return None
+
+
+def get_model_id(session: Session, model_name: str, user_id: int) -> int | None:
+    """
+    Getter for the model_id.
+
+    :param session: SQLAlchemy session in which the database is manipulated.
+    :param model_name: Name of the model to be retrieved.
+    :param user_id: User ID of the current user needed for referencing the correct model.
+
+    :return: The model_id of the current model or None if not found.
+    """
+    try:
+        model: Model = session.query(Model).filter_by(model_name=model_name, user_id=user_id).one()
+        return model.model_id
+    except NoResultFound:
+        return None
+
+
+def get_scenario_id(session: Session, scenario_name: str, model_id: int) -> int | None:
+    """
+    Return the scenario_id of a scenario if found, or None if not.
+
+    :param session: SQLAlchemy session in which the database is manipulated.
+    :param scenario_name: Name of the scenario to be retrieved.
+    :param model_id: ID of the model to be retrieved.
+
+    :return: The scenario_id of the current model or None if not found.
+    """
+    try:
+        scenario: Scenario = session.query(Scenario).filter_by(scenario_name=scenario_name, model_id=model_id).one()
+        return scenario.scenario_id
+    except NoResultFound:
+        return None
+
+
+def get_user_id(session: Session, user_name: str) -> int | None:
+    """
+    Return the scenario_id of a scenario if found, or None if not.
+
+    :param session: SQLAlchemy session in which the database is manipulated.
+    :param user_name: Username of the current user (the one trying to access the database)."""
+    try:
+        user: HSUser = session.query(HSUser).filter_by(user_name=user_name).one()
+        return user.user_id
+    except NoResultFound:
         return None
 
 
@@ -147,73 +223,54 @@ def save_to_db(combined_pivot: pd.DataFrame, local_start_time: datetime, local_e
     each row as an entry associated with the newly created or retrieved simulation. All changes are
     committed to the database, with a rollback in case of any errors.
 
-    :param combined_pivot: Pandas dataframe of the simulation parameters containing all data to be inserted into the database
-    :param local_start_time: Start time of the simulation
-    :param local_end_time: End time of the simulation
-    :param minutes: Number of minutes to simulate
-    :param num_replications: Number of replications
+    :param combined_pivot: Pandas dataframe of the simulation parameters containing all data to be inserted into the database.
+    :param local_start_time: Start time of the simulation.
+    :param local_end_time: End time of the simulation.
+    :param minutes: Number of minutes to simulate.
+    :param num_replications: Number of replications.
     """
-    engine = connect_to_db()
+    engine: Engine | None = connect_to_db()
 
-    path = os.getenv('CONFIG_PATH')
-    parts = path.split('/')
+    path: str = os.getenv('CONFIG_PATH')
+    parts: list[str] = path.split('/')
 
-    model_name = parts[-3]  # Model
-    scenario_name = parts[-2]  # Scenario
-    user_name = parts[-5]  # User
+    model_name: str = parts[-3]  # Model
+    scenario_name: str = parts[-2]  # Scenario
+    user_name: str = parts[-5]  # User
 
-    session = create_session(engine)
+    session: Session | None = create_session(engine)
     try:
-        # Advisory Lock, so that only one compute node can write at once
         lock_id = 12345
+        """Advisory Lock, so that only one compute node can write at once"""
         session.execute(text("SELECT pg_advisory_lock(:lock_id)"), {"lock_id": lock_id})
         try:
 
-            def get_model_id(session: Session, model_name: str, user_id: int) -> int | None:
-                """To return the model_id of a model is found, or None if not"""
-                try:
-                    model = session.query(Model).filter_by(model_name=model_name, user_id=user_id).one()
-                    return model.model_id
-                except NoResultFound:
-                    return None
-
-            def get_scenario_id(session: Session, scenario_name: str, model_id: int) -> int | None:
-                """Return the scenario_id of a scenario if found, or None if not."""
-                try:
-                    scenario = session.query(Scenario).filter_by(scenario_name=scenario_name, model_id=model_id).one()
-                    return scenario.scenario_id
-                except NoResultFound:
-                    return None
-
-            def get_user_id(session: Session, user_name: str) -> int | None:
-                """Return the scenario_id of a scenario if found, or None if not."""
-                try:
-                    user = session.query(HSUser).filter_by(user_name=user_name).one()
-                    return user.user_id
-                except NoResultFound:
-                    return None
-
-            user = session.query(HSUser).filter_by(user_name=user_name).one_or_none()
+            user_id: int = get_or_create_user(session, user_name)
+            """user: HSUser | None = session.query(HSUser).filter_by(user_name=user_name).one_or_none()
             if user is None:
-                new_user = HSUser(user_name=user_name)
+                new_user: HSUser = HSUser(user_name=user_name)
                 session.add(new_user)
                 session.flush()
                 user_id = new_user.user_id
             else:
                 user = session.query(HSUser).filter_by(user_name=user_name).one_or_none()
-                user_id = user.user_id
+                user_id = user.user_id"""
 
-            model = session.query(Model).filter_by(model_name=model_name, user_id=user_id).one_or_none()
+            get_or_create_model(session, model_name, user_id)
+
+            """model = session.query(Model).filter_by(model_name=model_name, user_id=user_id).one_or_none()
             if model is None:
                 new_model = Model(model_name=model_name, user_id=user_id)
                 session.add(new_model)
                 session.flush()
             else:
-                session.query(Model).filter_by(model_name=model_name, user_id=user_id).one_or_none()
+                session.query(Model).filter_by(model_name=model_name, user_id=user_id).one_or_none()"""
 
             user_id = get_user_id(session, user_name)
             model_id = get_model_id(session, model_name, user_id)
-            scenario = session.query(Scenario).filter_by(scenario_name=scenario_name, model_id=model_id).one_or_none()
+
+            scenario_id: int = get_or_create_scenario(session, scenario_name, minutes, model_id)
+            """scenario = session.query(Scenario).filter_by(scenario_name=scenario_name, model_id=model_id).one_or_none()
             if scenario is None:
                 new_scenario = Scenario(scenario_name=scenario_name, minutes=minutes, model_id=model_id)
                 session.add(new_scenario)
@@ -223,10 +280,11 @@ def save_to_db(combined_pivot: pd.DataFrame, local_start_time: datetime, local_e
                 Scenario(scenario_name=scenario_name, minutes=minutes, model_id=model_id)
 
             scenario_id = get_scenario_id(session, scenario_name, model_id)
-            logging.info(f"{scenario_id}")
+            logging.info(f"{scenario_id}")"""
+
             # Create Simulation
-            new_simulation = Simulation(local_start_time=local_start_time, local_end_time=local_end_time,
-                                        num_replications=num_replications, scenario_id=scenario_id)
+            new_simulation: Simulation = Simulation(local_start_time=local_start_time, local_end_time=local_end_time,
+                                                    num_replications=num_replications, scenario_id=scenario_id)
             logging.info("Simulation created")
             session.add(new_simulation)
             session.flush()
@@ -239,7 +297,6 @@ def save_to_db(combined_pivot: pd.DataFrame, local_start_time: datetime, local_e
 
             for index, row in combined_pivot.iterrows():
                 pivot_entry = PivotTable(
-                    # pivot_table_id=pivot_table_id,
                     simulation_id=simulation_id,
                     type=str(index[0]),
                     name=str(index[1]),
