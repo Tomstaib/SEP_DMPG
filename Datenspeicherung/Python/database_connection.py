@@ -5,10 +5,10 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker, Session
-from src.database.orm import PivotTable, Simulation, Scenario, Model, HSUser
 from sqlalchemy.exc import OperationalError, SQLAlchemyError, NoResultFound, IntegrityError
-from src.database.database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME
 
+from database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME
+from orm import PivotTable, Simulation, Scenario, Model, HSUser
 
 def validate_db_config():
     """
@@ -58,6 +58,7 @@ def get_or_create_model(session: Session, model_name: str, user_id: int) -> Mode
 
     :return: The Model created or found.
     """
+
     while True:
         try:
             model: Model | None = session.query(Model).filter_by(model_name=model_name,
@@ -92,18 +93,41 @@ def get_or_create_scenario(session: Session, scenario_name: str, minutes: int, m
 
     :return: The Scenario created or found.
     """
-    with session.begin_nested():
-        scenario: Scenario | None = session.query(Scenario).filter_by(scenario_name=scenario_name,
-                                                                      model_id=model_id).with_for_update().one_or_none()
 
-        if scenario is None:
-            scenario: Scenario = Scenario(scenario_name=scenario_name, minutes=minutes, model_id=model_id)
-            session.add(scenario)
-            logging.info(f"Scenario '{scenario_name}' created for model {model_id}.")
-        else:
-            logging.info(f"Scenario '{scenario_name}' already exists for model {model_id}.")
+    while True:
+        try:
+            with session.begin_nested():
+                scenario: Scenario | None = session.query(Scenario).filter_by(
+                    scenario_name=scenario_name,
+                    model_id=model_id
+                ).with_for_update().one_or_none()
 
-        return scenario
+                if scenario is None:
+                    scenario = Scenario(scenario_name=scenario_name, minutes=minutes, model_id=model_id)
+                    session.add(scenario)
+                    logging.info(f"Scenario '{scenario_name}' created for model {model_id}.")
+
+                    session.flush()  # Ensure that the IntegrityError can be caught
+                else:
+                    logging.info(f"Scenario '{scenario_name}' already exists for model {model_id}.")
+
+                return scenario
+
+        except IntegrityError:
+            logging.warning(
+                f"IntegrityError when trying to create scenario '{scenario_name}' for model {model_id}, retrying..."
+            )
+            session.rollback()
+
+            scenario = session.query(Scenario).filter_by(
+                scenario_name=scenario_name,
+                model_id=model_id
+            ).one_or_none()
+            if scenario:
+                return scenario
+            else:
+                raise SQLAlchemyError(f"Scenario {scenario_name} could not be found.")
+
 
 
 def connect_to_db() -> Engine | None:
