@@ -5,8 +5,10 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import declarative_base, relationship, Session
 
-from src.database import database_connection
-from src.database.database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME
+import database_connection
+
+from database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME
+
 
 Base = declarative_base()
 """Base class for ORM models"""
@@ -192,6 +194,7 @@ def main():
     Main function to connect to the database and create the database scheme. Starting by making an engine,
     creating the tables, then creating a session and finally commiting.
     """
+
     engine: Engine | None = database_connection.connect_to_db()
     if engine:
         try:
@@ -224,4 +227,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main() # pragma: no cover
