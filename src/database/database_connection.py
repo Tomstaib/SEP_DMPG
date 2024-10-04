@@ -1,6 +1,7 @@
 import logging
 import os
 from datetime import datetime
+from typing import Optional
 import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
@@ -106,7 +107,7 @@ def get_or_create_scenario(session: Session, scenario_name: str, minutes: int, m
         return scenario
 
 
-def connect_to_db() -> Engine | None:
+def connect_to_db() -> Optional[Engine]:
     """
     Attempt to connect to the database and return the engine if successful.
 
@@ -136,7 +137,7 @@ def connect_to_db() -> Engine | None:
         return None
 
 
-def create_session(engine: Engine) -> Session | None:
+def create_session(engine: Engine) -> Optional[Session]:
     """
     Create a session for interacting with the database.
 
@@ -168,7 +169,7 @@ def commit_session(session: Session) -> None:
         return None
 
 
-def get_model_id(session: Session, model_name: str, user_id: int) -> int | None:
+def get_model_id(session: Session, model_name: str, user_id: int) -> Optional[int]:
     """
     Getter for the model_id.
 
@@ -185,7 +186,7 @@ def get_model_id(session: Session, model_name: str, user_id: int) -> int | None:
         return None
 
 
-def get_scenario_id(session: Session, scenario_name: str, model_id: int) -> int | None:
+def get_scenario_id(session: Session, scenario_name: str, model_id: int) -> Optional[int]:
     """
     Return the scenario_id of a scenario if found, or None if not.
 
@@ -202,7 +203,7 @@ def get_scenario_id(session: Session, scenario_name: str, model_id: int) -> int 
         return None
 
 
-def get_user_id(session: Session, user_name: str) -> int | None:
+def get_user_id(session: Session, user_name: str) -> Optional[int]:
     """
     Return the scenario_id of a scenario if found, or None if not.
 

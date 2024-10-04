@@ -1,23 +1,36 @@
+from typing import Optional
 import requests
 import logging
-import getpass  # Zum Abrufen des aktuellen Benutzers
+import getpass
+
+from requests import Response
 
 URL = 'https://131.173.65.76:5000/receive_runtime_prediction'
+"""URL to send the runtime prediction to."""
 
 
-def send_progress_to_server(ct, i, step, num_replications):
-    # Hole den aktuellen Systembenutzer
-    user = getpass.getuser()
+def send_progress_to_server(ct: (str, str, str, str, str), i: int, num_replications: int):
+    """
+    Send the simulation progress to the server.
 
-    data = save_progress(ct, i, step, num_replications)
+    :params ct: A tuple containing formatted strings for percentage completion and time metrics.
+    :params i: The current iteration number.
+    :params num_replications: The total number of replications.
+
+    See also:
+        - [save_progress](../util/flask/runtime_prediction.html#save_progress): Save Progress in a dictionary.
+    """
+    user: str = getpass.getuser()
+
+    data: dict[str, int] = save_progress(ct, i, num_replications)
     if data is None:
         logging.error("No data to send. Progress data creation failed.")
         return
 
     try:
-        # Übergib den aktuellen Benutzer als URL-Parameter
-        response = requests.post(URL, json=data, params={'user': user}, verify=False)
-        response.raise_for_status()  # Raises an HTTPError for bad responses (4xx and 5xx)
+        # Pass current user as URL-parameter
+        response: Response = requests.post(URL, json=data, params={'user': user}, verify=False)
+        response.raise_for_status()  # Raise an HTTPError for bad responses
         logging.info(f"Runtime prediction successfully sent to webserver by user {user}")
     except requests.exceptions.HTTPError as http_err:
         logging.error(f"HTTP error occurred while sending Runtime-Prediction: {http_err}")
@@ -27,9 +40,18 @@ def send_progress_to_server(ct, i, step, num_replications):
         logging.error(f"An unexpected error occurred: {e}")
 
 
-def save_progress(ct, i, step, num_replications):
+def save_progress(ct: (str, str, str, str, str), i: int, num_replications: int) -> Optional[dict[str, int]]:
+    """
+    Save the current progress as a dictionary.
+
+    :params ct: A tuple containing formatted strings for percentage completion and time metrics.
+    :params i: The current iteration number.
+    :params num_replications: The total number of replications.
+
+    :return: A dictionary containing the data.
+    """
     try:
-        progress_data = {
+        progress_data: dict[str, int] = {
             "percentage": ct[0].replace(" ", ""),
             "time_computed": ct[1].replace("[time computed] ", "").strip(),
             "time_to_complete": ct[2].replace("[time to complete] ", "").strip(),
@@ -39,16 +61,12 @@ def save_progress(ct, i, step, num_replications):
             "total_iterations": num_replications
         }
     except IndexError as e:
-        # Handle index errors
         logging.error("Error accessing ct elements: %s", e)
         return None
     except AttributeError as e:
-        # Handle attribute errors
         logging.error("Error processing string attributes: %s", e)
         return None
     except Exception as e:
-        # Handle all other exceptions
         logging.error("Unknown error: %s", e)
         return None
     return progress_data
-

@@ -64,6 +64,9 @@ class Scenario(Base):
 class Source(Base):
     """
     Class for the Source. A Source emits entities.
+
+    See also:
+        - [Source](../core/source.html)
     """
     __tablename__ = 'Source'
     source_id: int = Column(Integer, primary_key=True, autoincrement=True)
@@ -79,6 +82,9 @@ class Source(Base):
 class Server(Base):
     """
     Class for the Server. A Server processes entities.
+
+    See also:
+        - [Server](../core/server.html)
     """
     __tablename__ = 'Server'
     server_id: int = Column(Integer, primary_key=True, autoincrement=True)
@@ -105,6 +111,9 @@ class Server(Base):
 class Sink(Base):
     """
     Class for the Sink.
+
+    See also:
+        - [Sink](../core/sink.html)
     """
     __tablename__ = 'Sink'
     sink_id: int = Column(Integer, primary_key=True, autoincrement=True)
@@ -122,6 +131,9 @@ class Sink(Base):
 class Connection(Base):
     """
     Class for the Connection. A Connection connects to simulation components.
+
+    See also:
+        - [Connection](../core/connection.html)
     """
     __tablename__ = 'Connection'
     connection_id: int = Column(Integer, primary_key=True, autoincrement=True)
@@ -138,6 +150,9 @@ class Connection(Base):
 class Entity(Base):
     """
     Class for the Entity.
+
+    See also:
+        - [Entity](../core/entity.html)
     """
     __tablename__ = 'Entity'
     entity_id: int = Column(Integer, primary_key=True, autoincrement=True)
@@ -220,7 +235,6 @@ def main():
             logging.error("Failed to create session.")
     else:
         logging.error("Failed to connect to the database")
-
 
 
 if __name__ == "__main__":

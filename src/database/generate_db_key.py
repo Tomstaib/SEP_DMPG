@@ -2,14 +2,15 @@ import os
 import stat
 import sys
 from getpass import getpass
-from src.database.database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME, DB_PASSWORD
-from src.database.database_connection import connect_to_db
+from typing import Optional
+from database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME, DB_PASSWORD
 
 
 DB_URL_TEMPLATE: str = f'{DB_HOST}:{DB_PORT}:{DB_NAME}:{DB_USER}:{DB_PASSWORD}'
+"""Constant for the expected format in the .pgpass file."""
 
 
-def input_password(prompt: str = "Input the password") -> str | None:
+def input_password(prompt: str = "Input the password") -> Optional[str]:
     """
     Input the password. This is only possible if the console input is possible.
 
@@ -62,12 +63,6 @@ def main():
         raise ValueError("Error getting the Password")
 
     create_pgpass_file(DB_URL_TEMPLATE)
-
-    connection = connect_to_db()
-
-    if connection:
-        print("Connection successful")
-        connection.close()
 
 
 if __name__ == '__main__':

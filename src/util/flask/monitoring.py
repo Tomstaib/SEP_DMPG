@@ -1,9 +1,12 @@
-import random
-
 import psutil
 import time
 
-def monitor_resources(interval=30):
+def monitor_resources(interval: int = 30):
+    """
+    Monitor resource usage rudimentary based on psutil. The usages will be printed in an interval.
+
+    :param interval: Interval in which the monitoring should be done in seconds.
+    """
     try:
         while True:
             # Monitor CPU and RAM

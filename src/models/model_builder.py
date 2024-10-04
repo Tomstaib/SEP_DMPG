@@ -45,6 +45,9 @@ def create_source(env: simpy.Environment, source_config: dict,
     :param source_config: Dictionary containing the configuration for the source.
     :param flask_base_path: Base path for the Flask application, used to resolve arrival table paths.
     :return: A tuple containing the unique ID of the source component and the Source object.
+    
+    See also:
+        - [Source](../core/source.html)
     """  # noqa: E501
     name: str = source_config['name']
     component_id: str = get_component_id(source_config)
@@ -73,6 +76,9 @@ def create_server(env: simpy.Environment,
     :param server_config: Dictionary containing the configuration for the server.
 
     :return: UniqueID and Server object
+    
+    See also:
+        - [Server](../core/server.html)
     """  # noqa: E501
     unique_id: str = get_component_id(server_config)
     name: str = server_config['name']
@@ -114,6 +120,9 @@ def create_sink(env: simpy.Environment, sink_config: dict) -> (str, Sink):
     :param sink_config: Dictionary containing the configuration for the sink.
 
     :return: UniqueID and Sink object
+    
+    See also:
+        - [Sink](../core/sink.html)
     """  # noqa: E501
     unique_id: str = get_component_id(sink_config)
     name: str = sink_config['name']
@@ -130,6 +139,10 @@ def setup_connections(components: dict, component_config: dict) -> None:
 
     :param components: Dictionary containing all components and their ids.
     :param component_config: Dictionary containing the component's configuration.
+    
+    See also:
+        - [Connection](../core/connection.html)
+        - [RoutingObject](../core/routing_object.html)
     """  # noqa: E501
     component_id: str = get_component_id(component_config)
     component: Source | Server = components[component_id]
@@ -160,6 +173,12 @@ def model_function(env: simpy.Environment) -> dict:
     Build a model from the provided configuration file.
 
     :param env: Simpy environment of the simulation
+    
+    See also:
+        - [Source](../core/source.html)
+        - [Server](../core/server.html)
+        - [Sink](../core/sink.html)
+        - [RoutingObject](../core/routing_object.html)
     """  # noqa: E501
     config: dict = load_config(get_config_path())
     components: dict = {}  # Dictionary to hold all components by unique ID
@@ -237,6 +256,9 @@ def main(replications: int):
     Run the model builder.
 
     :param replications: Number of replications for the simulation
+
+    See also:
+        - [run_replications](../util/simulations.html#run_replications): Run replications of a model.
     """
     config = load_config(get_config_path())
     minutes: int = int(config.get('minutes'))

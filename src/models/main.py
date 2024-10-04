@@ -1,5 +1,5 @@
-from models.model_pcb import setup_model_pcb
-from models.model_pcb_with_arrival_table import setup_model_pcb_with_arrival_table
+from src.models.model_pcb import setup_model_pcb
+from src.models.model_pcb_with_arrival_table import setup_model_pcb_with_arrival_table
 from src.util.simulations import run_replications, run_simulation
 import logging
 import matplotlib.pyplot as plt
