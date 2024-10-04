@@ -83,8 +83,13 @@
             </div>
 
             <div class="form-group">
+                <label for="cpus_per_task">CPUs per Task:</label>
+                <input type="number" class="form-control" id="cpus_per_task" name="cpus_per_task" required min="1">
+            </div>
+
+            <div class="form-group">
                 <label for="time_limit">Time Limit (minutes):</label>
-                <input type="number" class="form-control" id="time_limit" name="time_limit" required>
+                <input type="number" class="form-control" id="time_limit" name="time_limit" required >
             </div>
             <button type="submit" class="btn btn-success btn-block" name="start_simulation">Start Simulation</button>
         </form>
