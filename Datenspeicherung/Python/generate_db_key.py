@@ -2,14 +2,14 @@ import os
 import stat
 import sys
 from getpass import getpass
-from src.database.database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME, DB_PASSWORD
-from src.database.database_connection import connect_to_db
+from database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME, DB_PASSWORD
+from database_connection import connect_to_db
 
 
 DB_URL_TEMPLATE: str = f'{DB_HOST}:{DB_PORT}:{DB_NAME}:{DB_USER}:{DB_PASSWORD}'
 
 
-def input_password(prompt: str = "Input the password") -> str or None:
+def input_password(prompt: str = "Input the password") -> str | None:
     """
     Input the password. This is only possible if the console input is possible.
 
@@ -38,23 +38,36 @@ def create_pgpass_file(template: str = DB_URL_TEMPLATE):
 
     :param template: The template for the .pgpass file provided as a constant.
     """
-    # Determine the path for .pgpass based on the operating system
+    # Bestimme den Pfad für die .pgpass-Datei basierend auf dem Betriebssystem
     if os.name == 'nt':  # Windows
-        pgpass_path: str = os.path.join(os.getenv('APPDATA'), 'postgresql', 'pgpass.conf')
+        appdata_path = os.getenv('APPDATA')
+        if not appdata_path:
+            raise ValueError("Die APPDATA-Umgebungsvariable ist nicht gesetzt oder leer")
+        pgpass_path: str = os.path.join(appdata_path, 'postgresql', 'pgpass.conf')
     else:  # Unix/Linux/Mac
-        pgpass_path: str = os.path.join(os.path.expanduser('~'), '.pgpass')
+        home_dir = os.path.expanduser('~')
+        if not home_dir:
+            raise ValueError("Das Home-Verzeichnis konnte nicht ermittelt werden")
+        pgpass_path: str = os.path.join(home_dir, '.pgpass')
 
-    # Ensure the directory exists
+    # Stelle sicher, dass das Verzeichnis existiert
     os.makedirs(os.path.dirname(pgpass_path), exist_ok=True)
 
-    with open(pgpass_path, 'w') as pgpass_file:
-        pgpass_file.write(template)
+    # Schreibe das Template in die .pgpass-Datei
+    try:
+        with open(pgpass_path, 'w') as pgpass_file:
+            pgpass_file.write(template)
+    except OSError as e:
+        raise OSError(f"Fehler beim Schreiben der .pgpass-Datei: {e}")
 
-    # Set the file permissions to be readable and writable only by the user
+    # Setze die Dateiberechtigungen so, dass sie nur vom Benutzer gelesen und geschrieben werden können
     if os.name != 'nt':
-        os.chmod(pgpass_path, stat.S_IRUSR | stat.S_IWUSR)
+        try:
+            os.chmod(pgpass_path, stat.S_IRUSR | stat.S_IWUSR)
+        except OSError as e:
+            raise OSError(f"Fehler beim Setzen der Dateiberechtigungen: {e}")
 
-    print(f".pgpass file created at: {pgpass_path}")
+    print(f".pgpass-Datei erstellt unter: {pgpass_path}")
 
 
 def main():
@@ -70,5 +83,7 @@ def main():
         connection.close()
 
 
+
+
 if __name__ == '__main__':
-    main()
+    main() #pragma: no cover
