@@ -1,111 +1,212 @@
-import os
 import sys
-import pytest
+import os
+import unittest
+
+from unittest.mock import patch, MagicMock
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
 
-# Fügt den Pfad des lokalen Moduls für Docker-Container hinzu
 sys.path.append(os.path.abspath(
     os.path.join(os.path.dirname(__file__), '../Datenspeicherung/Python')
 ))
 
-# Import der ORM-Module
-import orm
-from orm import Base, HSUser, Model, Scenario, Source, Server, Sink, Connection, Entity, PivotTable
+from orm import Base, HSUser, Model, Scenario, create_tables, main
+from database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME
 
-# SQLite In-Memory-Datenbank initialisieren
-engine = create_engine('sqlite:///:memory:')
 
-# Fixture für das Setup der In-Memory-Datenbank auf Modulebene
-@pytest.fixture(scope='module')
-def test_engine():
-    Base.metadata.create_all(engine)
-    return engine
+class TestORM(unittest.TestCase):
 
-# Fixture für das Zurücksetzen der Datenbank vor jedem Test
-@pytest.fixture(scope='function')
-def test_session():
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-    
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    yield session
-    session.close()
+    def setUp(self):
+        # Use an in-memory SQLite database for testing
+        self.engine = create_engine('sqlite:///:memory:')
+        Base.metadata.create_all(self.engine)
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
 
-# Testet die Erstellung und Abfrage eines HSUser-Eintrags
-def test_create_hsuser(test_session):
-    new_user = HSUser(user_name="Test User", number_started_simulations=10)
-    test_session.add(new_user)
-    test_session.commit()
+    def tearDown(self):
+        self.session.close()
+        Base.metadata.drop_all(self.engine)
 
-    fetched_user = test_session.query(HSUser).filter_by(user_name="Test User").first()
-    assert fetched_user is not None
-    assert fetched_user.number_started_simulations == 10
+    def test_create_user(self):
+        user = HSUser(user_name="test_user")
+        self.session.add(user)
+        self.session.commit()
 
-# Testet die Beziehung zwischen Model und HSUser
-def test_create_model_with_user(test_session):
-    new_user = HSUser(user_name="Test User 2", number_started_simulations=5)
-    new_model = Model(model_name="Test Model", hsuser=new_user)
-    
-    test_session.add(new_model)
-    test_session.commit()
+        result = self.session.query(HSUser).filter_by(user_name="test_user").one()
+        self.assertEqual(result.user_name, "test_user")
 
-    fetched_model = test_session.query(Model).filter_by(model_name="Test Model").first()
-    assert fetched_model is not None
-    assert fetched_model.hsuser.user_name == "Test User 2"
+    def test_create_model(self):
+        user = HSUser(user_name="test_user")
+        self.session.add(user)
+        self.session.flush()  # Commit the user so we can reference the user_id
 
-# Integrationstest: Testet die Beziehung zwischen Scenario und Source
-def test_create_scenario_with_source(test_session):
-    new_scenario = Scenario(scenario_name="Test Scenario")
-    new_source = Source(
-        source_id=1, source_name="Test Source", 
-        scenario=new_scenario, number_created=100
-    )
-    
-    test_session.add(new_source)
-    test_session.commit()
+        model = Model(model_name="test_model", user_id=user.user_id)
+        self.session.add(model)
+        self.session.commit()
 
-    fetched_scenario = test_session.query(Scenario).filter_by(scenario_name="Test Scenario").first()
-    assert fetched_scenario is not None
-    assert fetched_scenario.sources[0].source_name == "Test Source"
-    assert fetched_scenario.sources[0].number_created == 100
+        result = self.session.query(Model).filter_by(model_name="test_model").one()
+        self.assertEqual(result.model_name, "test_model")
+        self.assertEqual(result.user_id, user.user_id)
 
-# Testet die Erstellung eines minimalen Szenarios
-def test_create_minimal_scenario(test_session):
-    minimal_scenario = Scenario(scenario_name="Minimal Scenario")
-    minimal_source = Source(
-        source_id=1, source_name="Minimal Source", 
-        scenario=minimal_scenario
-    )
-    
-    test_session.add(minimal_source)
-    test_session.commit()
+    def test_create_scenario(self):
+        user = HSUser(user_name="test_user")
+        self.session.add(user)
+        self.session.flush()
 
-    fetched_scenario = test_session.query(Scenario).filter_by(scenario_name="Minimal Scenario").first()
-    assert fetched_scenario is not None
+        model = Model(model_name="test_model", user_id=user.user_id)
+        self.session.add(model)
+        self.session.flush()
 
-# Testet die Effizienz von Masseninsertionen
-def test_bulk_insertion(test_session):
-    scenarios = [Scenario(scenario_name=f"Scenario {i}") for i in range(1000)]
-    test_session.add_all(scenarios)
-    test_session.commit()
-    
-    sources = [
-        Source(source_id=i, source_name=f"Source {i}", scenario=scenarios[i], number_created=100) 
-        for i in range(1000)
-    ]
-    test_session.add_all(sources)
-    test_session.commit()
-    
-    scenario_count = test_session.query(Scenario).count()
-    source_count = test_session.query(Source).count()
+        scenario = Scenario(scenario_name="test_scenario", model_id=model.model_id)
+        self.session.add(scenario)
+        self.session.commit()
 
-    assert scenario_count == 1000
-    assert source_count == 1000
+        result = self.session.query(Scenario).filter_by(scenario_name="test_scenario").one()
+        self.assertEqual(result.scenario_name, "test_scenario")
+        self.assertEqual(result.model_id, model.model_id)
 
-# Entfernt die Datenbanktabellen nach Abschluss der Tests
-@pytest.fixture(scope='module', autouse=True)
-def cleanup(test_engine):
-    yield
-    Base.metadata.drop_all(test_engine)
+
+class TestCreateTables(unittest.TestCase):
+    """
+    Test class for the create_tables function. Ensures that tables are correctly created.
+    """
+
+    @patch('orm.create_engine')
+    @patch('orm.Base.metadata.create_all')
+    def test_create_tables(self, mock_create_all, mock_create_engine):
+        """Tests whether create_engine and create_all are called correctly."""
+        
+        # Simulate an engine return value
+        mock_engine = MagicMock()
+        mock_create_engine.return_value = mock_engine
+
+        create_tables()
+
+        # Check if create_engine was called with the correct URL
+        expected_db_url = f"postgresql+psycopg2://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+        mock_create_engine.assert_called_once_with(expected_db_url)
+
+        # Check if create_all was called on the engine
+        mock_create_all.assert_called_once_with(mock_engine)
+
+
+class TestORMMainIntegration(unittest.TestCase):
+    """
+    Integration test for the main() function.
+    Tests the entire chain of operations in main(), from DB connection to table creation and session commit.
+    """
+
+    @patch('logging.error')
+    @patch('logging.info')
+    @patch('logging.exception')
+    @patch('orm.create_tables')  
+    def test_main_integration_success(self, mock_create_tables, mock_logging_exception, mock_logging_info, mock_logging_error):
+        """Integration test for the success case of the main() function."""
+        mock_engine = MagicMock()
+        mock_session = MagicMock()
+
+        with patch('database_connection.connect_to_db', return_value=mock_engine), \
+             patch('database_connection.create_session', return_value=mock_session):
+            main()
+
+            mock_create_tables.assert_called_once()
+            mock_session.commit.assert_called_once()
+            mock_logging_info.assert_any_call("Tables created")
+            mock_logging_info.assert_any_call("Session committed successfully")
+            mock_logging_error.assert_not_called()
+
+    @patch('logging.error')
+    @patch('logging.exception')
+    @patch('orm.create_tables', side_effect=SQLAlchemyError("Failed to create tables"))
+    def test_main_integration_create_tables_exception(self, mock_create_tables, mock_logging_exception, mock_logging_error):
+        """Integration test for the case when create_tables fails."""
+        mock_engine = MagicMock()
+
+        with patch('database_connection.connect_to_db', return_value=mock_engine):
+            main()
+
+            mock_create_tables.assert_called_once()
+            mock_logging_exception.assert_called_once_with("Failed to create tables Failed to create tables")
+            mock_logging_error.assert_not_called()
+
+    @patch('logging.error')
+    @patch('logging.info')
+    @patch('logging.exception')
+    @patch('orm.create_tables')
+    def test_main_integration_no_session(self, mock_create_tables, mock_logging_exception, mock_logging_info, mock_logging_error):
+        """Integration test for the case when session creation fails."""
+        mock_engine = MagicMock()
+
+        with patch('database_connection.connect_to_db', return_value=mock_engine), \
+             patch('database_connection.create_session', return_value=None):
+            main()
+
+            mock_create_tables.assert_called_once()
+            mock_logging_error.assert_called_once_with("Failed to create session.")
+            mock_logging_exception.assert_not_called()
+
+    @patch('logging.error')
+    @patch('logging.exception')
+    @patch('orm.create_tables')
+    def test_main_integration_no_db_connection(self, mock_create_tables, mock_logging_exception, mock_logging_error):
+        """Integration test for the case when no database connection can be established."""
+        with patch('database_connection.connect_to_db', return_value=None):
+            main()
+
+            mock_create_tables.assert_not_called()
+            mock_logging_error.assert_called_once_with("Failed to connect to the database")
+            mock_logging_exception.assert_not_called()
+
+
+class TestSessionCommitException(unittest.TestCase):
+    """
+    Test class for exception handling during session commit in the main function.
+    Ensures rollback is performed and errors are logged in case of SQLAlchemyError or unexpected exceptions.
+    """
+
+    @patch('orm.logging.error')
+    @patch('orm.database_connection.create_session')
+    @patch('orm.database_connection.connect_to_db')
+    @patch('orm.create_tables') 
+    def test_commit_sqlalchemy_error(self, mock_create_tables, mock_connect_to_db, mock_create_session, mock_logging_error):
+        """Tests SQLAlchemyError during commit and ensures rollback and logging are called."""
+        
+        # Simulate a successful DB connection and session creation
+        mock_engine = MagicMock()
+        mock_connect_to_db.return_value = mock_engine
+        mock_session = MagicMock()
+        mock_create_session.return_value = mock_session
+
+        # Simulate SQLAlchemyError during commit
+        mock_session.commit.side_effect = SQLAlchemyError("Mocked SQLAlchemyError")
+
+        main()
+
+        mock_session.rollback.assert_called_once()
+
+        mock_logging_error.assert_called_once_with("Failed to commit session: Mocked SQLAlchemyError")
+
+    @patch('orm.logging.exception')
+    @patch('orm.database_connection.create_session')
+    @patch('orm.database_connection.connect_to_db')
+    @patch('orm.create_tables')
+    def test_commit_generic_exception(self, mock_create_tables, mock_connect_to_db, mock_create_session, mock_logging_exception):
+        """Tests whether rollback and logging are correctly called in case of a general exception."""
+        
+        mock_engine = MagicMock()
+        mock_connect_to_db.return_value = mock_engine
+        mock_session = MagicMock()
+        mock_create_session.return_value = mock_session
+
+        mock_session.commit.side_effect = Exception("Mocked general exception")
+
+        main()
+
+        mock_session.rollback.assert_called_once()
+
+        mock_logging_exception.assert_called_once_with("An unexpected error occurred during session commit Mocked general exception")
+
+
+if __name__ == '__main__':
+    unittest.main()
