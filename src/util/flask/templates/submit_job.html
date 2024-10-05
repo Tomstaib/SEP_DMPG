@@ -19,7 +19,7 @@
             <button type="submit" class="btn btn-primary">Prepare Environment</button>
         </form>
 
-        <!-- Anzeige der Anzahl der Compute Nodes -->
+        <!-- Show Number of compute nodes -->
         <p>Number of available compute nodes: {{ num_compute_nodes }}</p>
 
         <!-- Section for creating a composite tree -->
@@ -68,7 +68,7 @@
                        oninput="setCustomValidity('')">
             </div>
 
-            <!-- Dropdown für JSON-Szenarien -->
+            <!-- Dropdown for JSON-Scenarios -->
             <div class="form-group">
                 <label for="model_script">Select Scenario (JSON File):</label>
                 <select name="model_script" id="model_script" class="form-control" required>
@@ -83,7 +83,7 @@
             </div>
 
             <div class="form-group">
-                <label for="cpus_per_task">CPUs per Task:</label>
+                <label for="cpus_per_task">CPUs per Node:</label>
                 <input type="number" class="form-control" id="cpus_per_task" name="cpus_per_task" required min="1">
             </div>
 

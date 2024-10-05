@@ -105,7 +105,8 @@ class ManagementNode(Node):
         for child in self:
             child.distribute_and_compute(model=model, num_replications=num_replications,
                                          slurm_account=slurm_account, model_script=model_script,
-                                         time_limit=time_limit, slurm_username=slurm_username, jwt_token=jwt_token, cpus_per_task=cpus_per_task)
+                                         time_limit=time_limit, slurm_username=slurm_username,
+                                         jwt_token=jwt_token, cpus_per_task=cpus_per_task)
 
         if self._parent:
             self._parent.notify(f"{self.__str__()} completed its operations.", self)
