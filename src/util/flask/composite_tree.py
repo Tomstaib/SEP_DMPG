@@ -375,7 +375,7 @@ class CompositeTree(metaclass=Singleton):
 
     @classmethod
     def start_simulation(cls, num_replications: int, num_compute_nodes: int, slurm_account: str,
-                         slurm_username: str, model_script: str, time_limit: int):
+                         slurm_username: str, model_script: str, time_limit: int, cpus_per_task: int):
         """
         Starts the simulation from the root node.
 
@@ -385,6 +385,7 @@ class CompositeTree(metaclass=Singleton):
         :param slurm_username: The Slurm username to be used.
         :param model_script: The model script to be used.
         :param time_limit: The time limit for the Slurm job in minutes.
+        :param cpus_per_task: Number of CPUs per task for the simulation.
         """
         try:
             total_compute_nodes: int = cls.count_compute_nodes(cls.__root)
@@ -407,7 +408,7 @@ class CompositeTree(metaclass=Singleton):
                   f"and {replications_per_node} replications per node")
 
             cls._run_simulation(cls.__root, num_compute_nodes, replications_per_node, slurm_account, slurm_username,
-                                model_script, time_limit)
+                                model_script, time_limit, cpus_per_task)
 
         except Exception as e:
             print(f"Error starting simulation: {str(e)}")
@@ -427,7 +428,8 @@ class CompositeTree(metaclass=Singleton):
 
     @classmethod
     def _run_simulation(cls, management_node: ManagementNode, num_compute_nodes_to_use: int, replications_per_node: int,
-                        slurm_account: str, slurm_username: str, model_script: str, time_limit: int) -> None:
+                        slurm_account: str, slurm_username: str, model_script: str, time_limit: int,
+                        cpus_per_task: int) -> None:
         """
         Recursive method to start the simulation on the specified number of ComputeNodes with the given parameters.
         """
@@ -445,7 +447,8 @@ class CompositeTree(metaclass=Singleton):
             if isinstance(node, ComputeNode) and not node.is_running():
                 node.distribute_and_compute(model=model_script, num_replications=replications_per_node,
                                             slurm_account=slurm_account, model_script=model_script,
-                                            time_limit=time_limit, slurm_username=slurm_username)
+                                            time_limit=time_limit, slurm_username=slurm_username,
+                                            cpus_per_task=cpus_per_task)
                 count += 1
 
             if isinstance(node, ManagementNode):

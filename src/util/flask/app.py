@@ -1027,19 +1027,34 @@ def handle_start_simulation(username: str, jwt_token: str) -> Any:
     num_replications: int = int(request.form.get('num_replications'))
     num_compute_nodes: int = int(request.form.get('num_compute_nodes'))
     model_script: str = request.form.get('model_script')
+    cpus_per_task: int = int(request.form.get('cpus_per_task'))  # New parameter cpus_per_task
     slurm_username: str = session.get('username')
-    manipulated_model_script: str = manipulate_scenario_path(model_script,
-                                                             source_base_path=os.path.join(USER_DIR, username),
-                                                             destination_base_path_template=f'/cluster/user/{slurm_username}/DMPG_experiments')
+
+    # Manipulate the model script path
+    manipulated_model_script: str = manipulate_scenario_path(
+        model_script,
+        source_base_path=os.path.join(USER_DIR, username),
+        destination_base_path_template=f'/cluster/user/{slurm_username}/DMPG_experiments'
+    )
+
     time_limit = int(request.form.get('time_limit'))
     num_replications_per_node: int = round(num_replications / num_compute_nodes)
 
     # Start simulation in a separate thread
-    simulation_thread = threading.Thread(target=start_simulation_in_thread, args=(username, num_replications_per_node,
-                                                                                  selected_account, slurm_username,
-                                                                                  model_script,
-                                                                                  manipulated_model_script,
-                                                                                  time_limit, jwt_token))
+    simulation_thread = threading.Thread(
+        target=start_simulation_in_thread,
+        args=(
+            username,
+            num_replications_per_node,
+            selected_account,
+            slurm_username,
+            model_script,
+            manipulated_model_script,
+            time_limit,
+            jwt_token,
+            cpus_per_task
+        )
+    )
     simulation_thread.start()
 
     flash("Simulation started successfully. All trees have been deleted.")
@@ -1048,7 +1063,7 @@ def handle_start_simulation(username: str, jwt_token: str) -> Any:
 
 def start_simulation_in_thread(username: str, num_replications_per_node: int, selected_account: str,
                                slurm_username: str, model_script: str, manipulated_model_script: str,
-                               time_limit: int, jwt_token: str) -> None:
+                               time_limit: int, jwt_token: str, cpus_per_task: int) -> None:
     """
     Start the simulation in a separate thread.
 
@@ -1060,6 +1075,7 @@ def start_simulation_in_thread(username: str, num_replications_per_node: int, se
     :param manipulated_model_script: The manipulated model script path.
     :param time_limit: The time limit for the simulation.
     :param jwt_token: The JWT token obtained via SSH.
+    :param cpus_per_task: Number of CPUs per task for the simulation.
 
     See also:
         - [CompositeTree](../util/flask/composite_tree.html): Composite Pattern to submit jobs.
@@ -1069,15 +1085,19 @@ def start_simulation_in_thread(username: str, num_replications_per_node: int, se
     if user_trees.get(username) is not None:
         root = user_trees[username]
         print(root)
+
+        # Include cpus_per_task in distribute_and_compute call
         root.distribute_and_compute(model=model_script, num_replications=num_replications_per_node,
                                     slurm_account=selected_account, model_script=manipulated_model_script,
-                                    time_limit=time_limit, slurm_username=slurm_username, jwt_token=jwt_token)
+                                    time_limit=time_limit, slurm_username=slurm_username,
+                                    jwt_token=jwt_token, cpus_per_task=cpus_per_task)
 
         # After the simulation is completed, delete the user's tree only because of 2 jobs issue
         del user_trees[username]
         logging.info(f"All trees of the user {username} have been deleted.")
     else:
         logging.warning("No Composite Tree available for the simulation.")
+
 
 
 def find_json_files(directory: str) -> list[dict[str, str]]:

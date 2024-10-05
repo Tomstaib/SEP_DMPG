@@ -31,7 +31,7 @@ class Node(ABC):
     @abstractmethod
     def distribute_and_compute(self, model, num_replications: int,
                                slurm_account: str = None, model_script: str = None, time_limit: int = None,
-                               slurm_username: str = None, jwt_token: str = None) -> None:
+                               slurm_username: str = None, jwt_token: str = None, cpus_per_task: int = None) -> None:
         """
         Distribute or compute. The Node will interpret the command correctly by type.
 
@@ -42,6 +42,7 @@ class Node(ABC):
         :param time_limit: Time limit for the Slurm job.
         :param slurm_username: Slurm username.
         :param jwt_token: JWT token needed for job submission via REST-API.
+        :param cpus_per_task: Number of CPUs per task for the simulation.
 
         See also:
             - [ManagementNode](../util/flask/nodes_for_composite.html#ManagementNode): Node to manage workload.
@@ -84,7 +85,7 @@ class ManagementNode(Node):
 
     def distribute_and_compute(self, model, num_replications: int,
                                slurm_account: str = None, model_script: str = None, time_limit: int = None,
-                               slurm_username: str = None, jwt_token: str = None) -> None:
+                               slurm_username: str = None, jwt_token: str = None, cpus_per_task: int = None) -> None:
         """
         Distribute workload to compute Nodes by recursively calling this method on the children.
 
@@ -95,6 +96,7 @@ class ManagementNode(Node):
         :param time_limit: Time limit for the Slurm job.
         :param slurm_username: Slurm username.
         :param jwt_token: JWT token needed for job submission via REST-API.
+        :param cpus_per_task: Number of CPUs per task for the simulation.
 
         See also:
             - [Node](../util/flask/nodes_for_composite.html#Node): Abstract base class for a Node.
@@ -103,7 +105,7 @@ class ManagementNode(Node):
         for child in self:
             child.distribute_and_compute(model=model, num_replications=num_replications,
                                          slurm_account=slurm_account, model_script=model_script,
-                                         time_limit=time_limit, slurm_username=slurm_username, jwt_token=jwt_token)
+                                         time_limit=time_limit, slurm_username=slurm_username, jwt_token=jwt_token, cpus_per_task=cpus_per_task)
 
         if self._parent:
             self._parent.notify(f"{self.__str__()} completed its operations.", self)
@@ -166,7 +168,7 @@ class ComputeNode(Node):
 
     def distribute_and_compute(self, model, num_replications: int,
                                slurm_account: str = None, model_script: str = None, time_limit: int = None,
-                               slurm_username: str = None, jwt_token: str = None) -> None:
+                               slurm_username: str = None, jwt_token: str = None, cpus_per_task: int = None) -> None:
         """
         Submit a slurm job to simulate.
 
@@ -177,6 +179,7 @@ class ComputeNode(Node):
         :param time_limit: Time limit for the Slurm job.
         :param slurm_username: Slurm username.
         :param jwt_token: JWT token needed for job submission via REST-API.
+        :param cpus_per_task: Number of CPUs per task for the simulation.
 
         See also:
             - [Node](../util/flask/nodes_for_composite.html#Node): Abstract base class for a Node.
@@ -191,7 +194,8 @@ class ComputeNode(Node):
             base_url='https://slurm.hpc.hs-osnabrueck.de/slurm/v0.0.39',
             model_script=model_script,
             replications=num_replications,
-            time_limit_minutes=time_limit
+            time_limit_minutes=time_limit,
+            cpus_per_task=cpus_per_task
         )
 
         if self.callback:
