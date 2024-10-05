@@ -2,7 +2,6 @@ from typing import Optional
 import requests
 import logging
 import getpass
-
 from requests import Response
 
 URL = 'https://131.173.65.76:5000/receive_runtime_prediction'

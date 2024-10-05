@@ -47,7 +47,7 @@ def create_source(env: simpy.Environment, source_config: dict,
     :return: A tuple containing the unique ID of the source component and the Source object.
     
     See also:
-        - [Source](../core/source.html)
+        - [Source](../core/source.html): A source is a component that creates entities and routes them to the next component.
     """  # noqa: E501
     name: str = source_config['name']
     component_id: str = get_component_id(source_config)
@@ -78,7 +78,7 @@ def create_server(env: simpy.Environment,
     :return: UniqueID and Server object
     
     See also:
-        - [Server](../core/server.html)
+        - [Server](../core/server.html): Represents a server in a simulation environment.
     """  # noqa: E501
     unique_id: str = get_component_id(server_config)
     name: str = server_config['name']
@@ -122,7 +122,7 @@ def create_sink(env: simpy.Environment, sink_config: dict) -> (str, Sink):
     :return: UniqueID and Sink object
     
     See also:
-        - [Sink](../core/sink.html)
+        - [Sink](../core/sink.html): Represents a sink in a simulation environment.
     """  # noqa: E501
     unique_id: str = get_component_id(sink_config)
     name: str = sink_config['name']
@@ -141,7 +141,7 @@ def setup_connections(components: dict, component_config: dict) -> None:
     :param component_config: Dictionary containing the component's configuration.
     
     See also:
-        - [Connection](../core/connection.html)
+        - [Connection](../core/connection.html): Connects simulation components.
         - [RoutingObject](../core/routing_object.html)
     """  # noqa: E501
     component_id: str = get_component_id(component_config)
@@ -179,6 +179,7 @@ def model_function(env: simpy.Environment) -> dict:
         - [Server](../core/server.html)
         - [Sink](../core/sink.html)
         - [RoutingObject](../core/routing_object.html)
+        - [Model](../core/model.html#Model)
     """  # noqa: E501
     config: dict = load_config(get_config_path())
     components: dict = {}  # Dictionary to hold all components by unique ID

@@ -3,7 +3,7 @@ import stat
 import sys
 from getpass import getpass
 from typing import Optional
-from database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME, DB_PASSWORD
+from database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME, DB_PASSWORD  # direct import necessary because of generate_db_key
 
 
 DB_URL_TEMPLATE: str = f'{DB_HOST}:{DB_PORT}:{DB_NAME}:{DB_USER}:{DB_PASSWORD}'

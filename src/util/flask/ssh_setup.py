@@ -5,7 +5,6 @@ from flask import session
 from paramiko.client import SSHClient
 from paramiko.rsakey import RSAKey
 from paramiko.sftp_client import SFTPClient
-
 from src.util.flask.ssh_params import REMOTE_HOST, REMOTE_KEY_PATH_TEMPLATE, KEY_PATH, COMMENT, PASSPHRASE
 
 
