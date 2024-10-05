@@ -387,7 +387,7 @@ def print_stats(i, num_replications, start, tenth_percentage) -> None:
         ct: (str, str, str, str, str) = get_percentage_and_computingtimes(start, i, num_replications)
         logging.info(f"{ct[0]} replication {i + 1}/{num_replications}\t{ct[1]}\t{ct[2]}\t{ct[3]}\t{ct[4]}")
         # if 10% of the calculation is finished, the current results will be sent to the server
-        if (i + 1) == tenth_percentage:
+        if (i + 1) == tenth_percentage and os.getenv('CONFIG_PATH') is not None:
             send_progress_to_server(ct, i, num_replications)
 
 

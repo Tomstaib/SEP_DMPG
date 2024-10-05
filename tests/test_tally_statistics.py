@@ -19,14 +19,14 @@ def routing_rework_limitation(routing_object, entity, *parameters):
         for server_probability in routing_object.connection_cache:
             if routing_object.connection_cache[server_probability].name == 'BadParts':
                 next_server = routing_object.connection_cache[server_probability]
-                next_server.process_entity(entity)
+                next_server.handle_entity_arrival(entity)
                 routing_object.number_exited_pivot_table += 1
     else:
         decision = random.uniform(0, 100)
         for cumulative_probability in routing_object.connection_cache:
             if decision <= cumulative_probability:
                 next_server_via = routing_object.connection_cache[cumulative_probability]
-                next_server_via.process_entity(entity)
+                next_server_via.handle_entity_arrival(entity)
                 break
 
 

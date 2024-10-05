@@ -20,7 +20,7 @@ class RoutingObject:
             for cumulative_probability in self.connection_cache:
                 if decision <= cumulative_probability:
                     next_server_via = self.connection_cache[cumulative_probability]
-                    next_server_via.process_entity(entity)
+                    next_server_via.handle_entity_arrival(entity)
                     break
 
     def connect(self, next_server, probability: float = None, process_duration: float = None):

@@ -1,9 +1,7 @@
 import logging
-from functools import lru_cache
-
 from simpy import Environment
 from collections import deque
-
+import src.util.global_imports as gi
 from src.core.entity import Entity
 from src.util.global_imports import ENTITY_PROCESSING_LOG_ENTRY
 from src.util.date_time import DateTime
@@ -32,7 +30,7 @@ class Connection(ResetAbleNamedObject, RoutingObject):
         self.entities_processed = 0
         self.entities_queue.clear()
 
-    def process_entity(self, entity: Entity):
+    def handle_entity_arrival(self, entity: Entity):
         self.entities_queue.append(entity)
 
         if not self.processing.triggered:
@@ -62,7 +60,7 @@ class Connection(ResetAbleNamedObject, RoutingObject):
         logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
             "".join([component.name, " added ", entity.name, " to ", next_component.name]),
             DateTime.get(component.env.now)))
-        next_component.process_entity(entity)
+        next_component.handle_entity_arrival(entity)
         component.number_exited += 1
 
     def __repr__(self):

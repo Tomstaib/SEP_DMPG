@@ -13,7 +13,7 @@ def main():
 
     run_simulation(model=setup_model_pcb_with_arrival_table, minutes=900)
     start_time = datetime.now()
-    run_replications(model=setup_model_pcb, minutes=5250000, num_replications=100, multiprocessing=True)
+    run_replications(model=setup_model_pcb, minutes=5250000, num_replications=10, multiprocessing=True)
     finish = datetime.now()
     time_elapsed = finish - start_time
     print(time_elapsed)

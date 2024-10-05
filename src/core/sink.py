@@ -7,7 +7,7 @@ from src.util.global_imports import ENTITY_PROCESSING_LOG_ENTRY
 from src.util.date_time import DateTime
 from src.core.resetable_named_object import ResetAbleNamedObject, ResetAbleNamedObjectManager
 from src.core.tally_statistic import TallyStatistic
-from typing import Callable, Tuple, Any
+from src.core.model import Model, ComponentType
 
 
 class Sink(ResetAbleNamedObject):
@@ -15,15 +15,16 @@ class Sink(ResetAbleNamedObject):
     sinks = ResetAbleNamedObjectManager()
     """list of all existing sinks instances"""
 
-    def __init__(self, env: Environment, name: str, addon_process_trigger=None) -> None:
+    def __init__(self, env: Environment, name: str, addon_processing_done_method_with_parameters=None) -> None:
         """
         Initialize a sink instance
 
         :param env (Environment): Reference to SimPy environment
         :param name (str): Name of the new sink
-        :param addon_process_trigger: Callable to be executed as an add-on process trigger
+        :param addon_processing_done_method_with_parameters: Callable to be executed as an add-on process trigger
         """
         super().__init__(env, name, Sink.sinks)
+        Model().add_component(self, ComponentType.SINKS)
 
         self.entities_processed = 0
         """Total number of entities processed by this sink."""
@@ -36,17 +37,15 @@ class Sink(ResetAbleNamedObject):
         self.number_entered_pivot_table = 0
         """Total number of entities entered into this sink."""
         self.tally_statistic = TallyStatistic()
-        """Track statistical information."""
-        self.addon_process_trigger = addon_process_trigger
+        """Callable method with parameters, called when entity processing is done."""
+        self.addon_processing_done_method_with_parameters = addon_processing_done_method_with_parameters
 
-    def use_addon_process_trigger(self, entity: Entity, ptwp: Tuple[Callable[..., Any]]):
-        process_trigger, parameters = ptwp[0], ptwp[1:]
-        process_trigger(self, entity, *parameters)
+        self.processed_entities = []
 
     def reset(self):
         self.entities_processed = 0
 
-    def process_entity(self, entity: Entity) -> None:
+    def handle_entity_arrival(self, entity: Entity) -> None:
         """
         This method updates various statistics related to entity processing, including the time spent by the entity
         in the system, the total number of entities processed by this sink, the maximum and minimum time any entity
@@ -55,7 +54,7 @@ class Sink(ResetAbleNamedObject):
         :param entity: The entity to be processed
         """
 
-        if self.env.now > gi.DURATION_WARM_UP:
+        if self.env.now >= gi.DURATION_WARM_UP:
             time_in_system = self.env.now - entity.creation_time
             self.total_time_in_system += time_in_system
             self.max_time_in_system_pivot_table = max(self.max_time_in_system_pivot_table, time_in_system)
@@ -67,8 +66,11 @@ class Sink(ResetAbleNamedObject):
 
         entity.destruction_time = self.env.now
 
-        if self.addon_process_trigger:
-            self.use_addon_process_trigger(entity, self.addon_process_trigger)
+        self.processed_entities.append(entity)
+
+        if self.addon_processing_done_method_with_parameters:
+            self.addon_processing_done_method_with_parameters[0](self, entity,
+                                                                 *self.addon_processing_done_method_with_parameters[1:])
 
         logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
             "".join([self.name, " destroyed ", entity.name]), DateTime.get(self.env.now)))

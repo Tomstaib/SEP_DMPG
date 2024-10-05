@@ -1,5 +1,5 @@
 import logging
-from typing import Union
+from typing import Union, Optional
 import pandas as pd
 from src.util.global_imports import ENTITY_PROCESSING_LOG_ENTRY
 import src.util.global_imports as gi
@@ -38,7 +38,7 @@ class Source(ResetAbleNamedObject, RoutingObject):
 
         if arrival_table_path:
             self.arrival_table = pd.read_csv(arrival_table_path)
-            self.arrival_table_index = 1
+            self.arrival_table_index = 0  # changed to zero as pandas starts at 0?
             self.arrival_table_column_name = list(self.arrival_table.columns)[0]
         else:
             self.arrival_table = None
@@ -60,38 +60,46 @@ class Source(ResetAbleNamedObject, RoutingObject):
         self.number_exited_pivot_table = 0
 
     def run(self):
-        """
-        Run the source.
-        Create entities and route them to the next component.
-
-        """
         validate_probabilities(self)
         create_connection_cache(self)
 
         while True:
-            entity = self.entity_class(f"{self.name}_Entity_{self.entities_created_pivot_table}", self.env.now)
-
-            logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
-                "".join([self.name, " created ", entity.name]), DateTime.get(entity.creation_time)))
-            self.entities.append(entity)
-            self.route_entity(entity)
-            if self.env.now > gi.DURATION_WARM_UP:
-                self.entities_created_pivot_table += 1
-
             wait_time = self.arrival_table_based_wait_time() if self.arrival_table is not None else (
                 get_value_from_distribution_with_parameters(self.creation_time_dwp))
 
+            if wait_time is None:
+                # Arrival table exhausted
+                break
+
+            # Wait so no entity is created at 0
             yield self.env.timeout(wait_time)
 
-    def arrival_table_based_wait_time(self) -> Union[int, float]:
+            # Create entity after wait to ensure no entity is created automatically at 0
+            entity = self.entity_class(f"{self.name}_Entity_{self.entities_created_pivot_table}", self.env.now)
+
+            logging.root.level <= logging.TRACE and logging.trace(
+                ENTITY_PROCESSING_LOG_ENTRY.format(
+                    "".join([self.name, " created ", entity.name]),
+                    DateTime.get(entity.creation_time)
+                )
+            )
+            self.entities.append(entity)
+            self.route_entity(entity)
+            if self.env.now >= gi.DURATION_WARM_UP:
+                self.entities_created_pivot_table += 1
+
+    def arrival_table_based_wait_time(self) -> Optional[Union[int, float]]:
         """
         Get the wait time from the arrival table and increment the index for the next wait time.
 
         :return: wait_time
         """
+        if self.arrival_table_index >= len(self.arrival_table):
+            # Arrival table is exhausted
+            return None
+
         wait_time = self.arrival_table.at[self.arrival_table_index, self.arrival_table_column_name] - self.env.now
         self.arrival_table_index += 1
-
         return wait_time
 
     def __repr__(self) -> str:

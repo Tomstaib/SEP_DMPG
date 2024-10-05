@@ -38,4 +38,4 @@ class ResetAbleNamedObject(ABC):
 
     @abstractmethod
     def reset(self):
-        pass
+        pass  # pragma: no cover

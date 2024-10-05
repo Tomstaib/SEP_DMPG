@@ -6,6 +6,7 @@
       <sourceFolder url="file://$MODULE_DIR$/server/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/Server_DMPG/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/tests" isTestSource="true" />
     </content>
     <orderEntry type="jdk" jdkName="DMPG" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
