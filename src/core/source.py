@@ -62,7 +62,27 @@ class Source(ResetAbleNamedObject, RoutingObject):
     def run(self):
         validate_probabilities(self)
         create_connection_cache(self)
+        # original
+        """while True:
+            entity = self.entity_class(f"{self.name}_Entity_{self.entities_created_pivot_table}", self.env.now)
+            if self.env.now >= gi.DURATION_WARM_UP:
+                self.entities_created_pivot_table += 1
+                self.number_exited_pivot_table += 1
 
+            logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
+                "".join([self.name, " created ", entity.name]), DateTime.get(entity.creation_time)))
+
+            self.entities.append(entity)
+            self.route_entity(entity)
+
+            wait_time = self.arrival_table_based_wait_time() if self.arrival_table is not None else (
+                get_value_from_distribution_with_parameters(self.creation_time_dwp))
+
+            if self.entities_created_pivot_table == self.max_arrival:
+                yield WaitingEvent(self.env)
+
+            yield self.env.timeout(wait_time)"""
+        # modified
         while True:
             wait_time = self.arrival_table_based_wait_time() if self.arrival_table is not None else (
                 get_value_from_distribution_with_parameters(self.creation_time_dwp))

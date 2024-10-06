@@ -19,5 +19,5 @@ class TestCases(unittest.TestCase):
 
     def test_warm_up(self):
         pivot_table = run_simulation(model=setup_model4_1, minutes=1440, warm_up=15)        # 1 day
-        self.assertEqual(pivot_table.at[('Entity', 'Entity', 'AvgTimeInSystem'), 'Value'], 6.03)
+        self.assertEqual(pivot_table.at[('Entity', 'Entity', 'AvgTimeInSystem'), 'Value'], 6.9603)
         set_duration_warm_up(0)

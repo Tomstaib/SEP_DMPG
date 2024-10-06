@@ -30,7 +30,7 @@ pd.set_option('display.width', 1000)
 
 
 # Store detailed stats for each run
-class Stats(Singleton):
+class Stats(metaclass=Singleton):
     all_detailed_stats = None
 
 

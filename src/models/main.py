@@ -1,5 +1,6 @@
 from src.models.model_pcb import setup_model_pcb
 from src.models.model_pcb_with_arrival_table import setup_model_pcb_with_arrival_table
+from src.models.model_pcb_with_breakdowns import setup_model_pcb_with_breakdowns
 from src.util.simulations import run_replications, run_simulation
 import logging
 import matplotlib.pyplot as plt
@@ -11,7 +12,7 @@ def main():
     # visualize_system()
     # run_simulation(model=setup_model_pcb_with_breakdowns, minutes=900)
 
-    run_simulation(model=setup_model_pcb_with_arrival_table, minutes=900)
+    # run_simulation(model=setup_model_pcb_with_arrival_table, minutes=900)
     start_time = datetime.now()
     run_replications(model=setup_model_pcb, minutes=5250000, num_replications=10, multiprocessing=True)
     finish = datetime.now()

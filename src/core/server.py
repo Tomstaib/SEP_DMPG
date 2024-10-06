@@ -146,7 +146,6 @@ class Server(ResetAbleNamedObject, RoutingObject):
             breakdown_duration = get_value_from_distribution_with_parameters(self.machine_breakdown_duration)
             yield self.env.timeout(breakdown_duration)
 
-            print(self.env.now, gi.DURATION_WARM_UP)
             # (3) Update downtime statistics
             if self.env.now >= gi.DURATION_WARM_UP:
                 self.number_downtimes_pivot_table += 1

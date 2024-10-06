@@ -47,7 +47,7 @@ class DateTime(Singleton):
         :return: Returns a delta between `time_now` and `from_initial_date` if from_initial_date is set
         """
 
-        """match cls.simpy_time_mapped_to:
+        match cls.simpy_time_mapped_to:
             case TimeComponent.second:
                 delta = timedelta(seconds=time_now)
             case TimeComponent.minute:
@@ -55,16 +55,16 @@ class DateTime(Singleton):
             case TimeComponent.hour:
                 delta = timedelta(hours=time_now)
             case _:
-                delta = timedelta(0)"""
+                delta = timedelta(0)
 
-        if cls.simpy_time_mapped_to == TimeComponent.second:
+        """if cls.simpy_time_mapped_to == TimeComponent.second:
             delta = timedelta(seconds=time_now)
         elif cls.simpy_time_mapped_to == TimeComponent.minute:
             delta = timedelta(minutes=time_now)
         elif cls.simpy_time_mapped_to == TimeComponent.hour:
             delta = timedelta(hours=time_now)
         else:
-            delta = timedelta(0)
+            delta = timedelta(0)"""
 
         if time_string_from_initial_date:
             return "".join([f"{round_value(time_now):<{ROUND_DECIMAL_PLACES}}, ", str(delta), ", ",
@@ -87,7 +87,7 @@ class DateTime(Singleton):
     @classmethod
     def map_time_to_steps(cls, day=0, hour=0, minute=0, second=0):
 
-        """match cls.simpy_time_mapped_to:
+        match cls.simpy_time_mapped_to:
             case TimeComponent.second:
                 steps_per_day = 86400
             case TimeComponent.minute:
@@ -95,15 +95,15 @@ class DateTime(Singleton):
             case TimeComponent.hour:
                 steps_per_day = 24
             case _:
-                steps_per_day = None"""
-        if cls.simpy_time_mapped_to == TimeComponent.second:
+                steps_per_day = None
+        """if cls.simpy_time_mapped_to == TimeComponent.second:
             steps_per_day = 86400
         elif cls.simpy_time_mapped_to == TimeComponent.minute:
             steps_per_day = 1440
         elif cls.simpy_time_mapped_to == TimeComponent.hour:
             steps_per_day = 24
         else:
-            steps_per_day = None
+            steps_per_day = None"""
 
         steps_per_hour = steps_per_day / HOURS_PER_DAY
         steps_per_minute = steps_per_hour / MINUTES_PER_HOUR
@@ -114,7 +114,7 @@ class DateTime(Singleton):
         return time_in_steps
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     locale.setlocale(locale.LC_TIME, "de_DE")
     DateTime.set(datetime(2024, 12, 12, 0, 0, 0))
     print(DateTime.get())

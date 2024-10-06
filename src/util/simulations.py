@@ -39,8 +39,6 @@ def run_simulation(model: Callable, minutes: Union[int, float], warm_up: Union[i
     if warm_up is not None:
         set_duration_warm_up(warm_up)
 
-    print(gi.DURATION_WARM_UP)
-
     random.seed(RANDOM_SEED)
     env = simpy.Environment()
     model(env)
@@ -77,12 +75,6 @@ def run_simulation(model: Callable, minutes: Union[int, float], warm_up: Union[i
     # Create DataFrame
     df = pd.DataFrame(data)
 
-    # Optimize DataFrame memory usage
-    df['Value'] = pd.to_numeric(df['Value'], downcast='float')  # Downcast to float32 if possible
-    df['Type'] = df['Type'].astype('category')  # Convert to categorical type
-    df['Name'] = df['Name'].astype('category')  # Convert to categorical type
-    df['Stat'] = df['Stat'].astype('category')  # Convert to categorical type
-
     # Create Pivot Table
     pivot_table = df.pivot_table(index=['Type', 'Name', 'Stat'], values='Value', aggfunc='mean')
 
@@ -94,6 +86,16 @@ def run_simulation(model: Callable, minutes: Union[int, float], warm_up: Union[i
         pivot_table.to_csv(store_pivot_in_file)
 
     return pivot_table
+
+
+def calculate_units_utilized(units_utilized_over_time, capacity, time):
+    total_utilization = 0
+    total_time = 0
+    for start, end, units in units_utilized_over_time:
+        total_utilization += (end - start) * min(units, capacity)
+        total_time += (end - start)
+    average_units_utilized = total_utilization / total_time if total_time > 0 else 0
+    return average_units_utilized
 
 
 def calculate_statistics(env) -> Tuple:
@@ -150,16 +152,20 @@ def calculate_statistics(env) -> Tuple:
         scheduled_utilization_pivot_table = 0
         avg_time_processing_pivot_table = 0
         if env.now > gi.DURATION_WARM_UP:
-            scheduled_utilization_pivot_table = (server.units_utilized_pivot_table / current_simulation_time) * 100 \
+            scheduled_utilization_pivot_table = (
+                    (server.total_processing_time_pivot_table / current_simulation_time) * 100) \
                 if current_simulation_time > 0 else 0
             avg_time_processing_pivot_table = (
                 server.total_processing_time_pivot_table / server.entities_processed
                 if server.entities_processed > 0 else 0)
 
+        # Calculate Units Utilized
+        units_utilized_pivot_table = calculate_units_utilized(server.units_utilized_over_time, server.capacity, env.now)
+
         server_stats.append({
             'Server': server.name,
             'ScheduledUtilization': scheduled_utilization_pivot_table,
-            'UnitsUtilized': server.units_utilized_pivot_table,
+            'UnitsUtilized': units_utilized_pivot_table,
             'AvgTimeProcessing': avg_time_processing_pivot_table,
             'TotalTimeProcessing': server.total_processing_time_pivot_table,
             'NumberEntered': server.number_entered_pivot_table,
@@ -391,8 +397,10 @@ def print_stats(i, num_replications, start, tenth_percentage) -> None:
             send_progress_to_server(ct, i, num_replications)
 
 
-def create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_stats, entity_stat_names,
-                 server_stat_names, sink_stat_names, source_stat_names, store_pivot_in_file: str = None) -> tuple:
+def create_pivot(all_entity_stats, all_server_stats, all_sink_stats,
+                 all_source_stats, entity_stat_names, server_stat_names,
+                 sink_stat_names, source_stat_names,
+                 store_pivot_in_file: str = None) -> tuple:
     """
         Create a pivot table from collected simulation statistics.
 
@@ -429,7 +437,7 @@ def create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_
         Flatten statistics into a list for DataFrame.
 
         param: stats (dict): Dictionary containing statistics for a particular component.
-        param: name (str): Name of the component type (Entity, Server, Sink, Source).
+        param: name (str): Name of the component type (entity, Server, Sink, Source).
         param: stat_names (list): List of statistic names.
         param: is_entity (bool): Indicates if the component is an entity.
 
@@ -457,12 +465,15 @@ def create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_
     for stat_name, values in entity_aggregate_stats.items():
         avg, min_val, max_val, half_width = values if values else (None, None, None, None)
         modified_entity_stats['Entity'][stat_name] = (avg, min_val, max_val, half_width)
+
     aggregate_server_stats = {server_name: {key: calculate_aggregate_stats([stat[key] for stat in stats_list])
                                             for key in server_stat_names}
                               for server_name, stats_list in all_server_stats.items()}
+
     aggregate_sink_stats = {sink_name: {key: calculate_aggregate_stats([stat[key] for stat in stats_list])
                                         for key in sink_stat_names}
                             for sink_name, stats_list in all_sink_stats.items()}
+
     aggregate_source_stats = {source_name: {key: calculate_aggregate_stats([stat[key] for stat in stats_list])
                                             for key in source_stat_names}
                               for source_name, stats_list in all_source_stats.items()}
@@ -473,10 +484,9 @@ def create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_
     flattened_stats.extend(flatten_stats(aggregate_server_stats, 'Server', server_stat_names))
     flattened_stats.extend(flatten_stats(aggregate_sink_stats, 'Sink', sink_stat_names))
     flattened_stats.extend(flatten_stats(aggregate_source_stats, 'Source', source_stat_names))
-
     # Creating a combined DataFrame from flattened stats
     df_combined = pd.DataFrame(flattened_stats)
-
+    # Creating the pivot table
     pivot_table_combined = df_combined.pivot_table(
         index=['Type', 'Name', 'Stat'],
         values=['Average', 'Minimum', 'Maximum', 'Half-Width'],

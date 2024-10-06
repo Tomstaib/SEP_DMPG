@@ -71,15 +71,22 @@ class TestCases(unittest.TestCase):
     def test_single_run_statistics(self):
         EntityManager.destroy_all_entities()
         pivot_table = run_simulation(model=setup_model_pcb, minutes=1440)
-        self.assertEqual(pivot_table.at[('Entity', 'Entity', 'AvgTimeInSystem'), 'Value'], 185.9660)
+        self.assertEqual(pivot_table.at[('Entity', 'Entity', 'AvgTimeInSystem'), 'Value'], 147.5555)
 
-        self.assertEqual(pivot_table.at[('Sink', 'GoodParts', 'NumTimesProcessed_Avg'), 'Value'], 3.8054)
+        self.assertEqual(pivot_table.at[('Sink', 'GoodParts', 'NumTimesProcessed_Avg'), 'Value'], 3.6269)
         self.assertEqual(pivot_table.at[('Sink', 'GoodParts', 'NumTimesProcessed_Max'), 'Value'], 7.0)
         self.assertEqual(pivot_table.at[('Sink', 'GoodParts', 'NumTimesProcessed_Min'), 'Value'], 3.0)
 
-        self.assertEqual(pivot_table.at[('Sink', 'BadParts', 'NumTimesProcessed_Avg'), 'Value'], 5.8889)
+        self.assertEqual(pivot_table.at[('Sink', 'BadParts', 'NumTimesProcessed_Avg'), 'Value'], 5.9231)
         self.assertEqual(pivot_table.at[('Sink', 'BadParts', 'NumTimesProcessed_Max'), 'Value'], 11.0)
         self.assertEqual(pivot_table.at[('Sink', 'BadParts', 'NumTimesProcessed_Min'), 'Value'], 3.0)
+
+    def test_calculate_statistics_empty(self):
+        """Test calculate_statistics when the list is empty (covers the branch)."""
+        min_value, max_value, avg_value = self.tally_statistic.calculate_statistics()
+        self.assertIsNone(min_value)
+        self.assertIsNone(max_value)
+        self.assertIsNone(avg_value)
 
     def test_record(self):
         self.tally_statistic.record(5)
