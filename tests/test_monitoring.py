@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 import psutil
-from Laufzeitprognose.monitoring import monitor_resources
+from Performanceanalyse.monitoring import monitor_resources
 
 
 class TestMonitorResources:
@@ -12,8 +12,8 @@ class TestMonitorResources:
     edge cases, and interruptions.
     """
 
-    @patch("Laufzeitprognose.monitoring.psutil.cpu_percent")
-    @patch("Laufzeitprognose.monitoring.psutil.virtual_memory")
+    @patch("Performanceanalyse.monitoring.psutil.cpu_percent")
+    @patch("Performanceanalyse.monitoring.psutil.virtual_memory")
     @patch("builtins.print")
     @patch("time.sleep", return_value=None)  # Prevent actual sleeping during the test
     def test_monitor_resources(self, mock_sleep, mock_print, mock_virtual_memory, mock_cpu_percent):
@@ -34,8 +34,8 @@ class TestMonitorResources:
         calls = [call.args[0] for call in mock_print.call_args_list]
         assert "Monitoring stopped." not in calls
 
-    @patch("Laufzeitprognose.monitoring.psutil.cpu_percent")
-    @patch("Laufzeitprognose.monitoring.psutil.virtual_memory")
+    @patch("Performanceanalyse.monitoring.psutil.cpu_percent")
+    @patch("Performanceanalyse.monitoring.psutil.virtual_memory")
     @patch("time.sleep", return_value=None)  # Mock time.sleep to avoid delays
     @patch("builtins.print")
     def test_monitor_resources_sleep(self, mock_print, mock_sleep, mock_virtual_memory, mock_cpu_percent):
@@ -52,8 +52,8 @@ class TestMonitorResources:
 
         assert mock_sleep.call_count >= 1
 
-    @patch("Laufzeitprognose.monitoring.psutil.cpu_percent")
-    @patch("Laufzeitprognose.monitoring.psutil.virtual_memory")
+    @patch("Performanceanalyse.monitoring.psutil.cpu_percent")
+    @patch("Performanceanalyse.monitoring.psutil.virtual_memory")
     @patch("builtins.print")
     @patch("time.sleep", return_value=None)  # Mock time.sleep to avoid delays
     def test_monitor_resources_edge_case(self, mock_sleep, mock_print, mock_virtual_memory, mock_cpu_percent):
@@ -73,8 +73,8 @@ class TestMonitorResources:
         calls = [call.args[0] for call in mock_print.call_args_list]
         assert "Monitoring stopped." not in calls
 
-    @patch("Laufzeitprognose.monitoring.psutil.cpu_percent")
-    @patch("Laufzeitprognose.monitoring.psutil.virtual_memory")
+    @patch("Performanceanalyse.monitoring.psutil.cpu_percent")
+    @patch("Performanceanalyse.monitoring.psutil.virtual_memory")
     @patch("builtins.print")
     @patch("time.sleep", return_value=None)  # Prevent delays during the test
     def test_monitor_resources_keyboard_interrupt(self, mock_sleep, mock_print, mock_virtual_memory, mock_cpu_percent):
@@ -85,7 +85,7 @@ class TestMonitorResources:
         mock_cpu_percent.return_value = [50.0] * psutil.cpu_count()
         mock_virtual_memory.return_value = MagicMock(percent=70, used=8 * (1024 ** 3), total=16 * (1024 ** 3))
 
-        with patch("Laufzeitprognose.monitoring.psutil.cpu_percent", side_effect=KeyboardInterrupt):
+        with patch("Performanceanalyse.monitoring.psutil.cpu_percent", side_effect=KeyboardInterrupt):
             monitor_resources(interval=1)
 
         mock_print.assert_any_call("Monitoring stopped.")
