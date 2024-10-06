@@ -47,6 +47,9 @@ jobs:
           conda clean -afy
         shell: bash -l {0}
 
+      - name: Add Laufzeitprognose to PYTHONPATH
+        run: echo "PYTHONPATH=$(pwd):$PYTHONPATH" >> $GITHUB_ENV
+
       - name: Lint with flake8 (optional)
         if: env.ENV_FOUND == 'true' && github.event.inputs.enable_linting == 'true'
         run: |
