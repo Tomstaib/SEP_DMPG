@@ -3,10 +3,9 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - python=3.9  
-  - pip         
+  - python=3.9  # Set Python version
+  - pip         # Include pip for additional package installations
   - pip:
-      - psutil       
-      - pytest       
-      - unittest     
-      - coverage     
+      - psutil       # Library for system and resource monitoring
+      - pytest       # Testing framework
+      - coverage     # Test coverage tool
