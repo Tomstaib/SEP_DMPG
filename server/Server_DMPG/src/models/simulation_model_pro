@@ -1,0 +1,24 @@
+// Simulation Model
+digraph {
+	newrank=true rankdir=LR size="24,14"
+	fontcolor=grey fontname="Open Sans" fontsize=12
+	node [color=lightgrey fontname="Open Sans" fontsize=11 style="filled, rounded"]
+	edge [arrowhead=vee arrowsize=0.8 color=grey fontname="Open Sans" fontsize=10]
+	Source [label="Source
+Created: 11857" fillcolor="#BDD7EE" fontcolor=black shape=diamond]
+	Source -> Placement [color=darkgreen style=dashed]
+	Placement [label="Placement
+Processed: 11854" fillcolor="#5e4fa2" fontcolor=black shape=box]
+	Placement -> Inspection [label="" color=darkblue style=dotted]
+	Inspection [label="Inspection
+Processed: 11854" fillcolor="#5e4fa2" fontcolor=black shape=box]
+	Inspection -> Goodparts [label="92.0%" color=darkblue style=bold]
+	Inspection -> Badparts [label="8.0%" color=darkblue style=bold]
+	Goodparts [label="Sink
+Goodparts
+Processed: 10869" fillcolor="#E6B8AF" fontcolor=black shape=hexagon]
+	Badparts [label="Sink
+Badparts
+Processed: 985" fillcolor="#E6B8AF" fontcolor=black shape=hexagon]
+	bgcolor=whitesmoke nodesep=0.6 overlap=scalexy ranksep=2.0 splines=true
+}

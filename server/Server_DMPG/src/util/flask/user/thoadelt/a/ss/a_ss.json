@@ -1,0 +1,19 @@
+{
+    "model_name": "a",
+    "scenario_name": "ss",
+    "minutes": "10",
+    "sources": [
+        {
+            "id": "source_1",
+            "name": "w",
+            "distribution": {
+                "type": "",
+                "params": {}
+            },
+            "connections": [],
+            "arrival_table": null
+        }
+    ],
+    "servers": [],
+    "sinks": []
+}

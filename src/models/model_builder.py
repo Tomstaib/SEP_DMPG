@@ -128,7 +128,7 @@ def create_sink(env: simpy.Environment, sink_config: dict) -> (str, Sink):
     name: str = sink_config['name']
     addon_process_trigger = None
 
-    sink: Sink = Sink(env, name, addon_process_trigger=addon_process_trigger)
+    sink: Sink = Sink(env, name, addon_processing_done_method_with_parameters=addon_process_trigger)
 
     return unique_id, sink
 
