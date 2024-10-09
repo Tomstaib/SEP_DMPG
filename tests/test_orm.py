@@ -9,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Datenspeicherung', 'Python')))
-from orm import Base, HSUser, Model, Scenario, create_tables, main
+from _orm import Base, HSUser, Model, Scenario, create_tables, main
 from database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME
 
 

@@ -11,7 +11,7 @@ from sqlalchemy.exc import OperationalError, SQLAlchemyError, NoResultFound, Int
 from database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Datenspeicherung', 'Python')))
-from orm import PivotTable, Simulation, Scenario, Model, HSUser
+from _orm import PivotTable, Simulation, Scenario, Model, HSUser
 
 def validate_db_config():
     """
