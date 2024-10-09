@@ -22,6 +22,7 @@ def send_progress_to_server(ct: (str, str, str, str, str), i: int, num_replicati
     user: str = getpass.getuser()
 
     data: dict[str, int] = save_progress(ct, i, num_replications)
+
     if data is None:
         logging.error("No data to send. Progress data creation failed.")
         return

@@ -18,6 +18,7 @@ def transfer_dmpg_folder(ssh_client: SSHClient, local_folder_path: str, remote_f
     :param local_folder_path: Local DMPG folder path.
     :param remote_folder_path: Remote DMPG folder path.
     """
+
     def is_valid(path: str) -> bool:
         """
         Checks if the directory is pycache or starts with a dot. Dotfiles, dotdirectories and pycache should be ignored.
@@ -25,7 +26,8 @@ def transfer_dmpg_folder(ssh_client: SSHClient, local_folder_path: str, remote_f
         :param path: Path to check.
         """
         base_name = os.path.basename(path)
-        return not base_name.startswith('.') and base_name != '__pycache__'
+        return (not base_name.startswith('.') and base_name != '__pycache__'
+                and base_name != 'user' and base_name != 'static' and base_name != 'templates')
 
     def transfer_file(sftp: SFTPClient, local_file_path: str, remote_file_path: str):
         """Transfer a file using SFTP."""
@@ -241,7 +243,7 @@ def prepare_env(username: str) -> None:
 
             if remote_version == local_version:
                 print("The software is already up to date. No transfer needed.")
-                requirements_file_path: str= public_config.get('paths').get('requirements_file_path')
+                requirements_file_path: str = public_config.get('paths').get('requirements_file_path')
                 requirements_file_path: str = requirements_file_path.replace(remote_user, username)
                 install_libraries(ssh_client,
                                   requirements_file_path,
@@ -373,7 +375,6 @@ def manipulate_scenario_path(original_path: str, source_base_path: str,
     if len(parts) < 3:
         raise ValueError("Invalid path structure: Expected at least 3 parts in the relative path")
 
-    print(parts)
     user, model, scenario = parts[-4], parts[-3], parts[-2]
     filename = parts[-1]
 
@@ -408,7 +409,7 @@ def create_db_key_on_remote(ssh_client: SSHClient, local_path: str, remote_path:
         send_file_to_remote(ssh_client, os.path.join(local_path, db_params_file),
                             posixpath.join(remote_path, db_params_file))
 
-        run_remote_python_script(ssh_client, posixpath.join(remote_path, generate_db_key_file),)
+        run_remote_python_script(ssh_client, posixpath.join(remote_path, generate_db_key_file), )
 
         remove_remote_file(ssh_client, posixpath.join(remote_path, generate_db_key_file))
         remove_remote_file(ssh_client, posixpath.join(remote_path, db_params_file))

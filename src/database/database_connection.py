@@ -107,7 +107,7 @@ def get_or_create_scenario(session: Session, scenario_name: str, minutes: int, m
         return scenario
 
 
-def connect_to_db() -> Optional[Engine]:
+def     connect_to_db() -> Optional[Engine]:
     """
     Attempt to connect to the database and return the engine if successful.
 
@@ -123,7 +123,7 @@ def connect_to_db() -> Optional[Engine]:
 
         # Test the connection
         connection = engine.connect()
-        logging.info("Connection to Database successful")
+        # logging.info("Connection to Database successful")
         connection.close()
         return engine
     except ValueError as ve:
@@ -146,7 +146,7 @@ def create_session(engine: Engine) -> Optional[Session]:
     :return: Session object if the engine was created successfully.
     """
     try:
-        sessionmaker(bind=engine)
+        Session = sessionmaker(bind=engine)
         session: Session = Session()
         return session
     except Exception as e:
@@ -233,7 +233,7 @@ def save_to_db(combined_pivot: pd.DataFrame, local_start_time: datetime, local_e
     engine: Engine | None = connect_to_db()
 
     path: str = os.getenv('CONFIG_PATH')
-    parts: list[str] = path.split('/')
+    parts: list[str] = path.split('\\')
 
     model_name: str = parts[-3]  # Model
     scenario_name: str = parts[-2]  # Scenario
@@ -247,6 +247,7 @@ def save_to_db(combined_pivot: pd.DataFrame, local_start_time: datetime, local_e
         try:
 
             user_id: int = get_or_create_user(session, user_name)
+            print(user_id)
             """user: HSUser | None = session.query(HSUser).filter_by(user_name=user_name).one_or_none()
             if user is None:
                 new_user: HSUser = HSUser(user_name=user_name)
@@ -270,7 +271,8 @@ def save_to_db(combined_pivot: pd.DataFrame, local_start_time: datetime, local_e
             user_id = get_user_id(session, user_name)
             model_id = get_model_id(session, model_name, user_id)
 
-            scenario_id: int = get_or_create_scenario(session, scenario_name, minutes, model_id)
+            scenario: Scenario = get_or_create_scenario(session, scenario_name, minutes, model_id)
+            scenario_id: int = scenario.scenario_id
             """scenario = session.query(Scenario).filter_by(scenario_name=scenario_name, model_id=model_id).one_or_none()
             if scenario is None:
                 new_scenario = Scenario(scenario_name=scenario_name, minutes=minutes, model_id=model_id)
@@ -315,6 +317,7 @@ def save_to_db(combined_pivot: pd.DataFrame, local_start_time: datetime, local_e
             session.execute(text("SELECT pg_advisory_unlock(:lock_id)"), {"lock_id": lock_id})
     except Exception as e:
         session.rollback()
+        print("error:", e)
         raise e
     finally:
         session.close()

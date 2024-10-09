@@ -16,15 +16,16 @@ from src.util.flask.experiments import save_arrival_table, copy_arrival_table, g
     save_config_file
 from datetime import datetime
 import shutil
+import posixpath
 
 app = Flask(__name__)
 """Initialize the flask app."""
 
-app.secret_key = os.getenv('SECRET_KEY')
+app.secret_key = os.urandom(24)
 """Get the secret key that was exported to environment variables. In PyCharm "Edit Configurations"
 or "export SECRET_KEY='super-secret-key'" in your environment. """
 
-USER_DIR = '/var/www/dmpg_api/user'
+USER_DIR = posixpath.join(app.root_path, 'user')
 """User directory. Each user gets their own subdirectory."""
 
 user_trees: dict[str, Optional[ManagementNode]] = {}
@@ -678,18 +679,16 @@ def receive_runtime_prediction() -> (Response, int):
     :return: A response and an int providing the status.
     """
     user: Optional[str] = request.args.get('user')
-    save_dir: str = os.path.join(app.root_path, 'user', user)
+    save_dir: str = posixpath.join(USER_DIR, user)
 
     data: Optional[Any] = request.get_json()
 
     if data:
-        print(f"Received data from user: {user}")
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         data['timestamp'] = timestamp
-        print(f"Timestamp added: {timestamp}")
 
         # Save JSON data to a file
-        file_name = os.path.join(save_dir, f'{user}_runtime_prediction.json')
+        file_name: str = os.path.join(save_dir, f'{user}_runtime_prediction.json')
         with open(file_name, 'w') as json_file:
             json.dump(data, json_file, indent=4)
 
@@ -711,7 +710,7 @@ def show_runtime_prediction() -> (str, str, Optional[Any]):
         - [Login required](../flask/app.html#login_required): Decorator to ensure login is required.
     """
     user: str = session.get('username')
-    file_path: str = os.path.join(USER_DIR, user, f'{user}_runtime_prediction.json')
+    file_path: str = posixpath.join(USER_DIR, user, f'{user}_runtime_prediction.json')
 
     if os.path.exists(file_path):
         # Load the file

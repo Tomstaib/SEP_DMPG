@@ -97,8 +97,12 @@ def create_server(env: simpy.Environment,
             'machine_breakdown_duration')) if breakdown_config.get(
         'machine_breakdown_duration') else None
 
-    queue_order: QueueType = QueueType(
-        server_config.get('queue_order', 'FIFO'))
+    queue_order: str = server_config.get('queue_order', 'FIFO')  # direct cast not possible
+
+    if queue_order == 'FIFO':
+        queue_order: QueueType = QueueType.FIFO
+    else:
+        queue_order: QueueType = QueueType.LIFO
 
     server: Server = Server(
         env,
