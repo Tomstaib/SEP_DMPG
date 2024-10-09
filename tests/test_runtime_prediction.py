@@ -2,9 +2,8 @@ import sys
 import os
 import unittest
 from unittest.mock import patch, MagicMock
-import requests 
+import requests
 import logging
-
 
 sys.path.append(os.path.abspath(
     os.path.join(os.path.dirname(__file__), '../Laufzeitprognose/src')
@@ -13,13 +12,11 @@ sys.path.append(os.path.abspath(
 from util.runtime_prediction import send_progress_to_server, save_progress, MockResponse
 
 
-
 class TestRuntimePrediction(unittest.TestCase):
 
-    @patch('util.runtime_prediction.requests.post')
+    @patch('Laufzeitprognose.src.util.runtime_prediction.requests.post')
     def test_send_progress_to_server_success(self, mock_post):
         """Test successful progress send to server."""
-        
         mock_response = MagicMock()
         mock_response.raise_for_status.return_value = None  
         mock_post.return_value = mock_response
@@ -30,10 +27,9 @@ class TestRuntimePrediction(unittest.TestCase):
 
         mock_post.assert_called_once()
 
-    @patch('util.runtime_prediction.requests.post')
+    @patch('Laufzeitprognose.src.util.runtime_prediction.requests.post')
     def test_send_progress_to_server_http_error(self, mock_post):
         """Test HTTP error handling during progress send to the server."""
-      
         mock_response = MagicMock()
         mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("Mock HTTP error with status code 500")
         mock_post.return_value = mock_response
@@ -44,10 +40,9 @@ class TestRuntimePrediction(unittest.TestCase):
             send_progress_to_server(ct, i=4, step=1, num_replications=10)
             self.assertIn("HTTP error occurred while sending Runtime-Prediction: Mock HTTP error with status code 500", log.output[0])
 
-    @patch('util.runtime_prediction.requests.post')
+    @patch('Laufzeitprognose.src.util.runtime_prediction.requests.post')
     def test_send_progress_to_server_request_exception(self, mock_post):
         """Test general request exception handling."""
-        
         mock_post.side_effect = requests.exceptions.RequestException("Mock request exception")
 
         ct = ['50%', '[time computed] 0:00:05', '[time to complete] 0:00:10',
@@ -56,10 +51,9 @@ class TestRuntimePrediction(unittest.TestCase):
             send_progress_to_server(ct, i=4, step=1, num_replications=10)
             self.assertIn("Request error occurred while sending Runtime-Prediction: Mock request exception", log.output[0])
 
-    @patch('util.runtime_prediction.requests.post')
+    @patch('Laufzeitprognose.src.util.runtime_prediction.requests.post')
     def test_send_progress_to_server_unexpected_error(self, mock_post):
         """Test unexpected error handling during progress send to the server."""
-
         mock_post.side_effect = Exception("Mock unexpected exception")
 
         ct = ['50%', '[time computed] 0:00:05', '[time to complete] 0:00:10',
@@ -96,7 +90,6 @@ class TestRuntimePrediction(unittest.TestCase):
 
     def test_save_progress_attribute_error(self):
         """Test save_progress handling of AttributeError."""
-
         ct = [None, None, None, None, None]
         with self.assertLogs(level='ERROR') as log:
             data = save_progress(ct, i=4, step=1, num_replications=10)
@@ -105,9 +98,7 @@ class TestRuntimePrediction(unittest.TestCase):
 
     def test_save_progress_unexpected_error(self):
         """Test save_progress handling of unexpected error."""
-
         mock_ct = [MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()]
-
         mock_ct[0].replace.side_effect = Exception("Mock unexpected exception")
 
         with self.assertLogs(level='ERROR') as log:
@@ -135,13 +126,13 @@ class TestMockResponse(unittest.TestCase):
 
 class TestSendProgressToServer(unittest.TestCase):
 
-    @patch('util.runtime_prediction.save_progress', return_value=None)  # Mocking save_progress to return None
+    @patch('Laufzeitprognose.src.util.runtime_prediction.save_progress', return_value=None)  # Mocking save_progress to return None
     def test_send_progress_to_server_data_is_none(self, mock_save_progress):
         """Test send_progress_to_server when save_progress returns None."""
         with self.assertLogs(level='ERROR') as log:
             send_progress_to_server(ct=[], i=0, step=1, num_replications=10)
             self.assertIn("ERROR:root:Failed to save progress data. Data is None.", log.output)
-       
+
         mock_save_progress.assert_called_once()
 
 
