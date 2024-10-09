@@ -23,6 +23,9 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Set PYTHONPATH
+        run: export PYTHONPATH=$(pwd)/Datenspeicherung/Python
+
       - name: Install Miniconda
         uses: conda-incubator/setup-miniconda@v2
         with:
