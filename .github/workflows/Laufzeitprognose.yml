@@ -70,7 +70,7 @@ jobs:
 
       - name: Run tests with pytest
         if: env.ENV_FOUND == 'true' && env.TEST_FILES_FOUND == 'true'
-        run: conda run -n myenv pytest --maxfail=3 --disable-warnings -q
+        run: conda run -n myenv pytest tests/ --maxfail=3 --disable-warnings -q
         shell: bash -l {0}
 
   build-and-push-docker:
