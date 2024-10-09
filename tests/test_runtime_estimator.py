@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import patch
 import time
-import util.runtime_estimator
-from util.runtime_estimator import start_timer, end_timer, get_time_statistics, get_percentage_and_computing_times, print_stats
+import Laufzeitprognose.util_runtime_estimator
+from Laufzeitprognose.util_runtime_estimator import start_timer, end_timer, get_time_statistics, get_percentage_and_computing_times, print_stats
 
 
 class TestRuntimeEstimator(unittest.TestCase):
@@ -67,18 +67,18 @@ class TestRuntimeEstimatorEdgeCases(unittest.TestCase):
     @patch('time.time', return_value=105.0)
     def test_seconds_previous_computations_initialization(self, mock_time):
         """Test the initialization of seconds_previous_computations if it's not present."""
-        if hasattr(util.runtime_estimator, 'seconds_previous_computations'):
-            del util.runtime_estimator.seconds_previous_computations
+        if hasattr(Laufzeitprognose.util_runtime_estimator, 'seconds_previous_computations'):
+            del Laufzeitprognose.util_runtime_estimator.seconds_previous_computations
 
-        self.assertFalse(hasattr(util.runtime_estimator, 'seconds_previous_computations'))
+        self.assertFalse(hasattr(Laufzeitprognose.util_runtime_estimator, 'seconds_previous_computations'))
 
         computing_time_start = 100.0
 
         percentage, computed_time, time_to_complete, time_prediction, time_per_iteration = get_percentage_and_computing_times(
             computing_time_start, i=4, num_replications=10)
 
-        self.assertTrue(hasattr(util.runtime_estimator, 'seconds_previous_computations'))
-        self.assertEqual(util.runtime_estimator.seconds_previous_computations, 5.0)
+        self.assertTrue(hasattr(Laufzeitprognose.util_runtime_estimator, 'seconds_previous_computations'))
+        self.assertEqual(Laufzeitprognose.util_runtime_estimator.seconds_previous_computations, 5.0)
 
         self.assertEqual(percentage, " 50%")
         self.assertIn('0:00:05', computed_time)
