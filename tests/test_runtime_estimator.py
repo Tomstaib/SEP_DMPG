@@ -14,14 +14,14 @@ from util.runtime_estimator import start_timer, end_timer, get_time_statistics, 
 
 class TestRuntimeEstimator(unittest.TestCase):
 
-    @patch('Laufzeitprognose.src.util.runtime_estimator.time', return_value=100.0)
+    @patch('time.time', return_value=100.0)
     def test_start_timer(self, mock_time):
         """Test start_timer function"""
         start = start_timer()
         self.assertEqual(start, 100.0)
         mock_time.assert_called_once()
 
-    @patch('Laufzeitprognose.src.util.runtime_estimator.time', return_value=105.0)
+    @patch('time.time', return_value=105.0)
     def test_end_timer(self, mock_time):
         """Test end_timer function"""
         start = 100.0
@@ -29,7 +29,7 @@ class TestRuntimeEstimator(unittest.TestCase):
         self.assertEqual(elapsed, 5.0)
         mock_time.assert_called_once()
 
-    @patch('Laufzeitprognose.src.util.runtime_estimator.time', side_effect=[100.0, 105.0])
+    @patch('time.time', side_effect=[100.0, 105.0])
     def test_get_time_statistics(self, mock_time):
         """Test get_time_statistics function"""
         start = start_timer()
@@ -37,7 +37,7 @@ class TestRuntimeEstimator(unittest.TestCase):
         self.assertEqual(elapsed, 5.0)
         self.assertEqual(mock_time.call_count, 2)
 
-    @patch('Laufzeitprognose.src.util.runtime_estimator.time', side_effect=[100.0, 105.0])
+    @patch('time.time', side_effect=[100.0, 105.0])
     def test_get_percentage_and_computing_times(self, mock_time):
         """Test get_percentage_and_computing_times function"""
         global seconds_previous_computations
@@ -54,7 +54,7 @@ class TestRuntimeEstimator(unittest.TestCase):
         self.assertIn('0:00:10', time_prediction)
         self.assertIn('0:00:05', time_per_iteration)
 
-    @patch('Laufzeitprognose.src.util.runtime_estimator.time', side_effect=[100.0, 105.0, 110.0, 115.0])
+    @patch('time.time', side_effect=[100.0, 105.0, 110.0, 115.0])
     def test_print_stats(self, mock_time):
         """Test print_stats function"""
         global seconds_previous_computations
@@ -71,7 +71,7 @@ class TestRuntimeEstimator(unittest.TestCase):
 
 class TestRuntimeEstimatorEdgeCases(unittest.TestCase):
 
-    @patch('Laufzeitprognose.src.util.runtime_estimator.time', return_value=105.0)
+    @patch('time.time', return_value=105.0)
     def test_seconds_previous_computations_initialization(self, mock_time):
         """Test the initialization of seconds_previous_computations if it's not present."""
         if hasattr(util.runtime_estimator, 'seconds_previous_computations'):
