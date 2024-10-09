@@ -3,14 +3,13 @@ import os
 import unittest
 from unittest.mock import patch, MagicMock
 import logging
+import requests
 
 sys.path.append(os.path.abspath(
     os.path.join(os.path.dirname(__file__), '../Laufzeitprognose/src')
 ))
 
 from util.runtime_prediction import send_progress_to_server, save_progress
-
-
 
 class TestRuntimePrediction(unittest.TestCase):
 
@@ -75,7 +74,6 @@ class TestRuntimePrediction(unittest.TestCase):
                 "An unexpected error occurred: Mock unexpected exception",
                 log.output[0]
             )
-
 
 if __name__ == '__main__':
     unittest.main()
