@@ -1,10 +1,18 @@
+import sys
+import os
 import logging
 import simpy
-from src.core.entity import Entity
-from src.util.global_imports import random, ENTITY_PROCESSING_LOG_ENTRY
-from src.util.helper import get_value_from_distribution_with_parameters, validate_probabilities, round_value, \
+
+
+sys.path.append(os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '../Laufzeitprognose/src')
+))
+
+from core.entity import Entity
+from util.global_imports import random, ENTITY_PROCESSING_LOG_ENTRY
+from util.helper import get_value_from_distribution_with_parameters, validate_probabilities, round_value, \
     create_connection_cache
-from src.core.queue_orders import QueueOrders
+from core.queue_orders import QueueOrders
 
 class Server:
     servers = []
@@ -102,7 +110,7 @@ class Server:
                 else:
                     # processing until breakdown
                     yield self.env.timeout(self.time_until_next_machine_breakdown)
-                    processing_time -= self.time_until_next_machine_breakdown       # process time remaining
+                    processing_time -= self.time_until_next_machine_breakdown  # process time remaining
 
                     logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
                         "".join([self.name, " failure at "]), DateTime.get(self.env.now)))
@@ -123,7 +131,7 @@ class Server:
 
                 logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
                     "".join([self.name, " processing ", entity.name, " done, time ",
-                             str(round_value(self.env.now - processing_time_start))]), DateTime.get(self.env.now)))
+                            str(round_value(self.env.now - processing_time_start))]), DateTime.get(self.env.now)))
 
                 self.total_processing_time += processing_time  # Accumulate total processing time
                 self.entities_processed += 1
@@ -132,20 +140,27 @@ class Server:
             else:
                 # deactivate processing
                 self.processing = self.env.event()
-                self.uptime = self.env.now - self.uptime
+
+                # Ensure self.uptime is not None before calculating it
+                if self.uptime is not None:
+                    self.uptime = self.env.now - self.uptime
+                else:
+                    self.uptime = self.env.now  # Set uptime to current time if it's None
+
                 self.total_uptime += self.uptime
                 self.number_uptimes += 1
 
                 logging.root.level <= logging.TRACE and logging.trace(ENTITY_PROCESSING_LOG_ENTRY.format(
                     "".join([self.name, " stops processing, uptime ",
-                             DateTime.get(self.uptime, from_initial_date=False),
-                             ", total uptime ", DateTime.get(self.total_uptime, from_initial_date=False),
-                             " (", str(round_value(self.total_uptime / self.env.now * 100)),
-                             " %), avg uptime ",
-                             DateTime.get(self.total_uptime / self.number_uptimes, from_initial_date=False)]),
+                            DateTime.get(self.uptime, from_initial_date=False),
+                            ", total uptime ", DateTime.get(self.total_uptime, from_initial_date=False),
+                            " (", str(round_value(self.total_uptime / self.env.now * 100)),
+                            " %), avg uptime ",
+                            DateTime.get(self.total_uptime / self.number_uptimes, from_initial_date=False)]),
                     DateTime.get(self.env.now)))
 
                 yield self.processing
+
 
     def connection(self, entity: Entity, processing_time):
         decision = random.uniform(0, 100)
