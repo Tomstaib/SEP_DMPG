@@ -160,7 +160,7 @@ def connect_to_db() -> Engine | None:
         return None
 
 
-def create_session(engine: Engine) -> Session | None:
+def create_session(engine: Engine) -> sa_Session | None:
     """
     Create a session for interacting with the database.
 
