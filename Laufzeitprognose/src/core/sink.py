@@ -1,8 +1,11 @@
+import sys
+import os
 import logging
 from simpy import Environment
 
-from src.core.entity import Entity
-from src.util.global_imports import ENTITY_PROCESSING_LOG_ENTRY
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+from core.entity import Entity
+from util.global_imports import ENTITY_PROCESSING_LOG_ENTRY
 
 
 class Sink:
