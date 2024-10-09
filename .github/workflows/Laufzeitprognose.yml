@@ -48,7 +48,8 @@ jobs:
         shell: bash -l {0}
 
       - name: Add Laufzeitprognose to PYTHONPATH
-        run: echo "PYTHONPATH=$(pwd)/Laufzeitprognose:$PYTHONPATH" >> $GITHUB_ENV
+        run: echo "PYTHONPATH=$(pwd)/Laufzeitprognose/src:$PYTHONPATH" >> $GITHUB_ENV
+
 
 
       - name: Lint with flake8 (optional)
