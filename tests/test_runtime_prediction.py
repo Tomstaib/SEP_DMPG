@@ -2,12 +2,12 @@ import unittest
 from unittest.mock import patch, MagicMock
 import requests 
 import logging
-from util.runtime_prediction import send_progress_to_server, save_progress, MockResponse
+from Laufzeitprognose.util.runtime_prediction import send_progress_to_server, save_progress, MockResponse
 
 
 class TestRuntimePrediction(unittest.TestCase):
 
-    @patch('util.runtime_prediction.requests.post')
+    @patch('Laufzeitprognose.util.runtime_prediction.requests.post')
     def test_send_progress_to_server_success(self, mock_post):
         """Test successful progress send to server."""
         
@@ -21,7 +21,7 @@ class TestRuntimePrediction(unittest.TestCase):
 
         mock_post.assert_called_once()
 
-    @patch('util.runtime_prediction.requests.post')
+    @patch('Laufzeitprognose.util.runtime_prediction.requests.post')
     def test_send_progress_to_server_http_error(self, mock_post):
         """Test HTTP error handling during progress send to the server."""
       
@@ -35,7 +35,7 @@ class TestRuntimePrediction(unittest.TestCase):
             send_progress_to_server(ct, i=4, step=1, num_replications=10)
             self.assertIn("HTTP error occurred while sending Runtime-Prediction: Mock HTTP error with status code 500", log.output[0])
 
-    @patch('util.runtime_prediction.requests.post')
+    @patch('Laufzeitprognose.util.runtime_prediction.requests.post')
     def test_send_progress_to_server_request_exception(self, mock_post):
         """Test general request exception handling."""
         
@@ -47,7 +47,7 @@ class TestRuntimePrediction(unittest.TestCase):
             send_progress_to_server(ct, i=4, step=1, num_replications=10)
             self.assertIn("Request error occurred while sending Runtime-Prediction: Mock request exception", log.output[0])
 
-    @patch('util.runtime_prediction.requests.post')
+    @patch('Laufzeitprognose.util.runtime_prediction.requests.post')
     def test_send_progress_to_server_unexpected_error(self, mock_post):
         """Test unexpected error handling during progress send to the server."""
 
@@ -126,7 +126,7 @@ class TestMockResponse(unittest.TestCase):
 
 class TestSendProgressToServer(unittest.TestCase):
 
-    @patch('util.runtime_prediction.save_progress', return_value=None)  # Mocking save_progress to return None
+    @patch('Laufzeitprognose.util.runtime_prediction.save_progress', return_value=None)  # Mocking save_progress to return None
     def test_send_progress_to_server_data_is_none(self, mock_save_progress):
         """Test send_progress_to_server when save_progress returns None."""
         with self.assertLogs(level='ERROR') as log:
