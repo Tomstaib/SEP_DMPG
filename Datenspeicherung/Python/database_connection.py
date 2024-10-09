@@ -165,16 +165,16 @@ def create_session(engine: Engine) -> sa_Session | None:
     Create a session for interacting with the database.
 
     :param engine: SQLAlchemy engine for the database.
-
     :return: Session object if the engine was created successfully.
     """
     try:
-        sa_sessionmaker(bind=engine)
-        session: Session = sa_Session()
+        sa_session_maker = sa_sessionmaker(bind=engine)  # Verwende den Alias korrekt
+        session: sa_Session = sa_session_maker()  # Verwende das Alias hier korrekt
         return session
     except Exception as e:
         logging.exception(f"Session creation failed {e}")
         return None
+
 
 
 def commit_session(session: sa_Session) -> None:
