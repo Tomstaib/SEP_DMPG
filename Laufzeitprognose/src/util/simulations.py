@@ -1,3 +1,5 @@
+import sys
+import os
 import random
 import time
 from datetime import timedelta
@@ -8,12 +10,16 @@ import numpy as np
 import concurrent.futures
 import logging
 
-from src.core.entity import EntityManager
-from src.core.server import Server
-from src.core.sink import Sink
-from src.core.source import Source
-from src.util.global_imports import Stats, RANDOM_SEED
-from src.util.helper import round_value
+sys.path.append(os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '../Laufzeitprognose/src')
+))
+
+from core.entity import EntityManager
+from core.server import Server
+from core.sink import Sink
+from core.source import Source
+from util.global_imports import Stats, RANDOM_SEED
+from util.helper import round_value
 
 global seconds_previous_computations
 
@@ -56,10 +62,12 @@ def run_simulation(model: Callable, minutes: Union[int, float], store_pivot_in_f
     df = pd.DataFrame(data)
 
     # Create Pivot Table
-    pivot_table = df.pivot_table(index=['Type', 'Name', 'Stat'], values='Value', aggfunc='mean')
-
-    # Print Pivot Table
-    logging.info(pivot_table)
+    if not df.empty:
+        pivot_table = df.pivot_table(index=['Type', 'Name', 'Stat'], values='Value', aggfunc='mean')
+        logging.info(pivot_table)
+    else:
+        logging.info("No data available to create pivot table.")
+        pivot_table = pd.DataFrame()
 
     # Optionally save to CSV
     if store_pivot_in_file:
@@ -102,10 +110,13 @@ def calculate_statistics(env):
     server_stats = []
     for server in Server.servers:
         current_simulation_time = env.now
-        scheduled_utilization = (server.units_utilized / current_simulation_time) * 100 \
-            if current_simulation_time > 0 else 0
         avg_time_processing = (server.total_processing_time / server.entities_processed
-                               if server.entities_processed > 0 else 0)
+                            if server.entities_processed > 0 else 0)
+
+        scheduled_utilization = (server.units_utilized / current_simulation_time * 100
+                                if current_simulation_time > 0 else 0)
+
+
 
         server_stats.append({
             'Server': server.name,
@@ -154,8 +165,10 @@ def replication(env_setup_func, calculate_stats_func, minutes, r):
     return calculate_stats_func(env)
 
 
+
 def get_percentage_and_computingtimes(computing_time_start, i, num_replications):
     global seconds_previous_computations
+    seconds_previous_computations = 0
 
     seconds_computed = time.time() - computing_time_start
     seconds_computed_iteration = seconds_computed - seconds_previous_computations
