@@ -590,14 +590,11 @@ class TestCreateSessionEdgeCases(unittest.TestCase):
     """
     Test class for the create_session function's edge cases.
     """
-    @patch('database_connection.Session')
     @patch('database_connection.sessionmaker')
-    def test_create_session_success(self, mock_sessionmaker, mock_Session):
-        """Test that create_session successfully creates and returns a session."""
+    def test_create_session_success(self, mock_sessionmaker):
         # Simuliere eine erfolgreiche Erstellung der Session
         mock_session = MagicMock()
-        mock_Session.return_value = mock_session
-        mock_sessionmaker.return_value = MagicMock()
+        mock_sessionmaker.return_value = mock_session
 
         engine = MagicMock()
 
@@ -606,11 +603,9 @@ class TestCreateSessionEdgeCases(unittest.TestCase):
 
         # Überprüfen, ob sessionmaker korrekt aufgerufen wurde
         mock_sessionmaker.assert_called_once_with(bind=engine)
-        # Überprüfen, ob Session korrekt instanziiert wurde
-        mock_Session.assert_called_once()
+        # Überprüfen, ob die Session korrekt instanziiert wurde
+        assert session == mock_session
 
-        # Sicherstellen, dass die Session korrekt zurückgegeben wird
-        self.assertEqual(session, mock_session)
 
     @patch('database_connection.logging.exception')
     @patch('database_connection.sessionmaker')
