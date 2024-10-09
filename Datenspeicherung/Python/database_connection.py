@@ -173,7 +173,7 @@ def create_session(engine: Engine) -> Union[Session, None]:
     """
     try:
         SessionLocal = sessionmaker(bind=engine)  
-        Session = SessionLocal()  
+        session = SessionLocal()  
         return session
     except Exception as e:
         logging.exception(f"Session creation failed {e}")
