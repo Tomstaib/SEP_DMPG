@@ -4,7 +4,7 @@ from datetime import datetime
 import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker, Session as sa_sessionmaker, Session as sa_Session
 from sqlalchemy.exc import OperationalError, SQLAlchemyError, NoResultFound, IntegrityError
 
 from database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME
@@ -18,7 +18,7 @@ def validate_db_config():
         raise ValueError("Database configuration is incomplete. Please check all required fields.")
 
 
-def get_or_create_user(session: Session, user_name: str) -> int:
+def get_or_create_user(session: sa_Session, user_name: str) -> int:
     """
     Returns the user_id of a user if found, or creates a new user if not found.
 
@@ -48,7 +48,7 @@ def get_or_create_user(session: Session, user_name: str) -> int:
                     raise SQLAlchemyError(f"User {user_name} could not be found.")
 
 
-def get_or_create_model(session: Session, model_name: str, user_id: int) -> Model:
+def get_or_create_model(session: sa_Session, model_name: str, user_id: int) -> Model:
     """
     Returns the model_id of a model if found, or creates a new model if not found.
 
@@ -82,7 +82,7 @@ def get_or_create_model(session: Session, model_name: str, user_id: int) -> Mode
                 raise SQLAlchemyError(f"Model {model_name} could not be found.")
 
 
-def get_or_create_scenario(session: Session, scenario_name: str, minutes: int, model_id: int) -> Scenario:
+def get_or_create_scenario(session: sa_Session, scenario_name: str, minutes: int, model_id: int) -> Scenario:
     """
     Returns the scenario if it exists, otherwise creates a new one.
 
@@ -169,15 +169,15 @@ def create_session(engine: Engine) -> Session | None:
     :return: Session object if the engine was created successfully.
     """
     try:
-        sessionmaker(bind=engine)
-        session: Session = Session()
+        sa_sessionmaker(bind=engine)
+        session: Session = sa_Session()
         return session
     except Exception as e:
         logging.exception(f"Session creation failed {e}")
         return None
 
 
-def commit_session(session: Session) -> None:
+def commit_session(session: sa_Session) -> None:
     """
     Commit the session to the database.
 
@@ -192,7 +192,7 @@ def commit_session(session: Session) -> None:
         return None
 
 
-def get_model_id(session: Session, model_name: str, user_id: int) -> int | None:
+def get_model_id(session: sa_Session, model_name: str, user_id: int) -> int | None:
     """
     Getter for the model_id.
 
@@ -209,7 +209,7 @@ def get_model_id(session: Session, model_name: str, user_id: int) -> int | None:
         return None
 
 
-def get_scenario_id(session: Session, scenario_name: str, model_id: int) -> int | None:
+def get_scenario_id(session: sa_Session, scenario_name: str, model_id: int) -> int | None:
     """
     Return the scenario_id of a scenario if found, or None if not.
 
@@ -226,7 +226,7 @@ def get_scenario_id(session: Session, scenario_name: str, model_id: int) -> int 
         return None
 
 
-def get_user_id(session: Session, user_name: str) -> int | None:
+def get_user_id(session: sa_Session, user_name: str) -> int | None:
     """
     Return the scenario_id of a scenario if found, or None if not.
 
@@ -262,7 +262,7 @@ def save_to_db(combined_pivot: pd.DataFrame, local_start_time: datetime, local_e
     scenario_name: str = parts[-2]  # Scenario
     user_name: str = parts[-5]  # User
 
-    session: Session | None = create_session(engine)
+    session: sa_Session | None = create_session(engine)
     try:
         lock_id = 12345
         """Advisory Lock, so that only one compute node can write at once"""
