@@ -1,8 +1,11 @@
+import sys
 import os
 import subprocess
 import paramiko
 from flask import session as flask_session
-from src.util.flask.ssh_params import REMOTE_HOST, REMOTE_KEY_PATH_TEMPLATE, KEY_PATH, COMMENT, PASSPHRASE
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from ssh_params import REMOTE_HOST, REMOTE_KEY_PATH_TEMPLATE, KEY_PATH, COMMENT, PASSPHRASE
 
 
 def generate_ssh_key(key_path, comment="", passphrase=""):
