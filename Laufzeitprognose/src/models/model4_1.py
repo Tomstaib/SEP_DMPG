@@ -1,13 +1,15 @@
 import sys
+import os
 
-# Für Dockercontainer zum initialisierren der lokalen Module
-sys.path.append('/app/DMPG/')
+sys.path.append(os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '../Laufzeitprognose/src')
+))
 
-from src.util.global_imports import random
-from src.core.source import Source
-from src.core.server import Server
-from src.core.sink import Sink
-from src.util.simulations import run_simulation, run_replications
+from util.global_imports import random
+from core.source import Source
+from core.server import Server
+from core.sink import Sink
+from util.simulations import run_simulation, run_replications
 
 
 
