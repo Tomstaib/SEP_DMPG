@@ -41,7 +41,7 @@ class TestRuntimeEstimator(unittest.TestCase):
     def test_get_percentage_and_computing_times(self, mock_time):
         """Test get_percentage_and_computing_times function"""
         global seconds_previous_computations
-        seconds_previous_computations = 0
+        seconds_previous_computations = 0  # Initialisierung der globalen Variablen
 
         computing_time_start = start_timer()
 
@@ -58,7 +58,7 @@ class TestRuntimeEstimator(unittest.TestCase):
     def test_print_stats(self, mock_time):
         """Test print_stats function"""
         global seconds_previous_computations
-        seconds_previous_computations = 0
+        seconds_previous_computations = 0  # Initialisierung der globalen Variablen
 
         start = start_timer()
 
