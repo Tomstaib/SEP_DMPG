@@ -1,18 +1,14 @@
 import logging
-import sys
 import os
 from datetime import datetime
 import pandas as pd
-from typing import Union
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker, Session 
+from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import OperationalError, SQLAlchemyError, NoResultFound, IntegrityError
 
 from database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Datenspeicherung', 'Python')))
-from _orm import PivotTable, Simulation, Scenario, Model, HSUser
+from orm import PivotTable, Simulation, Scenario, Model, HSUser
 
 def validate_db_config():
     """
@@ -134,7 +130,7 @@ def get_or_create_scenario(session: Session, scenario_name: str, minutes: int, m
 
 
 
-def connect_to_db() -> Union[Engine, None]:
+def connect_to_db() -> Engine | None:
     """
     Attempt to connect to the database and return the engine if successful.
 
@@ -164,21 +160,21 @@ def connect_to_db() -> Union[Engine, None]:
         return None
 
 
-def create_session(engine: Engine) -> Union[Session, None]:
+def create_session(engine: Engine) -> Session | None:
     """
     Create a session for interacting with the database.
 
     :param engine: SQLAlchemy engine for the database.
+
     :return: Session object if the engine was created successfully.
     """
     try:
-        SessionLocal = sessionmaker(bind=engine)  
-        session = SessionLocal()  
+        sessionmaker(bind=engine)
+        session: Session = Session()
         return session
     except Exception as e:
         logging.exception(f"Session creation failed {e}")
         return None
-
 
 
 def commit_session(session: Session) -> None:
@@ -196,7 +192,7 @@ def commit_session(session: Session) -> None:
         return None
 
 
-def get_model_id(session: Session, model_name: str, user_id: int) -> Union[int, None]:
+def get_model_id(session: Session, model_name: str, user_id: int) -> int | None:
     """
     Getter for the model_id.
 
@@ -213,7 +209,7 @@ def get_model_id(session: Session, model_name: str, user_id: int) -> Union[int, 
         return None
 
 
-def get_scenario_id(session: Session, scenario_name: str, model_id: int) -> Union[int, None]:
+def get_scenario_id(session: Session, scenario_name: str, model_id: int) -> int | None:
     """
     Return the scenario_id of a scenario if found, or None if not.
 
@@ -230,7 +226,7 @@ def get_scenario_id(session: Session, scenario_name: str, model_id: int) -> Unio
         return None
 
 
-def get_user_id(session: Session, user_name: str) -> Union[int, None]:
+def get_user_id(session: Session, user_name: str) -> int | None:
     """
     Return the scenario_id of a scenario if found, or None if not.
 

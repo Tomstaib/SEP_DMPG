@@ -1,11 +1,8 @@
-import sys
 import os
 import subprocess
 import paramiko
-from flask import session as flask_session
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from ssh_params import REMOTE_HOST, REMOTE_KEY_PATH_TEMPLATE, KEY_PATH, COMMENT, PASSPHRASE
+from flask import session
+from src.util.flask.ssh_params import REMOTE_HOST, REMOTE_KEY_PATH_TEMPLATE, KEY_PATH, COMMENT, PASSPHRASE
 
 
 def generate_ssh_key(key_path, comment="", passphrase=""):
@@ -52,7 +49,7 @@ def setup_ssh_connection(username) -> paramiko.SSHClient:
     with open(pub_key_path, "r") as pub_key_file:
         public_key = pub_key_file.read()
 
-    remote_password = flask_session.get('remote_password')
+    remote_password = session.get('remote_password')
 
     ssh_client = paramiko.SSHClient()
     ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())

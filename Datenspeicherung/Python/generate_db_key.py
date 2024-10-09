@@ -2,7 +2,6 @@ import os
 import stat
 import sys
 from getpass import getpass
-from typing import Union
 from database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME, DB_PASSWORD
 from database_connection import connect_to_db
 
@@ -10,7 +9,7 @@ from database_connection import connect_to_db
 DB_URL_TEMPLATE: str = f'{DB_HOST}:{DB_PORT}:{DB_NAME}:{DB_USER}:{DB_PASSWORD}'
 
 
-def input_password(prompt: str = "Input the password") -> Union[str, None]:
+def input_password(prompt: str = "Input the password") -> str | None:
     """
     Input the password. This is only possible if the console input is possible.
 

@@ -4,12 +4,14 @@ import unittest
 
 from unittest.mock import patch, MagicMock
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker as sa_sessionmaker
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 
+sys.path.append(os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '../Datenspeicherung/Python')
+))
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Datenspeicherung', 'Python')))
-from _orm import Base, HSUser, Model, Scenario, create_tables, main
+from orm import Base, HSUser, Model, Scenario, create_tables, main
 from database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME
 
 
@@ -19,7 +21,7 @@ class TestORM(unittest.TestCase):
         # Use an in-memory SQLite database for testing
         self.engine = create_engine('sqlite:///:memory:')
         Base.metadata.create_all(self.engine)
-        Session = sa_sessionmaker(bind=self.engine)
+        Session = sessionmaker(bind=self.engine)
         self.session = Session()
 
     def tearDown(self):
