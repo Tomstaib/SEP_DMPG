@@ -247,43 +247,14 @@ def save_to_db(combined_pivot: pd.DataFrame, local_start_time: datetime, local_e
         try:
 
             user_id: int = get_or_create_user(session, user_name)
-            print(user_id)
-            """user: HSUser | None = session.query(HSUser).filter_by(user_name=user_name).one_or_none()
-            if user is None:
-                new_user: HSUser = HSUser(user_name=user_name)
-                session.add(new_user)
-                session.flush()
-                user_id = new_user.user_id
-            else:
-                user = session.query(HSUser).filter_by(user_name=user_name).one_or_none()
-                user_id = user.user_id"""
 
             get_or_create_model(session, model_name, user_id)
-
-            """model = session.query(Model).filter_by(model_name=model_name, user_id=user_id).one_or_none()
-            if model is None:
-                new_model = Model(model_name=model_name, user_id=user_id)
-                session.add(new_model)
-                session.flush()
-            else:
-                session.query(Model).filter_by(model_name=model_name, user_id=user_id).one_or_none()"""
 
             user_id = get_user_id(session, user_name)
             model_id = get_model_id(session, model_name, user_id)
 
             scenario: Scenario = get_or_create_scenario(session, scenario_name, minutes, model_id)
             scenario_id: int = scenario.scenario_id
-            """scenario = session.query(Scenario).filter_by(scenario_name=scenario_name, model_id=model_id).one_or_none()
-            if scenario is None:
-                new_scenario = Scenario(scenario_name=scenario_name, minutes=minutes, model_id=model_id)
-                session.add(new_scenario)
-                session.flush()
-
-            else:
-                Scenario(scenario_name=scenario_name, minutes=minutes, model_id=model_id)
-
-            scenario_id = get_scenario_id(session, scenario_name, model_id)
-            logging.info(f"{scenario_id}")"""
 
             # Create Simulation
             new_simulation: Simulation = Simulation(local_start_time=local_start_time, local_end_time=local_end_time,
