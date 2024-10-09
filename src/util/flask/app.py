@@ -62,6 +62,23 @@ def login_required(f: Callable[..., Any]) -> Callable[..., Any]:
     return decorated_function
 
 
+def check_valid_username(username: str) -> bool:
+    """
+    Checks the username for @ so only username and not email is allowed.
+
+    :param username: The username to be checked.
+
+    :return: A boolean indicating if the user is valid or not.
+
+    See also:
+        - [login](../flask/app.html#login): Function to log in
+    """
+    if '@' in username:
+        return False
+    else:
+        return True
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login() -> Response | str:
     """
@@ -83,8 +100,12 @@ def login() -> Response | str:
                 flash('Username and password are required.')
                 return render_template(login_html)
 
-            # Store username in the session
+            # Permanently store username in the session
             session['username']: str = username
+
+            if not check_valid_username(session['username']):
+                flash("Please use your username not your email!")
+                return render_template(login_html)
 
             # Store password in session to set up ssh connection. It is deleted afterward.
             session['remote_password']: str = password
