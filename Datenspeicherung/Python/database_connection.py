@@ -172,8 +172,8 @@ def create_session(engine: Engine) -> Union[Session, None]:
     :return: Session object if the engine was created successfully.
     """
     try:
-        session_maker = sessionmaker(bind=engine)  
-        session: Session = session_maker()  
+        SessionLocal = sessionmaker(bind=engine)  
+        Session = SessionLocal()  
         return session
     except Exception as e:
         logging.exception(f"Session creation failed {e}")
