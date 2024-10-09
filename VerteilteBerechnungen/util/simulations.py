@@ -1,17 +1,44 @@
+import gc
+import os
 import random
 import time
-from datetime import timedelta
-from typing import Callable, Union
+from datetime import timedelta, datetime
+from typing import Callable, Union, Tuple
 import simpy
+import pandas as pd
 import numpy as np
 import concurrent.futures
 import logging
 
 
+import src.util.global_imports as gi
+from src.database.database_connection import save_to_db
+
+from src.core.entity import EntityManager
+from src.core.server import Server
+from src.core.sink import Sink
+from src.core.source import Source
+from src.util.global_imports import RANDOM_SEED, set_duration_warm_up
+from src.util.helper import round_value
+from src.util.flask.runtime_prediction import send_progress_to_server
+
 global seconds_previous_computations
 
 
-def run_simulation(model: Callable, minutes: Union[int, float], store_pivot_in_file: str = None):
+def run_simulation(model: Callable, minutes: Union[int, float], warm_up: Union[int, float] = None,
+                   store_pivot_in_file: str = None) -> pd.DataFrame:
+    """
+    Run a simulation using the specified model for the given number of minutes.
+
+    :param model (Callable): The simulation model function.
+    :param minutes (int): The number of minutes to run the simulation.
+
+    :return pivot_table (DataFrame): The pivot
+    """
+
+    if warm_up is not None:
+        set_duration_warm_up(warm_up)
+
     random.seed(RANDOM_SEED)
     env = simpy.Environment()
     model(env)
@@ -61,9 +88,37 @@ def run_simulation(model: Callable, minutes: Union[int, float], store_pivot_in_f
     return pivot_table
 
 
-def calculate_statistics(env):
+def calculate_units_utilized(units_utilized_over_time, capacity, time):
+    total_utilization = 0
+    total_time = 0
+    for start, end, units in units_utilized_over_time:
+        total_utilization += (end - start) * min(units, capacity)
+        total_time += (end - start)
+    average_units_utilized = total_utilization / total_time if total_time > 0 else 0
+    return average_units_utilized
+
+
+def calculate_statistics(env) -> Tuple:
+    """
+    Calculate various statistics based on the simulation environment.
+
+    :param env: The simulation environment.
+
+    :return Tuple[Dict, List[Dict], Dict, Dict]: A tuple containing dictionaries for entity, server, sink,
+     and source statistics.
+    """
     # Calculate entity statistics
-    all_entities = EntityManager.entities
+    all_entities_with_warm_up_time = EntityManager.entities
+    all_entities = []
+
+    for objekt in all_entities_with_warm_up_time:
+        if objekt.destruction_time is not None:
+            if objekt.destruction_time > gi.DURATION_WARM_UP:
+                all_entities.append(objekt)
+            else:
+                pass
+        else:
+            all_entities.append(objekt)
 
     times_in_system = [entity.destruction_time - entity.creation_time
                        for entity in all_entities if entity.destruction_time]
@@ -73,81 +128,124 @@ def calculate_statistics(env):
                   f"({len(times_in_system) / len(all_entities)} %)")
 
     if times_in_system:
-        avg_time_in_system = sum(times_in_system) / len(times_in_system)
-        max_time_in_system = max(times_in_system)
-        min_time_in_system = min(times_in_system)
+        avg_time_in_system_pivot_table = sum(times_in_system) / len(times_in_system)
+        max_time_in_system_pivot_table = max(times_in_system)
+        min_time_in_system_pivot_table = min(times_in_system)
     else:
-        avg_time_in_system = max_time_in_system = min_time_in_system = 0
+        avg_time_in_system_pivot_table = max_time_in_system_pivot_table = min_time_in_system_pivot_table = 0
 
-    number_created = len(all_entities)
-    number_destroyed = sum(entity.destruction_time is not None for entity in all_entities)
+    number_created_pivot_table = len(all_entities)
+    number_destroyed_pivot_table = sum(entity.destruction_time is not None for entity in all_entities)
 
     entity_stats = {
         'NumberInSystem': len(all_entities),
-        'AvgTimeInSystem': avg_time_in_system,
-        'MaxTimeInSystem': max_time_in_system,
-        'MinTimeInSystem': min_time_in_system,
-        'NumberCreated': number_created,
-        'NumberDestroyed': number_destroyed
+        'AvgTimeInSystem': avg_time_in_system_pivot_table,
+        'MaxTimeInSystem': max_time_in_system_pivot_table,
+        'MinTimeInSystem': min_time_in_system_pivot_table,
+        'NumberCreated': number_created_pivot_table,
+        'NumberDestroyed': number_destroyed_pivot_table
     }
-
     # Calculate server statistics
     server_stats = []
     for server in Server.servers:
         current_simulation_time = env.now
-        scheduled_utilization = (server.units_utilized / current_simulation_time) * 100 \
-            if current_simulation_time > 0 else 0
-        avg_time_processing = (server.total_processing_time / server.entities_processed
-                               if server.entities_processed > 0 else 0)
+        scheduled_utilization_pivot_table = 0
+        avg_time_processing_pivot_table = 0
+        if env.now > gi.DURATION_WARM_UP:
+            scheduled_utilization_pivot_table = (
+                    (server.total_processing_time_pivot_table / current_simulation_time) * 100) \
+                if current_simulation_time > 0 else 0
+            avg_time_processing_pivot_table = (
+                server.total_processing_time_pivot_table / server.entities_processed
+                if server.entities_processed > 0 else 0)
+
+        # Calculate Units Utilized
+        units_utilized_pivot_table = calculate_units_utilized(server.units_utilized_over_time, server.capacity, env.now)
 
         server_stats.append({
             'Server': server.name,
-            'ScheduledUtilization': scheduled_utilization,
-            'UnitsUtilized': server.units_utilized,
-            'AvgTimeProcessing': avg_time_processing,
-            'TotalTimeProcessing': server.total_processing_time,
-            'NumberEntered': server.number_entered,
-            'NumberExited': server.number_exited,
-            'NumberDowntimes': server.number_downtimes,
-            'TotalDowntime': server.total_downtime
+            'ScheduledUtilization': scheduled_utilization_pivot_table,
+            'UnitsUtilized': units_utilized_pivot_table,
+            'AvgTimeProcessing': avg_time_processing_pivot_table,
+            'TotalTimeProcessing': server.total_processing_time_pivot_table,
+            'NumberEntered': server.number_entered_pivot_table,
+            'NumberExited': server.number_exited_pivot_table,
+            'NumberDowntimes': server.number_downtimes_pivot_table,
+            'TotalDowntime': server.total_downtime_pivot_table
         })
 
     # Calculate sink statistics
     sink_stats = {}
-    for sink in Sink.all_sinks:
-        avg_time_in_system = (sink.total_time_in_system / sink.entities_processed
-                              if sink.entities_processed > 0 else 0)
+    for sink in Sink.sinks:
+
+        if sink.tally_statistic.num_times_processed_list:
+            tally_min, tally_max, tally_avg = sink.tally_statistic.calculate_statistics()
+        else:
+            tally_min, tally_max, tally_avg = None, None, None
+
+        avg_time_in_system_pivot_table = (
+            sink.total_time_in_system / sink.entities_processed
+            if sink.entities_processed > 0 else 0)
+
         sink_stats[sink.name] = {
-            'AvgTimeInSystem': avg_time_in_system,
-            'MaxTimeInSystem': sink.max_time_in_system,
-            'MinTimeInSystem': sink.min_time_in_system if sink.entities_processed > 0 else None,
-            'NumberEntered': sink.number_entered,
+            'AvgTimeInSystem': avg_time_in_system_pivot_table,
+            'MaxTimeInSystem': sink.max_time_in_system_pivot_table,
+            'MinTimeInSystem': sink.min_time_in_system_pivot_table if sink.entities_processed > 0 else None,
+            'NumberEntered': sink.number_entered_pivot_table,
+
+            'NumTimesProcessed_Avg': tally_avg,
+            'NumTimesProcessed_Max': tally_max,
+            'NumTimesProcessed_Min': tally_min,
         }
 
     # Calculate source statistics
     source_stats = {}
     for source in Source.sources:
         source_stats[source.name] = {
-            'NumberCreated': source.entities_created,
-            'NumberExited': source.number_exited,
+            'NumberCreated': source.entities_created_pivot_table,
+            'NumberExited': source.number_exited_pivot_table,
         }
 
     return entity_stats, server_stats, sink_stats, source_stats
 
 
-def replication(env_setup_func, calculate_stats_func, minutes, r):
+def replication(env_setup_func, calculate_stats_func, minutes, r) -> pd.DataFrame:
+    """
+    Replicate a simulation run.
+
+    :param env_setup_func (Callable): A function that sets up the simulation environment.
+    :param calculate_stats_func (Callable): A function that calculates statistics based on the simulation environment.
+    :param minutes (int): The number of minutes to run the replication.
+    :param r (int): iteration.
+
+    :return Tuple[Dict, List[Dict], Dict, Dict]: A tuple containing dictionaries for entity, server, sink, and source statistics.
+    """
     random.seed(r)
     EntityManager.destroy_all_entities()
-    Source.reset_all()
-    Server.reset_all()
-    Sink.reset_all()
+    Source.sources.reset_all()
+    Server.servers.reset_all()
+    Sink.sinks.reset_all()
     env = simpy.Environment()
     env_setup_func(env)
     env.run(until=minutes)
-    return calculate_stats_func(env)
+
+    result = calculate_stats_func(env)
+
+    del env
+    gc.collect()
+    return result
 
 
-def get_percentage_and_computingtimes(computing_time_start, i, num_replications):
+def get_percentage_and_computingtimes(computing_time_start, i, num_replications) -> Tuple[str, str, str, str, str]:
+    """
+    Calculate the percentage completion and various time metrics for a set of replications.
+
+    param: computing_time_start (float): The start time of the computation.
+    param: i (int): The current iteration number.
+    param: num_replications (int): The total number of replications.
+
+    return: Tuple[Dict, List[Dict], Dict, Dict]: A tuple containing formatted strings for percentage completion and time metrics.
+    """
     global seconds_previous_computations
 
     seconds_computed = time.time() - computing_time_start
@@ -164,10 +262,24 @@ def get_percentage_and_computingtimes(computing_time_start, i, num_replications)
             f"[time per iteration] {str(timedelta(seconds=seconds_computed_iteration)):<15}")
 
 
-def run_replications(model: Callable, minutes, num_replications, multiprocessing=False):
+def run_replications(model: Callable, minutes, num_replications, warm_up: Union[int, float] = None,
+                     multiprocessing = False, save_to_database = False) -> tuple:
+    """
+    Run multiple replications of a simulation and collect statistics.
+
+    param: model (Callable): The simulation model function.
+    param: minutes (int): The number of minutes to run each replication.
+    param: num_replications (int): The total number of replications.
+    param: multiprocessing (bool): Whether to use multiprocessing for parallel execution.
+    """
+
+    if warm_up is not None:
+        set_duration_warm_up(warm_up)
+
     global seconds_previous_computations
     seconds_previous_computations = 0
     start = time.time()
+    local_start_time = datetime.now()
 
     # Define the names of the statistics for entities, servers, sinks, and sources
     entity_stat_names = ['AvgTimeInSystem', 'MaxTimeInSystem', 'MinTimeInSystem',
@@ -182,9 +294,17 @@ def run_replications(model: Callable, minutes, num_replications, multiprocessing
     all_sink_stats = {}
     all_source_stats = {}
 
-    Stats.all_detailed_stats = []
+    gi.Stats.all_detailed_stats = []
 
-    def process_results(entity_stats, server_stats, sink_stats, source_stats):
+    def process_results(entity_stats, server_stats, sink_stats, source_stats) -> None:
+        """
+        Process the results of a single replication and store the statistics.
+
+        param: entity_stats (Dict): Statistics for entities.
+        param: server_stats (List[Dict]): Statistics for servers.
+        param: sink_stats (Dict): Statistics for sinks.
+        param: source_stats (Dict): Statistics for sources.
+        """
         all_entity_stats.append(entity_stats)
         for server_stat in server_stats:
             server_name = server_stat['Server']
@@ -194,41 +314,114 @@ def run_replications(model: Callable, minutes, num_replications, multiprocessing
         for source_name, stat in source_stats.items():
             all_source_stats.setdefault(source_name, []).append(stat)
 
-        detailed_stats = {
+        """detailed_stats = {
             'Entity': entity_stats,
             'Server': server_stats,
             'Sink': sink_stats,
             'Source': source_stats
         }
-        Stats.all_detailed_stats.append(detailed_stats)
+        Stats.all_detailed_stats.append(detailed_stats)"""
+        """Stats.all_detailed_stats.append({
+            'Entity': entity_stats,
+            'Server': server_stats,
+            'Sink': sink_stats,
+            'Source': source_stats
+        })"""
 
     tenth_percentage = int(num_replications / 10)
 
-    if multiprocessing:
+    """if multiprocessing:
+        chunk_size = max(1, num_replications // (os.cpu_count() or 1))
         with concurrent.futures.ProcessPoolExecutor() as executor:
-            future_results = [executor.submit(replication, model, calculate_statistics, minutes, r)
-                              for r in range(num_replications)]
-            for r, future in enumerate(concurrent.futures.as_completed(future_results)):
-                process_results(*future.result())
-                print_stats(r, num_replications, start, tenth_percentage)
+            results = executor.map(
+                replication,
+                [model] * num_replications,
+                [calculate_statistics] * num_replications,
+                [minutes] * num_replications,
+                range(num_replications),
+                chunksize=chunk_size
+            )
+            for r, result in enumerate(results, 1):
+                process_results(*result)
+                if r % tenth_percentage == 0 or r == num_replications:
+                    print_stats(r, num_replications, start, tenth_percentage)
+    else:
+        for r in range(num_replications):
+            process_results(*replication(model, calculate_statistics, minutes, r))
+            if r % tenth_percentage == 0 or r == num_replications:
+                print_stats(r, num_replications, start, tenth_percentage)"""
+
+    if multiprocessing:
+        num_cores = min(os.cpu_count(), num_replications)
+        # print(f"Running on {num_cores} cores")
+        try:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=num_cores) as executor:
+                future_results = [executor.submit(replication, model, calculate_statistics, minutes, r)
+                                  for r in range(num_replications)]
+                for r, future in enumerate(concurrent.futures.as_completed(future_results)):
+                    process_results(*future.result())
+                    print_stats(r, num_replications, start, tenth_percentage)
+        except Exception as e:
+            print(f"An Exception occurred: {e}")
     else:
         for r in range(num_replications):
             process_results(*replication(model, calculate_statistics, minutes, r))
             print_stats(r, num_replications, start, tenth_percentage)
 
-    return create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_stats, entity_stat_names,
-                        server_stat_names, sink_stat_names, source_stat_names)
+    local_end_time = datetime.now()
+
+    combined_pivot = create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_stats,
+                                  entity_stat_names,
+                                  server_stat_names, sink_stat_names, source_stat_names)
+
+    if save_to_database:
+        save_to_db(combined_pivot, local_start_time, local_end_time, minutes, num_replications)
+
+    return combined_pivot
 
 
-def print_stats(i, num_replications, start, tenth_percentage):
+def print_stats(i, num_replications, start, tenth_percentage) -> None:
+    """
+    Prints statistics
+    :param i: index
+    :param num_replications:
+    :param start:
+    :param tenth_percentage:
+    :return:
+    """
     if tenth_percentage == 0 or (i + 1) % tenth_percentage == 0:
-        ct = get_percentage_and_computingtimes(start, i, num_replications)
+        ct: (str, str, str, str, str) = get_percentage_and_computingtimes(start, i, num_replications)
         logging.info(f"{ct[0]} replication {i + 1}/{num_replications}\t{ct[1]}\t{ct[2]}\t{ct[3]}\t{ct[4]}")
+        # if 10% of the calculation is finished, the current results will be sent to the server
+        if (i + 1) == tenth_percentage and os.getenv('CONFIG_PATH') is not None:
+            send_progress_to_server(ct, i, num_replications)
 
 
-def create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_stats, entity_stat_names,
-                 server_stat_names, sink_stat_names, source_stat_names, store_pivot_in_file: str = None):
-    def calculate_aggregate_stats(values):
+def create_pivot(all_entity_stats, all_server_stats, all_sink_stats,
+                 all_source_stats, entity_stat_names, server_stat_names,
+                 sink_stat_names, source_stat_names,
+                 store_pivot_in_file: str = None) -> tuple:
+    """
+        Create a pivot table from collected simulation statistics.
+
+        param: all_entity_stats (list): List of entity statistics from multiple replications.
+        param: all_server_stats (dict): Dictionary of server statistics from multiple replications.
+        param: all_sink_stats (dict): Dictionary of sink statistics from multiple replications.
+        param: all_source_stats (dict): Dictionary of source statistics from multiple replications.
+        param: entity_stat_names (list): List of entity statistics names.
+        param: server_stat_names (list): List of server statistics names.
+        param: sink_stat_names (list): List of sink statistics names.
+        param: source_stat_names (list): List of source statistics names.
+        """
+
+    def calculate_aggregate_stats(values) -> tuple:
+        """
+        Calculate aggregate statistics (average, minimum, maximum, half-width).
+
+        param: values (list): List of numeric values.
+
+        return: Tuple: Tuple containing average, minimum, maximum, half
+        """
         numeric_values = [value for value in values if isinstance(value, (int, float))]
         if not numeric_values:
             return None, None, None, None
@@ -239,7 +432,17 @@ def create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_
         half_width = 1.96 * (np.std(numeric_values) / np.sqrt(len(numeric_values)))
         return avg, min_val, max_val, half_width
 
-    def flatten_stats(stats, name, stat_names, is_entity=False):
+    def flatten_stats(stats, name, stat_names, is_entity=False) -> list:
+        """
+        Flatten statistics into a list for DataFrame.
+
+        param: stats (dict): Dictionary containing statistics for a particular component.
+        param: name (str): Name of the component type (entity, Server, Sink, Source).
+        param: stat_names (list): List of statistic names.
+        param: is_entity (bool): Indicates if the component is an entity.
+
+        return: List of dictionaries containing statistics for a particular component
+        """
         flattened = []
         for component_name, stat_values in stats.items():
             for stat_name in stat_names:
@@ -262,12 +465,15 @@ def create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_
     for stat_name, values in entity_aggregate_stats.items():
         avg, min_val, max_val, half_width = values if values else (None, None, None, None)
         modified_entity_stats['Entity'][stat_name] = (avg, min_val, max_val, half_width)
+
     aggregate_server_stats = {server_name: {key: calculate_aggregate_stats([stat[key] for stat in stats_list])
                                             for key in server_stat_names}
                               for server_name, stats_list in all_server_stats.items()}
+
     aggregate_sink_stats = {sink_name: {key: calculate_aggregate_stats([stat[key] for stat in stats_list])
                                         for key in sink_stat_names}
                             for sink_name, stats_list in all_sink_stats.items()}
+
     aggregate_source_stats = {source_name: {key: calculate_aggregate_stats([stat[key] for stat in stats_list])
                                             for key in source_stat_names}
                               for source_name, stats_list in all_source_stats.items()}
@@ -289,7 +495,7 @@ def create_pivot(all_entity_stats, all_server_stats, all_sink_stats, all_source_
     # Reorder the columns
     pivot_table_combined = pivot_table_combined[['Average', 'Minimum', 'Maximum', 'Half-Width']]
     # Print the Pivot Table
-    logging.info(pivot_table_combined)
+    logging.info("\n" + str(pivot_table_combined))
 
     if store_pivot_in_file:
         pivot_table_combined.to_csv('combined_simulation_stats.csv')
