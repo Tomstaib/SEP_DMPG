@@ -7,5 +7,7 @@ dependencies:
   - pip:
     - psycopg2-binary
     - orm
+    - pandas
+    - flask
     - coverage
     - pytest
