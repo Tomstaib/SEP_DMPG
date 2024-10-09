@@ -1,9 +1,13 @@
+import sys
+import os
 import logging
 import random
 from matplotlib import pyplot as plt
-from src.util.singleton import Singleton
 
-from src.util.helper import add_logging_level
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+from util.singleton import Singleton
+from util.helper import add_logging_level
 
 RANDOM_SEED = 1
 random.seed(RANDOM_SEED)
