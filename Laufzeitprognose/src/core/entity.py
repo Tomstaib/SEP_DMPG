@@ -1,5 +1,12 @@
+import sys
+import os
 from typing import Union
-from src.util.singleton import Singleton
+
+sys.path.append(os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '../Laufzeitprognose/src')
+))
+
+from util.singleton import Singleton
 
 
 class Entity:
