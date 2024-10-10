@@ -30,21 +30,6 @@
 
             <h2>API Documentation</h2>
                 <ul class="memberlist">
-            <li>
-                    <a class="variable" href="#REMOTE_HOST">REMOTE_HOST</a>
-            </li>
-            <li>
-                    <a class="variable" href="#REMOTE_KEY_PATH_TEMPLATE">REMOTE_KEY_PATH_TEMPLATE</a>
-            </li>
-            <li>
-                    <a class="variable" href="#KEY_PATH">KEY_PATH</a>
-            </li>
-            <li>
-                    <a class="variable" href="#COMMENT">COMMENT</a>
-            </li>
-            <li>
-                    <a class="variable" href="#PASSPHRASE">PASSPHRASE</a>
-            </li>
     </ul>
 
 
@@ -66,77 +51,22 @@
 
                         <label class="view-source-button" for="mod-ssh_params-view-source"><span>View Source</span></label>
 
-                        <div class="pdoc-code codehilite"><pre><span></span><span id="L-1"><a href="#L-1"><span class="linenos">1</span></a><span class="kn">import</span> <span class="nn">os</span>
-</span><span id="L-2"><a href="#L-2"><span class="linenos">2</span></a>
-</span><span id="L-3"><a href="#L-3"><span class="linenos">3</span></a><span class="n">REMOTE_HOST</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;remote_host&quot;</span>
-</span><span id="L-4"><a href="#L-4"><span class="linenos">4</span></a><span class="n">REMOTE_KEY_PATH_TEMPLATE</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;path_template&quot;</span>
-</span><span id="L-5"><a href="#L-5"><span class="linenos">5</span></a><span class="n">KEY_PATH</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/.ssh/id_rsa_tunnel_to_zielserver&quot;</span><span class="p">)</span>
-</span><span id="L-6"><a href="#L-6"><span class="linenos">6</span></a><span class="n">COMMENT</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;comment&quot;</span>
-</span><span id="L-7"><a href="#L-7"><span class="linenos">7</span></a><span class="n">PASSPHRASE</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;passphrase&quot;</span>  <span class="c1"># Optional: Empty for no passphrase</span>
+                        <div class="pdoc-code codehilite"><pre><span></span><span id="L-1"><a href="#L-1"><span class="linenos"> 1</span></a><span class="kn">import</span> <span class="nn">os</span>
+</span><span id="L-2"><a href="#L-2"><span class="linenos"> 2</span></a>
+</span><span id="L-3"><a href="#L-3"><span class="linenos"> 3</span></a><span class="n">REMOTE_HOST</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;hpc.hs-osnabrueck.de&quot;</span>
+</span><span id="L-4"><a href="#L-4"><span class="linenos"> 4</span></a><span class="sd">&quot;&quot;&quot;@private&quot;&quot;&quot;</span>
+</span><span id="L-5"><a href="#L-5"><span class="linenos"> 5</span></a><span class="n">REMOTE_KEY_PATH_TEMPLATE</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;/home/</span><span class="si">{user}</span><span class="s2">/.ssh/authorized_keys&quot;</span>
+</span><span id="L-6"><a href="#L-6"><span class="linenos"> 6</span></a><span class="sd">&quot;&quot;&quot;@private&quot;&quot;&quot;</span>
+</span><span id="L-7"><a href="#L-7"><span class="linenos"> 7</span></a><span class="n">KEY_PATH</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/.ssh/id_rsa_tunnel_to_zielserver&quot;</span><span class="p">)</span>
+</span><span id="L-8"><a href="#L-8"><span class="linenos"> 8</span></a><span class="sd">&quot;&quot;&quot;@private&quot;&quot;&quot;</span>
+</span><span id="L-9"><a href="#L-9"><span class="linenos"> 9</span></a><span class="n">COMMENT</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;distributed_server@sep&quot;</span>
+</span><span id="L-10"><a href="#L-10"><span class="linenos">10</span></a><span class="sd">&quot;&quot;&quot;@private&quot;&quot;&quot;</span>
+</span><span id="L-11"><a href="#L-11"><span class="linenos">11</span></a><span class="n">PASSPHRASE</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>  <span class="c1"># Optional: Empty for no passphrase</span>
+</span><span id="L-12"><a href="#L-12"><span class="linenos">12</span></a><span class="sd">&quot;&quot;&quot;@private&quot;&quot;&quot;</span>
 </span></pre></div>
 
 
             </section>
-                <section id="REMOTE_HOST">
-                    <div class="attr variable">
-            <span class="name">REMOTE_HOST</span><span class="annotation">: str</span>        =
-<span class="default_value">&#39;remote_host&#39;</span>
-
-        
-    </div>
-    <a class="headerlink" href="#REMOTE_HOST"></a>
-    
-    
-
-                </section>
-                <section id="REMOTE_KEY_PATH_TEMPLATE">
-                    <div class="attr variable">
-            <span class="name">REMOTE_KEY_PATH_TEMPLATE</span><span class="annotation">: str</span>        =
-<span class="default_value">&#39;path_template&#39;</span>
-
-        
-    </div>
-    <a class="headerlink" href="#REMOTE_KEY_PATH_TEMPLATE"></a>
-    
-    
-
-                </section>
-                <section id="KEY_PATH">
-                    <div class="attr variable">
-            <span class="name">KEY_PATH</span><span class="annotation">: str</span>        =
-<span class="default_value">&#39;C:\\Users\\thoma/.ssh/id_rsa_tunnel_to_zielserver&#39;</span>
-
-        
-    </div>
-    <a class="headerlink" href="#KEY_PATH"></a>
-    
-    
-
-                </section>
-                <section id="COMMENT">
-                    <div class="attr variable">
-            <span class="name">COMMENT</span><span class="annotation">: str</span>        =
-<span class="default_value">&#39;comment&#39;</span>
-
-        
-    </div>
-    <a class="headerlink" href="#COMMENT"></a>
-    
-    
-
-                </section>
-                <section id="PASSPHRASE">
-                    <div class="attr variable">
-            <span class="name">PASSPHRASE</span><span class="annotation">: str</span>        =
-<span class="default_value">&#39;passphrase&#39;</span>
-
-        
-    </div>
-    <a class="headerlink" href="#PASSPHRASE"></a>
-    
-    
-
-                </section>
     </main>
 <script>
     function escapeHTML(html) {
