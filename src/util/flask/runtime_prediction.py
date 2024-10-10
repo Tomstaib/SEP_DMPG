@@ -4,7 +4,7 @@ import logging
 import getpass
 from requests import Response
 
-URL = 'https://131.173.65.76:5000/receive_runtime_prediction'
+URL = 'https://imt-sep-001.lin.hs-osnabrueck.de/receive_runtime_prediction'
 """URL to send the runtime prediction to."""
 
 
