@@ -1,9 +1,13 @@
+import sys
+import os
 import logging
 from simpy import Environment
 
-from src.core.entity import Entity
-from src.util.global_imports import ENTITY_PROCESSING_LOG_ENTRY
-from src.util.date_time import DateTime
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../VerteilteBerechnungen')))
+
+from VerteilteBerechnungen.core.entity import Entity
+from VerteilteBerechnungen.util.global_imports import ENTITY_PROCESSING_LOG_ENTRY
+from VerteilteBerechnungen.util.date_time import DateTime
 
 
 class Sink:
