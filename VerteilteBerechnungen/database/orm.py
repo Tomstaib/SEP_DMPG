@@ -5,9 +5,9 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import declarative_base, relationship, Session
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../VerteilteBerechnungen')))
 
 from VerteilteBerechnungen.database.database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME
-
 
 Base = declarative_base()
 """Base class for ORM models"""
