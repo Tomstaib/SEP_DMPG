@@ -1,3 +1,13 @@
+import sys
+import os
+import random
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../VerteilteBerechnungen')))
+
+from VerteilteBerechnungen.core.server import Server
+from VerteilteBerechnungen.core.source import Source
+from VerteilteBerechnungen.core.sink import Sink
+
 def setup_model_pcb(env):
     # Create servers, sinks, and sources
     source1 = Source(env, "PCB", (random.expovariate, 1 / 6))
