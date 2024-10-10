@@ -1,5 +1,11 @@
+import sys 
+import os
+
 from typing import Union
-from src.util.singleton import Singleton
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../VerteilteBerechnungen')))
+from VerteilteBerechnungen.util.singleton import Singleton
+
 
 
 class Entity:
@@ -12,7 +18,6 @@ class Entity:
     def __repr__(self):
         return f"{self.name} ({self.creation_time})" if not self.destruction_time \
             else f"{self.name} ({self.destruction_time - self.creation_time})"
-
 
 class EntityManager(Singleton):
     entities = []
