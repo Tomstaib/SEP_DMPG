@@ -1,4 +1,5 @@
 import logging
+import sys
 import os
 from datetime import datetime
 import pandas as pd
@@ -7,8 +8,10 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import OperationalError, SQLAlchemyError, NoResultFound, IntegrityError
 
-from database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME
-from orm import PivotTable, Simulation, Scenario, Model, HSUser
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../VerteilteBerechnungen')))
+
+from VerteilteBerechnungen.database.database_params import DB_USER, DB_HOST, DB_PORT, DB_NAME
+from VerteilteBerechnungen.database.orm import PivotTable, Simulation, Scenario, Model, HSUser
 
 def validate_db_config():
     """
