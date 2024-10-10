@@ -3,23 +3,21 @@ from typing import Optional
 import unittest
 import os
 import sys
+import pandas as pd
 from io import StringIO
+from unittest.mock import patch, MagicMock
 
-
-
-from unittest.mock import patch
-from unittest.mock import MagicMock
-
-# Für Dockercontainer zum initialisierren der lokalen Module
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../VerteilteBerechnungen')))
-
-from util.nodes_for_composite import Node, ManagementNode, ComputeNode, create_composite_tree, MINIMUM_OF_REPLICATIONS_FOR_COMPOSITE, NUM_REPLICATIONS, compute_tree_sizes, add_nodes, input_positive_number
+from VerteilteBerechnungen.util.nodes_for_composite import (
+    Node, ManagementNode, ComputeNode, create_composite_tree,
+    MINIMUM_OF_REPLICATIONS_FOR_COMPOSITE, NUM_REPLICATIONS,
+    compute_tree_sizes, add_nodes, input_positive_number
+)
 
 
 class ConcreteNode(Node):
-    '''
-    Instance of the abstact Class Node
-    '''
+    """Instance of the abstract class Node."""
+    
     def __init__(self, parent: Optional[ManagementNode] = None):
         super().__init__(parent)
         self._name = "ConcreteNode"
@@ -27,137 +25,104 @@ class ConcreteNode(Node):
     def distribute_and_compute(self, model, minutes: int, num_replications: int) -> None:
         pass
 
+
 class TestNode(unittest.TestCase):
-    '''
-    The tests verifies the correct behavior of instance creation and _instance_count incrementation, 
-    checks the setting and retrieving of a parent node, handles invalid parent settings, and 
-    ensures that a warningis raised when attempting to set a second parent.
-    '''
+    """Unit tests for Node instance creation, parent setting, and handling of invalid and duplicate parent nodes."""
+    
     def setUp(self):
-        # Reset the _instance_count before each test
         ConcreteNode._instance_count = 0
 
     def test_instance_creation(self):
-        # Tests the instantiation of ConcreteNode and whether _instance_count is incremented
         node = ConcreteNode()
         self.assertIsInstance(node, ConcreteNode)
         self.assertEqual(node.__class__._instance_count, 1)
         self.assertEqual(str(node), "ConcreteNode")
 
     def test_parent_setting(self):
-        # Tests the setting and retrieving of the parent node
         parent_node = ManagementNode()
         node = ConcreteNode()
-
         self.assertTrue(node.set_parent(parent_node))
         self.assertEqual(node.get_parent(), parent_node)
 
     def test_invalid_parent_setting(self):
-        # Tests the setting of invalid node
         node = ConcreteNode()
         with self.assertRaises(TypeError):
             node.set_parent("invalid_parent")
 
     def test_double_parent_setting(self):
-        # Tests the setting of a second parent node
         parent_node = ManagementNode()
         node = ConcreteNode()
         node.set_parent(parent_node)
-
         with self.assertRaises(Warning):
-            node.set_parent(parent_node)  # Warning expected
+            node.set_parent(parent_node)
+
 
 class TestNodeEquality(unittest.TestCase):
-    '''
-    Test the __eq__ method for the Node class.
-    '''
+    """Unit tests for checking equality of Node instances based on parent and name."""
+    
     def setUp(self):
-        # Set up some example nodes
         self.node1 = ConcreteNode()
         self.node2 = ConcreteNode()
         self.node3 = ConcreteNode()
         self.node4 = ConcreteNode()
-
-        # Set parents and names
         self.node1._parent = None
         self.node1._name = "NodeA"
         self.node2._parent = None
         self.node2._name = "NodeA"
-
         self.node3._parent = self.node1
         self.node3._name = "NodeB"
-
         self.node4._parent = self.node1
         self.node4._name = "NodeB"
 
     def test_equal_nodes(self):
-        # Test nodes with the same _parent and _name should be equal
-        self.assertEqual(self.node1, self.node2, "Nodes with the same parent and name should be equal")
+        self.assertEqual(self.node1, self.node2)
 
     def test_not_equal_parent(self):
-        # Test nodes with different parents should not be equal
-        self.node2._parent = self.node3  # Change parent
-        self.assertNotEqual(self.node1, self.node2, "Nodes with different parents should not be equal")
+        self.node2._parent = self.node3
+        self.assertNotEqual(self.node1, self.node2)
 
     def test_not_equal_name(self):
-        # Test nodes with different names should not be equal
         self.node2._name = "DifferentName"
-        self.assertNotEqual(self.node1, self.node2, "Nodes with different names should not be equal")
+        self.assertNotEqual(self.node1, self.node2)
 
     def test_not_equal_type(self):
-        # Test comparing Node with a non-Node object
-        self.assertNotEqual(self.node1, "non-node-object", "Node should not be equal to a non-Node object")
+        self.assertNotEqual(self.node1, "non-node-object")
 
     def test_equal_complex(self):
-        # Test nodes with same complex parent and name setup
-        self.assertEqual(self.node3, self.node4, "Nodes with the same parent and name in a hierarchy should be equal")
+        self.assertEqual(self.node3, self.node4)
+
 
 class TestNodeRepr(unittest.TestCase):
-    '''
-    Test the __repr__ method for the Node class with the new implementation.
-    '''
+    """Unit tests for Node's __repr__ method."""
+    
     def setUp(self):
-        # Set up some example nodes
         self.node1 = ConcreteNode()
         self.node2 = ConcreteNode()
-
-        # Set parents and names
         self.node1._parent = None
         self.node1._name = "NodeA"
-
         self.node2._parent = self.node1
         self.node2._name = "NodeB"
 
     def test_repr_no_parent(self):
-        # Test __repr__ when there is no parent
         expected_repr = "ConcreteNode(name=NodeA, parent=None)"
-        self.assertEqual(repr(self.node1), expected_repr, "The __repr__ output is incorrect when there is no parent")
+        self.assertEqual(repr(self.node1), expected_repr)
 
     def test_repr_with_parent(self):
-        # Test __repr__ when there is a parent node
-        # The expected_repr now includes the parent name and its memory address (id)
         parent_id = id(self.node1)
         expected_repr = f"ConcreteNode(name=NodeB, parent=NodeA (id={parent_id}))"
-        self.assertEqual(repr(self.node2), expected_repr, "The __repr__ output is incorrect when there is a parent")
+        self.assertEqual(repr(self.node2), expected_repr)
 
     def test_repr_class_name(self):
-        # Test that the class name is correctly included in the __repr__
-        self.assertIn("ConcreteNode", repr(self.node1), "The class name should be 'ConcreteNode' in the __repr__ output")
+        self.assertIn("ConcreteNode", repr(self.node1))
+
 
 class TestManagementNode(unittest.TestCase):
-    '''
-    Unit tests for the ManagementNode class, ensuring proper instance creation and 
-    _instance_count incrementation, as well as verifying parent-child relationships. 
-    It tests the addition and removal of child nodes, the propagation of computations 
-    to child nodes, and the correct counting of ComputeNode instances within the hierarchy. 
-    Additionally, it checks that the notify method prints the appropriate notification messages.
-    '''
+    """Unit tests for ManagementNode class, including parent-child relationships and computation propagation."""
+    
     def setUp(self):
-        # Reset the _instance_count before each test
         ManagementNode._instance_count = 0
 
     def test_instance_creation(self):
-        # Tests the instantiation of ManagementNode and whether _instance_count is incremented
         node = ManagementNode()
         self.assertIsInstance(node, ManagementNode)
         self.assertEqual(node.__class__._instance_count, 1)
@@ -165,17 +130,12 @@ class TestManagementNode(unittest.TestCase):
         self.assertEqual(node.get_parent(), None)
 
     def test_parent_setting(self):
-        # Tests setting a parent node and verifies that the parent is set correctly.
-        # Also checks that the node's parent is correctly referenced.
-
         parent_node = ManagementNode()
         child_node = ManagementNode()
         child_node.set_parent(parent_node)
         self.assertEqual(child_node.get_parent(), parent_node)
 
     def test_add_and_remove_child(self):
-        # Verifies that children are correctly added and removed from the ManagementNode
-
         parent_node = ManagementNode()
         child_node = ManagementNode()
         parent_node.add(child_node)
@@ -184,13 +144,11 @@ class TestManagementNode(unittest.TestCase):
         self.assertEqual(parent_node.get_number_of_children(), 0)
 
     def test_distribute_and_compute(self):
-        # Verifies that the method propagates the computation to child nodes and notifies the parent node
-
         parent_node = ManagementNode()
         child_node = ManagementNode(parent_node)
         parent_node.add(child_node)
+        self.distribute_called = False
 
-        # Mock the distribute_and_compute method for the test
         def mock_distribute_and_compute(model, minutes, num_replications):
             self.distribute_called = True
 
@@ -199,8 +157,6 @@ class TestManagementNode(unittest.TestCase):
         self.assertTrue(self.distribute_called)
 
     def test_count_compute_nodes(self):
-        # Verifies the correct count of ConcreteNode instances within the ManagementNode hierarchy
-
         parent_node = ManagementNode()
         compute_node_1 = ComputeNode()
         compute_node_2 = ComputeNode()
@@ -208,90 +164,41 @@ class TestManagementNode(unittest.TestCase):
         child_node.add(compute_node_1)
         child_node.add(compute_node_2)
         parent_node.add(child_node)
-
         self.assertEqual(parent_node.count_compute_nodes(), 2)
 
     def test_notify(self):
-        # Verifies that the notify method prints the correct notification message
-
         parent_node = ManagementNode()
         child_node = ManagementNode(parent_node)
-
         with patch('builtins.print') as mock_print:
             child_node.notify("Test message", parent_node)
             mock_print.assert_called_with(f"{parent_node.__str__()} notifies {child_node.__str__()}: Test message")
 
+
 class TestComputeNode(unittest.TestCase):
-    '''
-    The tests for the ComputeNode class verify that each instance has a unique name 
-    and that the instance counter is correctly incremented. They also check the 
-    functionality of state management methods, the distribute_and_compute method, and 
-    ensure that the instance counter can be reset properly.
-    '''
+    """Unit tests for ComputeNode, focusing on instance creation and instance count reset."""
+    
     def setUp(self):
-        #Reset instance count before each test
         ComputeNode.reset_instance_count()
 
     def test_instance_creation(self):
-        #Test instance creation and instance count
         node1 = ComputeNode()
         node2 = ComputeNode()
         self.assertEqual(node1._name, 'ComputeNode1')
         self.assertEqual(node2._name, 'ComputeNode2')
 
-    ''' Problem beim Mocken der run_simulation Methode, die Datei in der Entity Mnager
-        definiert wird fehlt
-    def test_running_state(self):
-        #Test the running state management
-        node = ComputeNode()
-        self.assertFalse(node.is_running())
-        node.set_running(True)
-        self.assertTrue(node.is_running())
-        node.set_running(False)
-        self.assertFalse(node.is_running())
-    
-    @patch('simulations.run_simulation')
-    @patch('simulations.run_replications')
-    @patch('simulations.EntityManager', new_callable=MagicMock) 
-    def test_distribute_and_compute(self, mock_entity_manager, mock_run_replications, mock_run_simulation):
-        """Test the distribute_and_compute method with mocked functions."""
-        model = MagicMock()  # Mocking the model
-        minutes = 10
-        num_replications = 5
-        callback = MagicMock()
-
-        # Configure the mock for EntityManager if needed
-        mock_entity_manager.return_value = MagicMock()
-
-        node = ComputeNode(callback=callback)
-        node.distribute_and_compute(model, minutes, num_replications)
-        
-        # Verify that run_simulation and run_replications were called
-        mock_run_simulation.assert_called_once_with(model=model, minutes=minutes)
-        mock_run_replications.assert_called_once_with(model=model, minutes=minutes, num_replications=num_replications, multiprocessing=True)
-        self.assertTrue(callback.called)
-        self.assertEqual(callback.call_args[0], ("Completed simulation", node))
-        self.assertFalse(node.is_running())
-    '''
     def test_reset_instance_count(self):
-        #Test the instance counter reset
         node1 = ComputeNode()
         ComputeNode.reset_instance_count()
         node2 = ComputeNode()
         self.assertEqual(node2._name, 'ComputeNode1')
 
+
 class TestCreateCompositeTree(unittest.TestCase):
-    '''
-    The tests validate the functionality of the create_composite_tree method by checking if 
-    the number of children in the root node matches expectations for different replication 
-    scenarios. Specifically, it ensures that when the number of replications is below the 
-    minimum threshold, the root contains only one ComputeNode, while with equal or greater 
-    replications, the tree structure is sufficiently deep and correctly populated with nodes.
-    '''
+    """Tests for the create_composite_tree function with various replication scenarios."""
+    
     def test_below_minimum_replications(self):
         num_replications = MINIMUM_OF_REPLICATIONS_FOR_COMPOSITE - 1
         root = create_composite_tree(num_replications)
-        
         self.assertEqual(root.get_number_of_children(), 1)
         child = next(iter(root))
         self.assertIsInstance(child, ComputeNode)
@@ -299,18 +206,15 @@ class TestCreateCompositeTree(unittest.TestCase):
     def test_at_minimum_replications(self):
         num_replications = MINIMUM_OF_REPLICATIONS_FOR_COMPOSITE
         root = create_composite_tree(num_replications)
-        
         self.assertGreater(root.get_number_of_children(), 1)
 
     def test_large_replications(self):
         num_replications = NUM_REPLICATIONS
         root = create_composite_tree(num_replications)
-        
         depth = compute_tree_sizes(num_replications)
         self.assertTrue(self.check_tree_depth(root, expected_depth=depth))
 
     def check_tree_depth(self, node, expected_depth, current_depth=1):
-        """Function to get the depth of the tree"""
         if current_depth == expected_depth:
             return True
         for child in node:
@@ -319,12 +223,10 @@ class TestCreateCompositeTree(unittest.TestCase):
                     return True
         return False
 
+
 class TestAddNodes(unittest.TestCase):
-    '''
-    Verifies the add_nodes function by testing different tree depths. 
-    It ensures that the correct number of ManagementNode and ComputeNode instances are added 
-    at various levels of the hierarchy.
-    '''
+    """Tests for the add_nodes function by verifying correct node addition at various depths."""
+    
     def setUp(self):
         ManagementNode.reset_instance_count()
         ComputeNode.reset_instance_count()
@@ -332,12 +234,9 @@ class TestAddNodes(unittest.TestCase):
     def test_add_nodes_depth_1(self):
         root = ManagementNode()
         add_nodes(root, 1, 2)
-
-        # Check that the root has 2 ManagementNodes as children
         self.assertEqual(root.get_number_of_children(), 2)
         for child in root:
             self.assertIsInstance(child, ManagementNode)
-            # Each child should have 2 ComputeNodes
             self.assertEqual(child.get_number_of_children(), 2)
             for grandchild in child:
                 self.assertIsInstance(grandchild, ComputeNode)
@@ -345,8 +244,6 @@ class TestAddNodes(unittest.TestCase):
     def test_add_nodes_depth_2(self):
         root = ManagementNode()
         add_nodes(root, 1, 3)
-
-        # Check that the root has 2 ManagementNodes as children
         self.assertEqual(root.get_number_of_children(), 2)
         for child in root:
             self.assertIsInstance(child, ManagementNode)
@@ -360,45 +257,98 @@ class TestAddNodes(unittest.TestCase):
     def test_add_nodes_no_management_nodes(self):
         root = ManagementNode()
         add_nodes(root, 2, 2)
-
-        # Check that the root has 2 ComputeNodes as children
         self.assertEqual(root.get_number_of_children(), 2)
         for child in root:
             self.assertIsInstance(child, ComputeNode)
 
+
 class TestComputeTreeSize(unittest.TestCase):
-    '''
-    Checks the compute_tree_sizes function for various 
-    numbers of replications. It verifies that the tree size is calculated correctly for 
-    different replication thresholds, including edge cases and typical values.
-    '''
+    """Tests for the compute_tree_sizes function, focusing on replication thresholds."""
+    
     def test_small_number_of_replications(self):
-        # For less than 1000 replications, the tree size should be 0.
-        self.assertEqual(compute_tree_sizes(999), 0, "For fewer than 1000 replications, the tree size should be 0.")
+        self.assertEqual(compute_tree_sizes(999), 0)
 
     def test_exact_threshold(self):
-        # For exactly 1000 replications, the tree size should be 1.
-        self.assertEqual(compute_tree_sizes(1000), 0, "For exactly 1000 replications, the tree size should be 1.")
+        self.assertEqual(compute_tree_sizes(1000), 0)
 
     def test_double_threshold(self):
-        # For 2000 replications, the tree size should still be 1.
-        self.assertEqual(compute_tree_sizes(2000), 1, "For 2000 replications, the tree size should be 1.")
+        self.assertEqual(compute_tree_sizes(2000), 1)
 
     def test_large_number_of_replications(self):
-        # For 8192 replications, the tree size should be 3.
-        self.assertEqual(compute_tree_sizes(8192), 3, "For 8192 replications, the tree size should be 3.")
+        self.assertEqual(compute_tree_sizes(8192), 3)
 
     def test_edge_case(self):
-        # For 1 replication, the tree size should be 0.
-        self.assertEqual(compute_tree_sizes(1), 0, "For fewer than 1000 replications, the tree size should be 0.")
+        self.assertEqual(compute_tree_sizes(1), 0)
 
-class TestInputPositivNumber(unittest.TestCase):
-    '''
-    Tests the input_positive_number function to ensure it correctly handles 
-    valid and invalid inputs. It verifies that valid input is returned correctly 
-    and invalid inputs trigger appropriate error messages before providing the correct 
-    value on retry.
-    '''
+
+class TestDistributeAndCompute(unittest.TestCase):
+    """Tests for the distribute_and_compute method on ManagementNode, including handling of children."""
+    
+    def setUp(self):
+        self.root = ManagementNode()
+        self.child1 = ComputeNode()
+        self.child2 = ComputeNode()
+        self.root.add(self.child1)
+        self.root.add(self.child2)
+
+    @patch('VerteilteBerechnungen.util.simulations.run_simulation')
+    @patch('VerteilteBerechnungen.util.simulations.run_replications')
+    @patch('VerteilteBerechnungen.util.simulations.calculate_statistics', return_value=({}, [], {}, {}))
+    def test_distribute_and_compute_on_children(self, mock_calculate_statistics, mock_run_replications, mock_run_simulation):
+        self.child1.distribute_and_compute = MagicMock()
+        self.child2.distribute_and_compute = MagicMock()
+        model = MagicMock()
+        self.root.distribute_and_compute(model=model, minutes=10, num_replications=5)
+        self.child1.distribute_and_compute.assert_called_once_with(model=model, minutes=10, num_replications=5)
+        self.child2.distribute_and_compute.assert_called_once_with(model=model, minutes=10, num_replications=5)
+        mock_run_simulation.assert_not_called()
+        mock_run_replications.assert_not_called()
+
+    @patch('VerteilteBerechnungen.util.simulations.run_simulation')
+    @patch('VerteilteBerechnungen.util.simulations.run_replications')
+    @patch('VerteilteBerechnungen.util.simulations.calculate_statistics', return_value=({}, [], {}, {}))
+    def test_distribute_and_compute_no_children(self, mock_calculate_statistics, mock_run_replications, mock_run_simulation):
+        empty_root = ManagementNode()
+        empty_root.distribute_and_compute(model=MagicMock(), minutes=10, num_replications=5)
+        mock_run_simulation.assert_not_called()
+        mock_run_replications.assert_not_called()
+
+
+class TestDistributeAndComputeNotify(unittest.TestCase):
+    """Tests for ManagementNode's distribute_and_compute method, ensuring correct notification to parent."""
+    
+    def setUp(self):
+        self.root = ManagementNode()
+        self.child1 = ComputeNode()
+        self.child2 = ComputeNode()
+        self.root.add(self.child1)
+        self.root.add(self.child2)
+        self.parent_node = ManagementNode()
+        self.root.set_parent(self.parent_node)
+
+    @patch('VerteilteBerechnungen.util.simulations.run_simulation')
+    @patch('VerteilteBerechnungen.util.simulations.run_replications')
+    @patch('VerteilteBerechnungen.util.simulations.calculate_statistics', return_value=({}, [], {}, {}))
+    @patch('pandas.DataFrame')
+    def test_distribute_and_compute_notify_parent(self, mock_df, mock_calculate_statistics, mock_run_replications, mock_run_simulation):
+        mock_df.return_value = pd.DataFrame({
+            'Type': ['Entity'],
+            'Name': ['Entity'],
+            'Stat': ['NumberCreated'],
+            'Average': [10],
+            'Minimum': [5],
+            'Maximum': [15],
+            'Half-Width': [2]
+        })
+        self.parent_node.notify = MagicMock()
+        model = MagicMock()
+        self.root.distribute_and_compute(model=model, minutes=10, num_replications=5)
+        self.parent_node.notify.assert_called_once_with(f"{self.root.__str__()} completed its operations.", self.root)
+
+
+class TestInputPositiveNumber(unittest.TestCase):
+    """Tests for the input_positive_number function, ensuring valid and invalid inputs are handled correctly."""
+    
     @patch('builtins.input', return_value='42')
     def test_valid_input(self, mock_input):
         result = input_positive_number("Enter a positive number: ")
@@ -413,36 +363,30 @@ class TestInputPositivNumber(unittest.TestCase):
             self.assertIn("Error: Entered number must be greater than zero", output)
             self.assertIn("Error: invalid literal for int() with base 10", output)
 
-class TestDistributeAndCompute(unittest.TestCase):
 
+class TestComputeNodeDistributeAndCompute(unittest.TestCase):
+    """Tests for ComputeNode's distribute_and_compute method, verifying callback functionality and running state."""
+    
     def setUp(self):
-        # Set up a management node with two children
-        self.root = ManagementNode()  # Parent node
-        self.child1 = ComputeNode()   # Child node 1
-        self.child2 = ComputeNode()   # Child node 2
+        self.callback_mock = MagicMock()
+        self.node = ComputeNode(callback=self.callback_mock)
 
-        # Add children to the root node
-        self.root.add(self.child1)
-        self.root.add(self.child2)
-
-    @patch('VerteilteBerechnungen.util.simulations.run_simulation')
-    @patch('VerteilteBerechnungen.util.simulations.run_replications')
-    def test_distribute_and_compute_on_children(self, mock_run_replications, mock_run_simulation):
-        # Mock the distribute_and_compute method for the child nodes
-        self.child1.distribute_and_compute = MagicMock()
-        self.child2.distribute_and_compute = MagicMock()
-
-        # Mock the model object
+    @patch('VerteilteBerechnungen.util.nodes_for_composite.run_simulation')
+    @patch('VerteilteBerechnungen.util.nodes_for_composite.run_replications')
+    @patch('pandas.DataFrame')
+    def test_distribute_and_compute_callback_and_running_state(self, mock_df, mock_run_replications, mock_run_simulation):
+        mock_df.return_value = pd.DataFrame({
+            'Type': ['Entity'],
+            'Name': ['Entity'],
+            'Stat': ['NumberCreated'],
+            'Value': [10]
+        })
         model = MagicMock()
-
-        # Call distribute_and_compute on the root node
-        self.root.distribute_and_compute(model=model, minutes=10, num_replications=5)
-
-        # Ensure that distribute_and_compute was called for both child nodes
-        self.child1.distribute_and_compute.assert_called_once_with(model=model, minutes=10, num_replications=5)
-        self.child2.distribute_and_compute.assert_called_once_with(model=model, minutes=10, num_replications=5)
-
-
+        self.node.distribute_and_compute(model=model, minutes=10, num_replications=5)
+        mock_run_simulation.assert_called_once_with(model=model, minutes=10)
+        mock_run_replications.assert_called_once_with(model=model, minutes=10, num_replications=5, multiprocessing=True)
+        self.callback_mock.assert_called_once_with("Completed simulation", self.node)
+        self.assertFalse(self.node.is_running())
 
 
 if __name__ == "__main__":
