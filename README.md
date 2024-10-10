@@ -5,7 +5,7 @@ Based on [DMPG](https://gitlab.com/digitaltwinml/DMPG)
 # Purpose
 
 This software is designed to extend the [DMPG](https://gitlab.com/digitaltwinml/DMPG) to integrate a website for distributing jobs(experiments) to a SLURM cluster. 
-These experiments can be created on the website and consist of Sources, Servers and Sinks. For further documentation refer to [Docs](./docs/).
+These experiments can be created on the website and consist of Sources, Servers and Sinks. For further information fell free to explore the [documentation](./docs/).
 
 
 # License

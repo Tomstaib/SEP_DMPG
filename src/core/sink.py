@@ -45,6 +45,11 @@ class Sink(ResetAbleNamedObject):
     def reset(self):
         self.entities_processed = 0
 
+    @classmethod
+    def reset_all(cls):
+        for sink in cls.sinks:
+            sink.reset()
+
     def handle_entity_arrival(self, entity: Entity) -> None:
         """
         This method updates various statistics related to entity processing, including the time spent by the entity

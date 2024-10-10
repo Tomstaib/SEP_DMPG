@@ -101,6 +101,11 @@ class Server(ResetAbleNamedObject, RoutingObject):
         self.server_queue.clear()
         self.currently_processing.clear()
 
+    @classmethod
+    def reset_all(cls):
+        for server in cls.servers:
+            server.reset()
+
     def is_available(self):
         """
         Checks if the server is available.

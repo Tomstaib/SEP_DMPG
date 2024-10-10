@@ -59,6 +59,11 @@ class Source(ResetAbleNamedObject, RoutingObject):
         self.entities = []
         self.number_exited_pivot_table = 0
 
+    @classmethod
+    def reset_all(cls):
+        for source in cls.sources:
+            source.reset()
+
     def run(self):
         validate_probabilities(self)
         create_connection_cache(self)

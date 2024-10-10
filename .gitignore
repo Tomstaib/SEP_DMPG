@@ -4,6 +4,7 @@
 DMPG.iml
 /src/util/flask/user/*
 DMPG.egg-info
+/tests/integration_test_simulations.py
 
 .idea/**/misc.xml
 .idea/**/other.xml
