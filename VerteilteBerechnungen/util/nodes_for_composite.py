@@ -1,9 +1,12 @@
 from __future__ import annotations
-
+import sys
+import os
 from abc import ABC, abstractmethod
 from typing import Optional, Type
 
-from util.simulations import run_replications, run_simulation
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../VerteilteBerechnungen')))
+
+from VerteilteBerechnungen.util.simulations import run_replications, run_simulation
 
 MINIMUM_OF_REPLICATIONS_FOR_COMPOSITE: int = 10  # just an example
 NUM_REPLICATIONS: int = 10000  # example normally would get this from the website
