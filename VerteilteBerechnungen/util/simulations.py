@@ -1,4 +1,5 @@
 import gc
+import sys
 import os
 import random
 import time
@@ -10,17 +11,18 @@ import numpy as np
 import concurrent.futures
 import logging
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../VerteilteBerechnungen')))
 
-import src.util.global_imports as gi
-from src.database.database_connection import save_to_db
+import VerteilteBerechnungen.util.global_imports as gi
+from VerteilteBerechnungen.database.database_connection import save_to_db
 
-from src.core.entity import EntityManager
-from src.core.server import Server
-from src.core.sink import Sink
-from src.core.source import Source
-from src.util.global_imports import RANDOM_SEED, set_duration_warm_up
-from src.util.helper import round_value
-from src.util.flask.runtime_prediction import send_progress_to_server
+from VerteilteBerechnungen.core.entity import EntityManager
+from VerteilteBerechnungen.core.server import Server
+from VerteilteBerechnungen.core.sink import Sink
+from VerteilteBerechnungen.core.source import Source
+from VerteilteBerechnungen.util.global_imports import RANDOM_SEED, set_duration_warm_up
+from VerteilteBerechnungen.util.helper import round_value
+from VerteilteBerechnungen.util.flask.runtime_prediction import send_progress_to_server
 
 global seconds_previous_computations
 
