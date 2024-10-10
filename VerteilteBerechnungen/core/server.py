@@ -1,11 +1,16 @@
+import sys
+import os
 import logging
 import simpy
-from src.core.entity import Entity
-from src.util.global_imports import random, ENTITY_PROCESSING_LOG_ENTRY
-from src.util.helper import get_value_from_distribution_with_parameters, validate_probabilities, round_value, \
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../VerteilteBerechnungen')))
+
+from VerteilteBerechnungen.core.entity import Entity
+from VerteilteBerechnungen.util.global_imports import random, ENTITY_PROCESSING_LOG_ENTRY
+from VerteilteBerechnungen.util.helper import get_value_from_distribution_with_parameters, validate_probabilities, round_value, \
     create_connection_cache
-from src.core.queue_orders import QueueOrders
-from src.util.date_time import DateTime
+from VerteilteBerechnungen.core.queue_type import QueueType
+from VerteilteBerechnungen.util.date_time import DateTime
 
 
 class Server:
@@ -15,7 +20,7 @@ class Server:
                  processing_time_distribution_with_parameters=None,
                  time_between_machine_breakdowns=None,
                  machine_breakdown_duration=None,
-                 queue_order: QueueOrders = QueueOrders.FIFO):
+                 queue_order: QueueType = QueueType.FIFO):
 
         self.env = env
         self.name = name
@@ -84,7 +89,7 @@ class Server:
         while True:
             if self.server_queue:
                 # Choose entity based on queue order
-                if self.queue_order == QueueOrders.LIFO:
+                if self.queue_order == QueueType.LIFO:
                     entity = self.server_queue.pop()
                 else:
                     entity = self.server_queue.pop(0)  # default: FIFO
