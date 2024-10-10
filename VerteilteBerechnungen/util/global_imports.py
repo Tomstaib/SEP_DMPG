@@ -2,6 +2,9 @@ import logging
 import random
 import pandas as pd
 from matplotlib import pyplot as plt
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../VerteilteBerechnungen')))
+
 from VerteilteBerechnungen.util.singleton import Singleton
 from VerteilteBerechnungen.util.helper import add_logging_level
 
