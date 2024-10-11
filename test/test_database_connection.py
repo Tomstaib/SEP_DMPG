@@ -9,7 +9,6 @@ from sqlalchemy.sql.elements import TextClause
 from sqlalchemy.exc import IntegrityError, NoResultFound, MultipleResultsFound, SQLAlchemyError, OperationalError
 
 
-# Für Dockercontainer zum Initialisieren der lokalen Module
 sys.path.append(os.path.abspath(
     os.path.join(os.path.dirname(__file__), '../Datenspeicherung/Python')
 ))
