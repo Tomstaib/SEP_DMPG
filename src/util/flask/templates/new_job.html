@@ -1,0 +1,27 @@
+<!-- dashboard.html -->
+{% extends 'base.html' %}
+
+{% block title %}New job{% endblock %}
+
+{% block content %}
+    <h1>Jobs can be submitted here</h1>
+    <div id="main-content" class="main-content">
+        <h2>New Job</h2>
+        <p>This is where you can create a new job.</p>
+        <form action="{{ url_for('prepare_env_route') }}" method="POST">
+            <button type="submit">Prepare Environment</button>
+        </form>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul>
+          {% for message in messages %}
+            <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+    </div>
+{% endblock %}
+
+

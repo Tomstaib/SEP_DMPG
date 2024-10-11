@@ -1,0 +1,17 @@
+<!-- dashboard.html -->
+{% extends 'base.html' %}
+
+{% block title %}Confirm Overwrite{% endblock %}
+
+{% block content %}
+<body>
+    <h2>Overwrite Existing Configuration</h2>
+    <p>A configuration with the model name "{{ form_data['model_name'][0] }}" and scenario name "{{ form_data['scenario_name'][0] }}" already exists. Do you want to overwrite it?</p>
+    <form method="POST" enctype="multipart/form-data">
+        <!-- Include overwrite_confirmed as hidden input -->
+        <input type="hidden" name="overwrite_confirmed" value="true">
+        <button type="submit">Yes, Overwrite</button>
+        <a href="{{ url_for('cancel_overwrite') }}"><button type="button">No, Cancel</button></a>
+    </form>
+</body>
+{% endblock %}

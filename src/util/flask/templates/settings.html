@@ -1,0 +1,15 @@
+<!-- dashboard.html -->
+{% extends 'base.html' %}
+
+{% block title %}Kontakt{% endblock %}
+
+{% block content %}
+    <h2>Settings</h2>
+    <form method="POST" action="{{ url_for('logout') }}">
+            <input type="submit" value="Logout">
+    </form>
+
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+
+{% endblock %}
+

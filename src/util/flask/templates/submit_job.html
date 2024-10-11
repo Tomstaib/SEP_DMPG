@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %}Submit Job{% endblock %}
+
+{% block content %}
+    <div id="main-content" class="main-content">
+        <h1>Submit a New Job</h1>
+
+        <!-- Informational Text -->
+        <div class="alert alert-info">
+            <p>This page allows users to submit new jobs for a simulation. Before submitting a job for the first time, the environment must be prepared. Additionally, before starting each simulation, a composite tree must be created. The page is divided into two main sections:</p>
+            <p><strong>Create Composite Tree:</strong> In this section, users can specify the number of children per node and the depth of the tree, with validation to ensure the input stays within allowed limits.</p>
+            <p><strong>Start Simulation:</strong> Users can select an account, specify the number of replications, choose compute nodes, select a JSON scenario, and set a time limit. Input validation is applied before the simulation starts.</p>
+            <p><strong>Note:</strong> The number of compute nodes is currently limited to 2, due to issues when running more than 2 jobs on the Slurm cluster.</p>
+        </div>
+
+        <!-- Button to Prepare Environment -->
+        <form method="POST" action="{{ url_for('prepare_env_route') }}">
+            <button type="submit" class="btn btn-primary">Prepare Environment</button>
+        </form>
+
+        <!-- Show Number of compute nodes -->
+        <p>Number of available compute nodes: {{ num_compute_nodes }}</p>
+
+        <!-- Section for creating a composite tree -->
+        <form method="POST" class="mb-5">
+            <h2>Create Composite Tree</h2>
+            <div class="form-group">
+                <label for="num_children">Number of Children per Parent:</label>
+                <input type="number" class="form-control" id="num_children" name="num_children" required min="1" max="2"
+                       oninvalid="this.setCustomValidity('Die Anzahl der Kinder pro Knoten darf maximal 2 betragen.')"
+                       oninput="setCustomValidity('')">
+            </div>
+            <div class="form-group">
+                <label for="depth_of_tree">Depth of the Tree:</label>
+                <input type="number" class="form-control" id="depth_of_tree" name="depth_of_tree" required min="1" max="1"
+                       oninvalid="this.setCustomValidity('Die Tiefe des Baums darf maximal 1 betragen.')"
+                       oninput="setCustomValidity('')">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" name="create_tree">Create Tree</button>
+        </form>
+
+        <!-- Section for starting simulation -->
+        <form method="POST" action="{{ url_for('submit_job') }}">
+            <h2>Start Simulation</h2>
+            <div class="form-group">
+                <label for="account">Select Account:</label>
+                <select name="account" id="account" class="form-control" required>
+                    {% if accounts %}
+                        {% for account in accounts %}
+                            <option value="{{ account }}">{{ account }}</option>
+                        {% endfor %}
+                    {% else %}
+                        <option disabled>No accounts available</option>
+                    {% endif %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="num_replications">Number of Replications:</label>
+                <input type="number" class="form-control" id="num_replications" name="num_replications" required>
+            </div>
+
+            <div class="form-group">
+                <label for="num_compute_nodes">Number of Compute Nodes:</label>
+                <input type="number" class="form-control" id="num_compute_nodes" name="num_compute_nodes" required min="1" max="2"
+                       oninvalid="this.setCustomValidity('Die Anzahl der Compute Nodes darf maximal 2 betragen.')"
+                       oninput="setCustomValidity('')">
+            </div>
+
+            <!-- Dropdown for JSON-Scenarios -->
+            <div class="form-group">
+                <label for="model_script">Select Scenario (JSON File):</label>
+                <select name="model_script" id="model_script" class="form-control" required>
+                    {% if json_files %}
+                        {% for json_file in json_files %}
+                            <option value="{{ json_file.full_path }}">{{ json_file.filename }}</option>
+                        {% endfor %}
+                    {% else %}
+                        <option disabled>No JSON files available</option>
+                    {% endif %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="cpus_per_task">CPUs per Node:</label>
+                <input type="number" class="form-control" id="cpus_per_task" name="cpus_per_task" required min="1">
+            </div>
+
+            <div class="form-group">
+                <label for="time_limit">Time Limit (minutes):</label>
+                <input type="number" class="form-control" id="time_limit" name="time_limit" required >
+            </div>
+            <button type="submit" class="btn btn-success btn-block" name="start_simulation">Start Simulation</button>
+        </form>
+    </div>
+
+{% endblock %}
+

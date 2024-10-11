@@ -1,0 +1,12 @@
+{
+  "paths": {
+    "local_version_file_path": "/var/www/dmpg_api/DMPG/version.json",
+    "local_folder_path" : "/var/www/dmpg_api/DMPG",
+    "remote_folder_path": "/home/$USER/DMPG",
+    "remote_version_file_path": "/home/$USER/DMPG/version.json",
+    "env_activation_command": "/cluster/user/$USER/venvs/DMPG/bin/activate",
+    "venv_path": "/cluster/user/$USER/venvs/DMPG",
+    "required_python_version": "3.11.9",
+    "requirements_file_path": "/home/$USER/DMPG/requirements.txt"
+  }
+}

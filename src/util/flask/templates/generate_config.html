@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Simulation Configuration</title>
+    <script>
+        // JavaScript to dynamically show/hide input fields based on distribution selection
+        function updateServerInputs(serverNum) {
+            const distType = document.getElementById(`server_dist_${serverNum}`).value;
+            const modeField = document.getElementById(`mode_${serverNum}_field`);
+
+            if (distType === 'triangular') {
+                modeField.style.display = 'block';  // Show mode input if triangular is selected
+            } else {
+                modeField.style.display = 'none';  // Hide mode input for other distributions
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Generate Simulation Configuration</h1>
+    <form action="{{ url_for('generate_config') }}" method="post">
+        <h2>Source Configuration</h2>
+        <label for="source_name">Source Name:</label>
+        <input type="text" id="source_name" name="source_name" value="PCB" required><br><br>
+
+        <label for="entity_creation_rate">Entity Creation Rate:</label>
+        <input type="number" id="entity_creation_rate" name="entity_creation_rate" step="0.01" value="6" required><br><br>
+
+        <h2>Server Configuration</h2>
+        <label for="num_servers">Number of Servers:</label>
+        <input type="number" id="num_servers" name="num_servers" value="3" required><br><br>
+
+        <div id="servers">
+            {% for i in range(1, num_servers + 1) %}
+            <h4>Server {{ i }}</h4>
+            <label for="server_name_{{ i }}">Server Name:</label>
+            <input type="text" id="server_name_{{ i }}" name="server_name_{{ i }}" value="Server{{ i }}" required><br><br>
+
+            <label for="server_dist_{{ i }}">Distribution Type:</label>
+            <select id="server_dist_{{ i }}" name="server_dist_{{ i }}">
+                <option value="triangular">Triangular</option>
+                <option value="uniform">Uniform</option>
+                <option value="expovariate">Exponential</option>
+                <option value="normalvariate">Normal</option>
+            </select><br><br>
+
+            <label for="low_{{ i }}">Low Value:</label>
+            <input type="number" id="low_{{ i }}" name="low_{{ i }}" step="0.01" value="3" required><br><br>
+
+            <label for="high_{{ i }}">High Value:</label>
+            <input type="number" id="high_{{ i }}" name="high_{{ i }}" step="0.01" value="5" required><br><br>
+            {% endfor %}
+        </div>
+
+        <h2>Sink Configuration</h2>
+        <label for="num_sinks">Number of Sinks:</label>
+        <input type="number" id="num_sinks" name="num_sinks" value="2" required><br><br>
+
+        <h3>Sink 1</h3>
+        <label for="sink_name_1">Sink Name:</label>
+        <input type="text" id="sink_name_1" name="sink_name_1" value="GoodParts" required><br><br>
+
+        <h3>Sink 2</h3>
+        <label for="sink_name_2">Sink Name:</label>
+        <input type="text" id="sink_name_2" name="sink_name_2" value="BadParts" required><br><br>
+
+        <h2>Routing Probabilities</h2>
+        <label for="routing_server">Server for Routing Probabilities:</label>
+        <input type="text" id="routing_server" name="routing_server" value="Inspection" required><br><br>
+
+        <label for="good_parts_prob">GoodParts Probability (%):</label>
+        <input type="number" id="good_parts_prob" name="good_parts_prob" step="0.01" value="66" required><br><br>
+
+        <label for="bad_parts_prob">BadParts Probability (%):</label>
+        <input type="number" id="bad_parts_prob" name="bad_parts_prob" step="0.01" value="8" required><br><br>
+
+        <label for="rework_prob">Rework Probability (%):</label>
+        <input type="number" id="rework_prob" name="rework_prob" step="0.01" value="26" required><br><br>
+
+        <h2>Simulation Parameters</h2>
+        <label for="simulation_duration">Simulation Duration (minutes):</label>
+        <input type="number" id="simulation_duration" name="simulation_duration" value="1440" required><br><br>
+
+        <input type="submit" value="Generate Configuration">
+    </form>
+</body>
+</html>
