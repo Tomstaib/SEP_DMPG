@@ -3,7 +3,6 @@ import os
 import unittest
 from unittest.mock import patch, MagicMock, mock_open
 
-# Für Dockercontainer zum Initialisieren der lokalen Module
 sys.path.append(os.path.abspath(
     os.path.join(os.path.dirname(__file__), '../Datenspeicherung/Python')
 ))
