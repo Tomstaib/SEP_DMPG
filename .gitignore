@@ -4,13 +4,13 @@
 DMPG.iml
 /src/util/flask/user/*
 DMPG.egg-info
-/tests/integration_test_simulations.py
 
 .idea/**/misc.xml
 .idea/**/other.xml
 
 /src/database/database_params.py
 /src/util/flask/ssh_params.py
+/tests/test_simulations.py
 
 # Created by https://www.toptal.com/developers/gitignore/api/intellij+iml,sonarqube,python,windows,macos,linux
 # Edit at https://www.toptal.com/developers/gitignore?templates=intellij+iml,sonarqube,python,windows,macos,linux
