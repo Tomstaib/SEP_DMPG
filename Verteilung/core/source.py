@@ -1,11 +1,15 @@
+import sys
+import os 
 import logging
 import pandas as pd
 
-from src.util.global_imports import random, ENTITY_PROCESSING_LOG_ENTRY
-from src.core.server import Server
-from src.core.entity import Entity
-from src.util.helper import get_value_from_distribution_with_parameters, validate_probabilities, create_connection_cache
-from src.util.date_time import DateTime
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../Verteilung')))
+
+from Verteilung.util.global_imports import random, ENTITY_PROCESSING_LOG_ENTRY
+from Verteilung.core.server import Server
+from Verteilung.core.entity import Entity
+from Verteilung.util.helper import get_value_from_distribution_with_parameters, validate_probabilities, create_connection_cache
+from Verteilung.util.date_time import DateTime
 
 
 class Source:

@@ -1,9 +1,14 @@
+import sys
+import os
+
 import logging
 from simpy import Environment
 
-from src.core.entity import Entity
-from src.util.global_imports import ENTITY_PROCESSING_LOG_ENTRY
-from src.util.date_time import DateTime
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../Verteilung')))
+
+from Verteilung.core.entity import Entity
+from Verteilung.util.global_imports import ENTITY_PROCESSING_LOG_ENTRY
+from Verteilung.util.date_time import DateTime
 
 
 class Sink:

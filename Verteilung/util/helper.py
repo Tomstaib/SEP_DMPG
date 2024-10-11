@@ -36,45 +36,38 @@ def create_connection_cache(component):
         component.connection_cache[cumulative_probability] = next_server
 
 
+import logging
+
 def add_logging_level(level_name, level_num, method_name=None):
     """
-    Comprehensively adds a new logging level to the `logging` module and the
-    currently configured logging class.
+    Dynamically add a new logging level to the logging module.
 
-    `levelName` becomes an attribute of the `logging` module with the value
-    `levelNum`. `methodName` becomes a convenience method for both `logging`
-    itself and the class returned by `logging.getLoggerClass()` (usually just
-    `logging.Logger`). If `methodName` is not specified, `levelName.lower()` is
-    used.
-
-    To avoid accidental clobberings of existing attributes, this method will
-    raise an `AttributeError` if the level name is already an attribute of the
-    `logging` module or if the method name is already present
+    :param level_name: Name of the new logging level.
+    :param level_num: Numeric value of the logging level.
+    :param method_name: Optional method name for the new logging level.
     """
-    if not method_name:
-        method_name = level_name.lower()
+    method_name = method_name or level_name.lower()
 
     if hasattr(logging, level_name):
-        raise AttributeError('{} already defined in logging module'.format(level_name))
-    if hasattr(logging, method_name):
-        raise AttributeError('{} already defined in logging module'.format(method_name))
-    if hasattr(logging.getLoggerClass(), method_name):
-        raise AttributeError('{} already defined in logger class'.format(method_name))
+        logging.warning(f"Logging level '{level_name}' is already defined.")
+        return
 
-    # This method was inspired by the answers to Stack Overflow post
-    # http://stackoverflow.com/q/2183233/2988730, especially
-    # http://stackoverflow.com/a/13638084/2988730
-    def logForLevel(self, message, *args, **kwargs):
+    if hasattr(logging, method_name):
+        logging.warning(f"Method '{method_name}' is already defined in logging.")
+        return
+
+    def log_for_level(self, message, *args, **kwargs):
         if self.isEnabledFor(level_num):
             self._log(level_num, message, args, **kwargs)
 
-    def logToRoot(message, *args, **kwargs):
+    def log_to_root(message, *args, **kwargs):
         logging.log(level_num, message, *args, **kwargs)
 
     logging.addLevelName(level_num, level_name)
     setattr(logging, level_name, level_num)
-    setattr(logging.getLoggerClass(), method_name, logForLevel)
-    setattr(logging, method_name, logToRoot)
+    setattr(logging.getLoggerClass(), method_name, log_for_level)
+    setattr(logging, method_name, log_to_root)
+
 
 
 def round_value(val: Union[int, float]):

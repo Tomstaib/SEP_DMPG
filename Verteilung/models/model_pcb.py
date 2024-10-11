@@ -1,3 +1,13 @@
+import sys
+import os
+import random
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../Verteilung')))
+
+from Verteilung.core.server import Server
+from Verteilung.core.source import Source
+from Verteilung.core.sink import Sink
+
 def setup_model_pcb(env):
     # Create servers, sinks, and sources
     source1 = Source(env, "PCB", (random.expovariate, 1 / 6))

@@ -1,5 +1,10 @@
+import sys
+import os
 from typing import Union
-from src.util.singleton import Singleton
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../Verteilung')))
+
+from Verteilung.util.singleton import Singleton
 
 
 class Entity:

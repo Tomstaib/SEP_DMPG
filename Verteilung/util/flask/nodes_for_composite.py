@@ -1,9 +1,11 @@
 from __future__ import annotations
+import sys
+import os
 
 from abc import ABC, abstractmethod
 from typing import Optional, Type
 
-from util.simulations import run_replications, run_simulation
+from Verteilung.util.simulations import run_replications, run_simulation
 
 MINIMUM_OF_REPLICATIONS_FOR_COMPOSITE: int = 1000  # just an example
 NUM_REPLICATIONS: int = 1000000  # example normally would get this from the website
