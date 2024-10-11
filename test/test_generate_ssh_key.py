@@ -7,7 +7,6 @@ from io import StringIO
 from flask import Flask, session
 from unittest.mock import patch, MagicMock
 
-# Für Dockercontainer zum Initialisieren der lokalen Module
 sys.path.append(os.path.abspath(
     os.path.join(os.path.dirname(__file__), '../Datenspeicherung/Python')
 ))
