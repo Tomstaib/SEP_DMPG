@@ -2,6 +2,10 @@
 /src/models/simulation_model_pro
 /src/models/simulation_model_pro.pdf
 DMPG.iml
+/src/*
+/tests/*
+/src/database/database_params.py
+/src/util/flask/*
 
 # intellij configs
 .idea/
@@ -365,3 +369,4 @@ $RECYCLE.BIN/
 private_config.json
 .src/util/dist/
 /src/util/agents/
+/src/util/
